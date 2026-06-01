@@ -1,44 +1,48 @@
 # Vyro OS — Roadmap
 
-## ✅ v1.0 (shipped) — 30 phases
+## ✅ v1.0 (shipped) — Phases 0-30
 
-A complete, bootable 64-bit OS built from scratch:
+Full 64-bit OS: bootloader, kernel, interrupts, memory, scheduler, ring 3,
+ELF loader, VyFS, ATA disk, networking stack, security, package manager,
+SMP detection, ACPI power, UEFI boot, basic window manager.
 
-- Custom BIOS bootloader → 64-bit long mode
-- Monolithic kernel: IDT/PIC interrupts, PMM + heap, paging
-- Cooperative scheduler with 64-bit context switching
-- VyFS in-memory filesystem + persistent ATA disk
-- `int 0x80` syscall ABI, ring-3 user mode (GDT + TSS), ELF64 loader
-- Drivers: VESA framebuffer, PS/2 keyboard + mouse, PIT timer, RTC,
-  PC speaker, PCI, ATA
-- Networking stack (Ethernet/ARP/IPv4/ICMP + checksums), USB detection
-- Window manager (draggable windows, Start menu, cursor)
-- Multi-user security with SHA-256 password hashing
-- vyropkg package manager with dependency resolution
-- SMP core detection (ACPI MADT), ACPI power off/reboot
-- Developer tools (dmesg, peek, prof), libvyro app framework, VyroBrowser
-- UEFI boot path, CI/CD, full design document
+## ✅ v2.0 (shipped) — Phases 31-50
+
+Modern desktop OS layer:
+
+- Double-buffered compositor + theme system (dark/light)
+- macOS-style dock, Windows-style top bar, live clock
+- Bitmap icons, drop shadows, window animations
+- Full window controls: min/max/resize/snap
+- Widget toolkit + app framework v2
+- **12 native apps**: Files, Settings, Terminal, TextEdit, Calculator, Clock,
+  Task Manager, Launchpad, Notification Center, Control Center, Browser,
+  App Store
+- Sockets API (TCP state machine), DHCP & DNS client architecture
+- IPC: pipes, message queues, signals
+- Notification toasts + notification center history
 
 ---
 
-## 🔭 v2.0 — making the detection real
+## 🔭 v3.0 — making the network real
 
-| Area | v1.0 status | v2.0 goal |
+| Area | v2.0 status | v3.0 goal |
 |------|-------------|-----------|
-| **Networking** | protocol structs + checksums | RTL8139 DMA TX/RX driver, real ping/DNS |
-| **USB** | controller detected | xHCI ring buffers, device enumeration, USB kbd/mouse |
-| **Scheduler** | cooperative | preemptive (timer-driven), priorities |
-| **SMP** | cores detected | AP core bring-up (INIT-SIPI), per-core run queues |
-| **Filesystem** | RAM + raw sectors | on-disk FAT32 / VyFS journaling, persistence across reboot |
-| **Browser** | HTML/CSS renderer | CSS box model, real JS runtime, network fetch |
-| **Graphics** | software compositor | double buffering, GPU acceleration prep, alpha blending |
+| **Networking transport** | API + state machines | Real RTL8139 DMA TX/RX, live ping |
+| **DHCP** | packet structures | Live DHCPDISCOVER over real NIC |
+| **DNS** | static hosts table | Real UDP/53 queries |
+| **TLS** | architecture-only | Real X.509 + ChaCha20-Poly1305 |
+| **TCP** | state machine | Full segment reassembly, congestion control |
+| **USB** | controller detected | xHCI ring buffers, real device enumeration |
+| **Scheduler** | cooperative | Preemptive (timer-driven), per-process VMs |
+| **SMP** | cores detected | AP bring-up (INIT-SIPI), per-core queues |
+| **Disk FS** | raw sectors | FAT32 read+write, persistent VyFS across boots |
 
----
-
-## 🌐 v3.0 — portability & ecosystem
+## 🌐 v4.0 — portability + self-hosting
 
 - ARM64 (AArch64) and RISC-V ports
-- SMP-safe locking throughout the kernel
 - Dynamic linking + shared libraries
-- A real userland (coreutils compiled against libvyro)
+- A real userland: coreutils compiled against libvyro
 - Self-hosting: build Vyro OS *on* Vyro OS
+- Real font rasterizer (TrueType subset)
+- GPU acceleration via virtio-gpu
