@@ -17,6 +17,7 @@
 #include "net.h"
 #include "ata.h"
 #include "usb.h"
+#include "../drivers/mouse.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -42,7 +43,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.19.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.20.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -101,10 +102,15 @@ void kernel_main() {
 
     ok("PC speaker driver (PIT ch2)");
 
-    ok("Shell (v0.19.0)");
+    mouse_init();
+    ok("PS/2 mouse driver (IRQ12)");
 
-    pending("GUI / compositor   [Phase 20]");
+    ok("GUI compositor (type 'gui')");
+
+    ok("Shell (v0.20.0)");
+
     pending("Window manager     [Phase 21]");
+    pending("Package manager    [Phase 23]");
     print_char('\n');
 
     __asm__ volatile("sti");

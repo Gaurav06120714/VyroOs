@@ -17,6 +17,13 @@ void fb_clear(uint32_t color);
 void fb_putchar(uint32_t col, uint32_t row, char c, uint32_t fg, uint32_t bg);
 void fb_putpixel(uint32_t x, uint32_t y, uint32_t color);
 
+// Graphics primitives (pixel coordinates)
+void fb_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
+void fb_draw_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
+void fb_draw_glyph(uint32_t px, uint32_t py, char c, uint32_t fg, uint32_t bg);
+void fb_draw_text(uint32_t px, uint32_t py, const char* s, uint32_t fg, uint32_t bg);
+uint32_t fb_get_pixel(uint32_t x, uint32_t y);
+
 // color helpers — 24bpp RGB (stored as BGR in framebuffer)
 #define FB_COLOR(r,g,b) (((uint32_t)(r)<<16)|((uint32_t)(g)<<8)|(b))
 #define FB_BLACK   FB_COLOR(0,0,0)

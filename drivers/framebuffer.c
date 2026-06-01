@@ -74,3 +74,53 @@ void fb_clear(uint32_t color) {
         }
     }
 }
+
+// ─────────────────────────────────────────────────
+// fb_fill_rect: filled rectangle
+// ─────────────────────────────────────────────────
+void fb_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    for (uint32_t j = 0; j < h; j++)
+        for (uint32_t i = 0; i < w; i++)
+            fb_putpixel(x + i, y + j, color);
+}
+
+// ─────────────────────────────────────────────────
+// fb_draw_rect: 1px rectangle outline
+// ─────────────────────────────────────────────────
+void fb_draw_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    for (uint32_t i = 0; i < w; i++) { fb_putpixel(x+i, y, color); fb_putpixel(x+i, y+h-1, color); }
+    for (uint32_t j = 0; j < h; j++) { fb_putpixel(x, y+j, color); fb_putpixel(x+w-1, y+j, color); }
+}
+
+// ─────────────────────────────────────────────────
+// fb_draw_glyph: draw one char at pixel position
+// ─────────────────────────────────────────────────
+void fb_draw_glyph(uint32_t px, uint32_t py, char c, uint32_t fg, uint32_t bg) {
+    uint8_t gi = (uint8_t)c;
+    for (uint32_t gy = 0; gy < FONT_HEIGHT; gy++) {
+        uint8_t row = font[gi * 16 + gy];
+        for (uint32_t gx = 0; gx < FONT_WIDTH; gx++) {
+            fb_putpixel(px + gx, py + gy, (row & (0x80 >> gx)) ? fg : bg);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────
+// fb_draw_text: draw a string at pixel position
+// ─────────────────────────────────────────────────
+void fb_draw_text(uint32_t px, uint32_t py, const char* s, uint32_t fg, uint32_t bg) {
+    uint32_t x = px;
+    for (int i = 0; s[i]; i++) {
+        fb_draw_glyph(x, py, s[i], fg, bg);
+        x += FONT_WIDTH;
+    }
+}
+
+// ─────────────────────────────────────────────────
+// fb_get_pixel: read a pixel (for cursor save-under)
+// ─────────────────────────────────────────────────
+uint32_t fb_get_pixel(uint32_t x, uint32_t y) {
+    if (x >= FB_WIDTH || y >= FB_HEIGHT) return 0;
+    uint8_t* p = fb + y * FB_PITCH + x * FB_BPP;
+    return ((uint32_t)p[2] << 16) | ((uint32_t)p[1] << 8) | p[0];
+}

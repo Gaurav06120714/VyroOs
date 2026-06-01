@@ -100,7 +100,7 @@ load_kernel:
     mov es, ax
     xor bx, bx
     mov ah, 0x02
-    mov al, 96          ; Read 96 sectors = 48KB
+    mov al, 128         ; Read 128 sectors = 64KB
     mov ch, 0
     mov cl, 2
     mov dh, 0

@@ -55,7 +55,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/net.o       \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
-       $(BUILD)/speaker.o
+       $(BUILD)/speaker.o   \
+       $(BUILD)/mouse.o     \
+       $(BUILD)/gui.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -85,8 +87,8 @@ $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
 	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 49152b max)"
-	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 49152 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 65536b max)"
+	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 65536 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
 
 # ───────────────────────────────────────────────
 # Bootloader
@@ -217,6 +219,14 @@ $(BUILD)/usb.o: kernel/usb.c
 $(BUILD)/speaker.o: drivers/speaker.c
 	$(CC) $(CFLAGS) drivers/speaker.c -o $(BUILD)/speaker.o
 	@echo "  [CC]    speaker.o"
+
+$(BUILD)/mouse.o: drivers/mouse.c
+	$(CC) $(CFLAGS) drivers/mouse.c -o $(BUILD)/mouse.o
+	@echo "  [CC]    mouse.o"
+
+$(BUILD)/gui.o: kernel/gui.c
+	$(CC) $(CFLAGS) kernel/gui.c -o $(BUILD)/gui.o
+	@echo "  [CC]    gui.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:
