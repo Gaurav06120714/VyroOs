@@ -1,7 +1,23 @@
-ENTRY(start)
+ENTRY(_start)
+
 SECTIONS {
-    . = 0x1000;
-    .text : { *(.text) }
-    .data : { *(.data) }
-    .bss  : { *(.bss)  }
+    /* Kernel loads at 0x10000 in physical memory */
+    . = 0x10000;
+
+    .text : {
+        *(.text)        /* All code sections */
+    }
+
+    .rodata : {
+        *(.rodata)      /* Read-only data (string literals, constants) */
+    }
+
+    .data : {
+        *(.data)        /* Initialized global/static variables */
+    }
+
+    .bss : {
+        *(COMMON)
+        *(.bss)         /* Uninitialized globals — zeroed at boot */
+    }
 }
