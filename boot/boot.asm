@@ -100,7 +100,7 @@ load_kernel:
     mov es, ax
     xor bx, bx
     mov ah, 0x02
-    mov al, 64          ; Read 64 sectors = 32KB (handles kernel up to 32KB)
+    mov al, 96          ; Read 96 sectors = 48KB
     mov ch, 0
     mov cl, 2
     mov dh, 0
@@ -176,23 +176,23 @@ pm32:
     xor eax, eax
     rep stosd
 
-    ; PML4[0] → PDPT
-    mov dword [0x1000], 0x2003
+    ; PML4[0] → PDPT  (User bit set so ring 3 can walk the tables)
+    mov dword [0x1000], 0x2007
 
-    ; PDPT[0..3] → the 4 page directories
-    mov dword [0x2000 + 0],  0x70003
-    mov dword [0x2000 + 8],  0x71003
-    mov dword [0x2000 + 16], 0x72003
-    mov dword [0x2000 + 24], 0x73003
+    ; PDPT[0..3] → the 4 page directories (present+writable+user)
+    mov dword [0x2000 + 0],  0x70007
+    mov dword [0x2000 + 8],  0x71007
+    mov dword [0x2000 + 16], 0x72007
+    mov dword [0x2000 + 24], 0x73007
 
     ; Fill 2048 contiguous 2MB page entries (0x70000 as one flat array)
-    ; entry[j] = (j * 2MB) | 0x83  (present | writable | huge)
+    ; entry[j] = (j * 2MB) | 0x87  (present | writable | user | huge)
     mov edi, 0x70000
     xor ecx, ecx            ; j = 0
 .map_4gb:
     mov eax, ecx
     shl eax, 21             ; physical addr = j * 2MB
-    or  eax, 0x83           ; present + writable + huge page
+    or  eax, 0x87           ; present + writable + user + huge page
     mov [edi], eax
     mov dword [edi + 4], 0  ; high 32 bits = 0
     add edi, 8

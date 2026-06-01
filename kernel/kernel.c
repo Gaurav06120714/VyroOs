@@ -12,6 +12,7 @@
 #include "vfs.h"
 #include "task.h"
 #include "syscall.h"
+#include "gdt.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -37,12 +38,15 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.13.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.14.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
 
     print_color("  Boot Sequence:\n", WHITE_ON_BLACK);
+
+    gdt_init();
+    ok("GDT + TSS (ring 0/3 segments)");
 
     idt_init();
     ok("IDT initialized (256 vectors)");
@@ -71,10 +75,12 @@ void kernel_main() {
     syscall_init();
     ok("System calls (int 0x80)");
 
-    ok("Shell (v0.13.0)");
+    ok("User mode (ring 3 + TSS)");
 
-    pending("User mode (ring 3) [Phase 14]");
+    ok("Shell (v0.14.0)");
+
     pending("ELF loader         [Phase 15]");
+    pending("Networking         [Phase 16]");
     print_char('\n');
 
     __asm__ volatile("sti");

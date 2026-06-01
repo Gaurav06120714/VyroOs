@@ -5,6 +5,8 @@
 
 // Defined in isr_stubs.asm
 extern void isr128();
+// Defined in usermode.asm — unwinds back to the kernel from ring 3
+extern void return_to_kernel();
 
 // ─────────────────────────────────────────────────
 // syscall_init: install the int 0x80 gate.
@@ -57,7 +59,13 @@ void syscall_dispatch(registers_t* regs) {
             break;
 
         case SYS_VERSION:
-            regs->rax = 13;             // Phase 13
+            regs->rax = 14;             // Phase 14
+            break;
+
+        case SYS_EXIT:
+            // Ring-3 program is done — unwind back to the kernel.
+            // Does not return.
+            return_to_kernel();
             break;
 
         default:

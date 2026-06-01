@@ -13,6 +13,7 @@
 #define SYS_CLEAR    5   //                              → 0
 #define SYS_PUTCHAR  6   // rdi = character              → 0
 #define SYS_VERSION  7   //                              → version code (e.g. 13)
+#define SYS_EXIT     8   // ring-3 program returns to kernel
 
 #define SYSCALL_VECTOR 0x80
 

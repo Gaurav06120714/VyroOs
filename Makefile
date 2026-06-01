@@ -45,7 +45,10 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/vfs.o       \
        $(BUILD)/switch.o    \
        $(BUILD)/task.o      \
-       $(BUILD)/syscall.o
+       $(BUILD)/syscall.o   \
+       $(BUILD)/gdt.o       \
+       $(BUILD)/gdt_flush.o \
+       $(BUILD)/usermode.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -68,8 +71,8 @@ $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
 	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 32768b max)"
-	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 32768 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 49152b max)"
+	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 49152 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
 
 # ───────────────────────────────────────────────
 # Bootloader
@@ -101,6 +104,14 @@ $(BUILD)/isr_stubs.o: kernel/isr_stubs.asm
 $(BUILD)/switch.o: kernel/switch.asm
 	$(ASM) -f elf64 kernel/switch.asm -o $(BUILD)/switch.o
 	@echo "  [ASM]   switch.o"
+
+$(BUILD)/gdt_flush.o: kernel/gdt_flush.asm
+	$(ASM) -f elf64 kernel/gdt_flush.asm -o $(BUILD)/gdt_flush.o
+	@echo "  [ASM]   gdt_flush.o"
+
+$(BUILD)/usermode.o: kernel/usermode.asm
+	$(ASM) -f elf64 kernel/usermode.asm -o $(BUILD)/usermode.o
+	@echo "  [ASM]   usermode.o"
 
 # ───────────────────────────────────────────────
 # C objects
@@ -164,6 +175,10 @@ $(BUILD)/task.o: kernel/task.c
 $(BUILD)/syscall.o: kernel/syscall.c
 	$(CC) $(CFLAGS) kernel/syscall.c -o $(BUILD)/syscall.o
 	@echo "  [CC]    syscall.o"
+
+$(BUILD)/gdt.o: kernel/gdt.c
+	$(CC) $(CFLAGS) kernel/gdt.c -o $(BUILD)/gdt.o
+	@echo "  [CC]    gdt.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

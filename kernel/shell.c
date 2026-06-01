@@ -127,6 +127,8 @@ static void cmd_help() {
     print("List processes\n");
     print_color("  syscall  ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Demo system calls (int 0x80)\n");
+    print_color("  usermode ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Drop to ring 3 and back\n");
     print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show system uptime\n");
     print_color("  date     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -571,6 +573,42 @@ static void cmd_ps() {
     print_char('\n');
 }
 
+// ─────────────────────────────────────────────────
+// Ring-3 user program. Runs UNPRIVILEGED. Its only way
+// to talk to the kernel is int 0x80. No direct hardware,
+// no privileged instructions allowed.
+// ─────────────────────────────────────────────────
+extern void enter_user_mode(uint64_t entry, uint64_t user_stack);
+static uint8_t user_stack[8192] __attribute__((aligned(16)));
+
+static void user_program() {
+    // SYS_WRITE — print a message from ring 3
+    __asm__ volatile("int $0x80" : : "a"(SYS_WRITE),
+                     "D"("  [ring3] Hello from user mode!\n") : "memory");
+
+    // SYS_GETPID
+    uint64_t pid;
+    __asm__ volatile("int $0x80" : "=a"(pid) : "a"(SYS_GETPID), "D"(0));
+    __asm__ volatile("int $0x80" : : "a"(SYS_WRITE),
+                     "D"("  [ring3] Made syscalls without crashing.\n") : "memory");
+
+    // SYS_EXIT — return to the kernel (does not come back)
+    __asm__ volatile("int $0x80" : : "a"(SYS_EXIT), "D"(0));
+
+    // Should never reach here
+    for (;;) {}
+}
+
+static void cmd_usermode() {
+    print_color("\n  Dropping to Ring 3 (user mode)...\n\n", YELLOW_ON_BLACK);
+
+    uint64_t stack_top = (uint64_t)(user_stack + sizeof(user_stack));
+    enter_user_mode((uint64_t)user_program, stack_top);
+
+    print_color("\n  Returned to Ring 0 (kernel) safely.\n\n",
+                MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+}
+
 static void cmd_syscall() {
     print_color("\n  Invoking system calls via int 0x80:\n\n", YELLOW_ON_BLACK);
 
@@ -663,6 +701,7 @@ static const command_t commands[] = {
     { "tasks",   cmd_tasks   },
     { "ps",      cmd_ps      },
     { "syscall", cmd_syscall },
+    { "usermode",cmd_usermode},
     { "uptime",  cmd_uptime  },
     { "date",    cmd_date    },
     { "time",    cmd_time    },
