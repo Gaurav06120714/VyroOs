@@ -43,7 +43,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.20.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.21.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -105,9 +105,9 @@ void kernel_main() {
     mouse_init();
     ok("PS/2 mouse driver (IRQ12)");
 
-    ok("GUI compositor (type 'gui')");
+    ok("Window manager (type 'gui')");
 
-    ok("Shell (v0.20.0)");
+    ok("Shell (v0.21.0)");
 
     pending("Window manager     [Phase 21]");
     pending("Package manager    [Phase 23]");
