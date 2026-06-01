@@ -52,6 +52,7 @@ void pci_scan() {
                 d->device_id  = (reg0 >> 16) & 0xFFFF;
                 d->class_id   = (reg2 >> 24) & 0xFF;
                 d->subclass   = (reg2 >> 16) & 0xFF;
+                d->prog_if    = (reg2 >> 8) & 0xFF;
                 d->bar0       = bar0;
                 d->irq_line   = regF & 0xFF;
                 d->valid      = 1;
@@ -79,6 +80,14 @@ pci_device_t* pci_get_device(uint32_t index) {
 pci_device_t* pci_find_network() {
     for (uint32_t i = 0; i < device_count; i++) {
         if (devices[i].class_id == 0x02) return &devices[i];
+    }
+    return 0;
+}
+
+pci_device_t* pci_find_class(uint8_t class_id, uint8_t subclass) {
+    for (uint32_t i = 0; i < device_count; i++) {
+        if (devices[i].class_id == class_id && devices[i].subclass == subclass)
+            return &devices[i];
     }
     return 0;
 }

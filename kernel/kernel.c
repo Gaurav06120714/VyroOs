@@ -16,6 +16,7 @@
 #include "pci.h"
 #include "net.h"
 #include "ata.h"
+#include "usb.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -41,7 +42,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.17.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.18.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -93,7 +94,12 @@ void kernel_main() {
     else
         ok("ATA disk driver (no scratch disk)");
 
-    ok("Shell (v0.17.0)");
+    if (usb_init())
+        ok("USB host controller detected");
+    else
+        ok("USB subsystem (no controller)");
+
+    ok("Shell (v0.18.0)");
 
     pending("Sound              [Phase 19]");
     pending("GUI / compositor   [Phase 20]");

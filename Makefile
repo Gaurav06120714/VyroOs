@@ -53,7 +53,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/user_init.o \
        $(BUILD)/pci.o       \
        $(BUILD)/net.o       \
-       $(BUILD)/ata.o
+       $(BUILD)/ata.o       \
+       $(BUILD)/usb.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -67,7 +68,9 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-display cocoa \
 		-vga std \
 		-netdev user,id=n0 \
-		-device rtl8139,netdev=n0
+		-device rtl8139,netdev=n0 \
+		-device qemu-xhci,id=xhci \
+		-device usb-kbd,bus=xhci.0
 
 build: $(BUILD)/vyro.img
 
@@ -203,6 +206,10 @@ $(BUILD)/net.o: kernel/net.c
 $(BUILD)/ata.o: kernel/ata.c
 	$(CC) $(CFLAGS) kernel/ata.c -o $(BUILD)/ata.o
 	@echo "  [CC]    ata.o"
+
+$(BUILD)/usb.o: kernel/usb.c
+	$(CC) $(CFLAGS) kernel/usb.c -o $(BUILD)/usb.o
+	@echo "  [CC]    usb.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:
