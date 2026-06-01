@@ -38,7 +38,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.14.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.15.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -77,10 +77,12 @@ void kernel_main() {
 
     ok("User mode (ring 3 + TSS)");
 
-    ok("Shell (v0.14.0)");
+    ok("ELF64 loader");
 
-    pending("ELF loader         [Phase 15]");
+    ok("Shell (v0.15.0)");
+
     pending("Networking         [Phase 16]");
+    pending("Disk driver        [Phase 17]");
     print_char('\n');
 
     __asm__ volatile("sti");

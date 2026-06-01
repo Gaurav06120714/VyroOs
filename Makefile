@@ -48,7 +48,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/syscall.o   \
        $(BUILD)/gdt.o       \
        $(BUILD)/gdt_flush.o \
-       $(BUILD)/usermode.o
+       $(BUILD)/usermode.o  \
+       $(BUILD)/elf.o       \
+       $(BUILD)/user_init.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -179,6 +181,30 @@ $(BUILD)/syscall.o: kernel/syscall.c
 $(BUILD)/gdt.o: kernel/gdt.c
 	$(CC) $(CFLAGS) kernel/gdt.c -o $(BUILD)/gdt.o
 	@echo "  [CC]    gdt.o"
+
+$(BUILD)/elf.o: kernel/elf.c
+	$(CC) $(CFLAGS) kernel/elf.c -o $(BUILD)/elf.o
+	@echo "  [CC]    elf.o"
+
+# ───────────────────────────────────────────────
+# User ELF program → embedded as a C byte array
+# ───────────────────────────────────────────────
+$(BUILD)/init.elf: user/init.c user/user.ld
+	@mkdir -p $(BUILD)
+	$(CC) -ffreestanding -fno-stack-protector -fno-builtin -nostdlib \
+	      -nostdinc -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-80387 \
+	      -O2 -c user/init.c -o $(BUILD)/init_user.o
+	$(LD) -T user/user.ld -o $(BUILD)/init.elf $(BUILD)/init_user.o
+	@echo "  [USER]  init.elf"
+
+$(BUILD)/user_init.c: $(BUILD)/init.elf
+	@python3 -c "import sys; d=open('$(BUILD)/init.elf','rb').read(); \
+open('$(BUILD)/user_init.c','w').write('const unsigned char user_init_elf[]={'+','.join(str(b) for b in d)+'};\nconst unsigned int user_init_elf_len='+str(len(d))+';\n')"
+	@echo "  [GEN]   user_init.c ($(shell wc -c < $(BUILD)/init.elf 2>/dev/null || echo 0) bytes ELF)"
+
+$(BUILD)/user_init.o: $(BUILD)/user_init.c
+	$(CC) $(CFLAGS) $(BUILD)/user_init.c -o $(BUILD)/user_init.o
+	@echo "  [CC]    user_init.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB
