@@ -86,7 +86,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/apps_reg.o  \
        $(BUILD)/sockets.o   \
        $(BUILD)/dhcp.o      \
-       $(BUILD)/dns.o
+       $(BUILD)/dns.o       \
+       $(BUILD)/ipc.o
 
 $(BUILD)/sockets.o: kernel/sockets.c
 	$(CC) $(CFLAGS) kernel/sockets.c -o $(BUILD)/sockets.o
@@ -94,6 +95,8 @@ $(BUILD)/dhcp.o: kernel/dhcp.c
 	$(CC) $(CFLAGS) kernel/dhcp.c -o $(BUILD)/dhcp.o
 $(BUILD)/dns.o: kernel/dns.c
 	$(CC) $(CFLAGS) kernel/dns.c -o $(BUILD)/dns.o
+$(BUILD)/ipc.o: kernel/ipc.c
+	$(CC) $(CFLAGS) kernel/ipc.c -o $(BUILD)/ipc.o
 
 # App build rules
 $(BUILD)/app_settings.o: kernel/apps/settings.c
