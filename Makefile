@@ -52,14 +52,16 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/elf.o       \
        $(BUILD)/user_init.o \
        $(BUILD)/pci.o       \
-       $(BUILD)/net.o
+       $(BUILD)/net.o       \
+       $(BUILD)/ata.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
 # ───────────────────────────────────────────────
-all: $(BUILD)/vyro.img
+all: $(BUILD)/vyro.img $(BUILD)/disk.img
 	qemu-system-x86_64 \
-		-drive format=raw,file=$(BUILD)/vyro.img \
+		-drive file=$(BUILD)/vyro.img,format=raw,if=ide,index=0,media=disk \
+		-drive file=$(BUILD)/disk.img,format=raw,if=ide,index=1,media=disk \
 		-m 256M \
 		-name "Vyro OS" \
 		-display cocoa \
@@ -197,6 +199,16 @@ $(BUILD)/pci.o: kernel/pci.c
 $(BUILD)/net.o: kernel/net.c
 	$(CC) $(CFLAGS) kernel/net.c -o $(BUILD)/net.o
 	@echo "  [CC]    net.o"
+
+$(BUILD)/ata.o: kernel/ata.c
+	$(CC) $(CFLAGS) kernel/ata.c -o $(BUILD)/ata.o
+	@echo "  [CC]    ata.o"
+
+# Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
+$(BUILD)/disk.img:
+	@mkdir -p $(BUILD)
+	dd if=/dev/zero of=$(BUILD)/disk.img bs=512 count=2048 2>/dev/null
+	@echo "  [DISK]  disk.img created (1MB scratch)"
 
 # ───────────────────────────────────────────────
 # User ELF program → embedded as a C byte array
