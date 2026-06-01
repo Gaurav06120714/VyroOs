@@ -59,7 +59,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/mouse.o     \
        $(BUILD)/gui.o       \
        $(BUILD)/sha256.o    \
-       $(BUILD)/security.o
+       $(BUILD)/security.o  \
+       $(BUILD)/pkg.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -237,6 +238,10 @@ $(BUILD)/sha256.o: kernel/sha256.c
 $(BUILD)/security.o: kernel/security.c
 	$(CC) $(CFLAGS) kernel/security.c -o $(BUILD)/security.o
 	@echo "  [CC]    security.o"
+
+$(BUILD)/pkg.o: kernel/pkg.c
+	$(CC) $(CFLAGS) kernel/pkg.c -o $(BUILD)/pkg.o
+	@echo "  [CC]    pkg.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:

@@ -19,6 +19,7 @@
 #include "usb.h"
 #include "../drivers/mouse.h"
 #include "security.h"
+#include "pkg.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -44,7 +45,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.21.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.23.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -111,10 +112,13 @@ void kernel_main() {
     security_init();
     ok("Security (users, SHA-256 auth)");
 
-    ok("Shell (v0.22.0)");
+    pkg_init();
+    ok("Package manager (vyropkg)");
 
-    pending("Package manager    [Phase 23]");
+    ok("Shell (v0.23.0)");
+
     pending("Multicore / SMP    [Phase 24]");
+    pending("Power mgmt (ACPI)  [Phase 25]");
     print_char('\n');
 
     __asm__ volatile("sti");
