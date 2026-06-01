@@ -42,7 +42,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.18.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.19.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -99,10 +99,12 @@ void kernel_main() {
     else
         ok("USB subsystem (no controller)");
 
-    ok("Shell (v0.18.0)");
+    ok("PC speaker driver (PIT ch2)");
 
-    pending("Sound              [Phase 19]");
+    ok("Shell (v0.19.0)");
+
     pending("GUI / compositor   [Phase 20]");
+    pending("Window manager     [Phase 21]");
     print_char('\n');
 
     __asm__ volatile("sti");

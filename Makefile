@@ -54,7 +54,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/pci.o       \
        $(BUILD)/net.o       \
        $(BUILD)/ata.o       \
-       $(BUILD)/usb.o
+       $(BUILD)/usb.o       \
+       $(BUILD)/speaker.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -70,7 +71,9 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
 		-device qemu-xhci,id=xhci \
-		-device usb-kbd,bus=xhci.0
+		-device usb-kbd,bus=xhci.0 \
+		-audiodev coreaudio,id=snd0 \
+		-machine pcspk-audiodev=snd0
 
 build: $(BUILD)/vyro.img
 
@@ -210,6 +213,10 @@ $(BUILD)/ata.o: kernel/ata.c
 $(BUILD)/usb.o: kernel/usb.c
 	$(CC) $(CFLAGS) kernel/usb.c -o $(BUILD)/usb.o
 	@echo "  [CC]    usb.o"
+
+$(BUILD)/speaker.o: drivers/speaker.c
+	$(CC) $(CFLAGS) drivers/speaker.c -o $(BUILD)/speaker.o
+	@echo "  [CC]    speaker.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:
