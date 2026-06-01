@@ -15,13 +15,17 @@
 #define TITLE_H    26
 #define MAX_WINS   6
 #define DOCK_ITEMS 6
+#define RESIZE_GRIP 12
 
 typedef struct {
     int x, y, w, h;
+    int saved_x, saved_y, saved_w, saved_h;   // for maximize restore
     const char* title;
     const char* body;
     uint8_t visible;
-    uint64_t opened_at;     // for opening animation
+    uint8_t minimized;
+    uint8_t maximized;
+    uint64_t opened_at;
 } window_t;
 
 static window_t wins[MAX_WINS];
@@ -34,15 +38,57 @@ static const icon_t* dock_icons[DOCK_ITEMS] = {
 
 static void d2(char* buf, int n) { buf[0] = '0' + (n/10); buf[1] = '0' + (n%10); }
 
-// ─── Window with shadow, traffic-lights, title, body ───
+static int point_in(int px, int py, int x, int y, int w, int h) {
+    return px >= x && px < x + w && py >= y && py < y + h;
+}
+
+static void bring_to_front(int i) {
+    if (i == win_count - 1) return;
+    window_t tmp = wins[i];
+    for (int k = i; k < win_count - 1; k++) wins[k] = wins[k+1];
+    wins[win_count - 1] = tmp;
+}
+
+static void maximize_window(window_t* w) {
+    if (!w->maximized) {
+        w->saved_x = w->x; w->saved_y = w->y;
+        w->saved_w = w->w; w->saved_h = w->h;
+        w->x = 0; w->y = TOPBAR_H;
+        w->w = comp_width();
+        w->h = comp_height() - TOPBAR_H - DOCK_H - 16;
+        w->maximized = 1;
+    } else {
+        w->x = w->saved_x; w->y = w->saved_y;
+        w->w = w->saved_w; w->h = w->saved_h;
+        w->maximized = 0;
+    }
+}
+
+// Snap helper: snap window to a half/quarter region
+static void snap_window(window_t* w, int region) {
+    if (!w->maximized) {
+        w->saved_x = w->x; w->saved_y = w->y;
+        w->saved_w = w->w; w->saved_h = w->h;
+    }
+    int sw = comp_width(), sh = comp_height() - TOPBAR_H - DOCK_H - 16;
+    switch (region) {
+        case 1: w->x = 0;        w->y = TOPBAR_H;        w->w = sw/2; w->h = sh;   break; // L
+        case 2: w->x = sw/2;     w->y = TOPBAR_H;        w->w = sw/2; w->h = sh;   break; // R
+        case 3: w->x = 0;        w->y = TOPBAR_H;        w->w = sw;   w->h = sh/2; break; // T
+        case 4: w->x = 0;        w->y = TOPBAR_H + sh/2; w->w = sw;   w->h = sh/2; break; // B
+    }
+    w->maximized = 1;
+}
+
+// ─── Window draw with traffic lights (close/min/max) + resize grip ───
 static void draw_window(window_t* w, int focused) {
     const theme_t* t = theme();
+    if (w->minimized) return;
 
-    // Opening animation: scale from 70% to 100% over ~12 frames
     uint64_t age = timer_ticks() - w->opened_at;
     int rx = w->x, ry = w->y, rw = w->w, rh = w->h;
-    if (age < 12) {
-        int scale = 70 + (int)age * 30 / 12;
+    if (age < 10) {
+        int scale = 75 + (int)age * 25 / 10;
         rw = w->w * scale / 100;
         rh = w->h * scale / 100;
         rx = w->x + (w->w - rw) / 2;
@@ -55,16 +101,24 @@ static void draw_window(window_t* w, int focused) {
     comp_rect(rx, ry + TITLE_H, rw, rh - TITLE_H, t->win_body);
     comp_border(rx, ry, rw, rh, t->win_border);
 
-    if (age >= 12) {
+    if (age >= 10) {
+        // Traffic lights — red close, yellow minimize, green maximize
         comp_rect(w->x + 10, w->y + 8, 12, 12, t->danger);
         comp_rect(w->x + 28, w->y + 8, 12, 12, 0xE0B040);
         comp_rect(w->x + 46, w->y + 8, 12, 12, t->success);
         comp_text(w->x + 70, w->y + 6, w->title, t->text, tcol);
         comp_text(w->x + 14, w->y + TITLE_H + 10, w->body, t->text, t->win_body);
+
+        // Resize grip (bottom-right)
+        if (!w->maximized) {
+            for (int i = 0; i < 8; i++) {
+                comp_pixel(w->x + w->w - 3 - i, w->y + w->h - 3, t->text_dim);
+                comp_pixel(w->x + w->w - 3,     w->y + w->h - 3 - i, t->text_dim);
+            }
+        }
     }
 }
 
-// ─── Top bar with live clock ───
 static void draw_topbar() {
     const theme_t* t = theme();
     comp_rect(0, 0, comp_width(), TOPBAR_H, t->taskbar_bg);
@@ -76,7 +130,7 @@ static void draw_topbar() {
     comp_text(comp_width() - 96, 6, clock, t->text, t->taskbar_bg);
 }
 
-// ─── Dock with real bitmap icons ───
+// Dock now shows minimized windows as extra items + indicator dot for open apps
 static void draw_dock(int mx, int my) {
     const theme_t* t = theme();
     int icon_size = 48, gap = 14, pad = 16;
@@ -94,10 +148,16 @@ static void draw_dock(int mx, int my) {
         int iy = dock_y + 10;
         int hover = (mx >= ix && mx < ix + icon_size && my >= iy && my < iy + icon_size);
         if (hover) hovered_dock = i;
-
         comp_rect(ix, iy, icon_size, icon_size, hover ? t->accent : t->win_body);
         comp_border(ix, iy, icon_size, icon_size, t->dock_border);
         icon_draw(dock_icons[i], ix + 8, iy + 8, 32);
+
+        // running indicator dot under icon
+        if (i < win_count && wins[i].visible) {
+            int dot_x = ix + icon_size/2 - 2;
+            int dot_y = iy + icon_size + 4;
+            comp_rect(dot_x, dot_y, 4, 4, t->accent_hi);
+        }
 
         if (hover) {
             const char* nm = dock_icons[i]->name;
@@ -111,12 +171,11 @@ static void draw_dock(int mx, int my) {
     }
 }
 
-// ─── Notification toasts (top-right slide-in) ───
 static void draw_notifications() {
     const theme_t* t = theme();
     notify_tick();
     notification_t* arr;
-    int n = notify_active(&arr);
+    notify_active(&arr);
     int row = 0;
     for (int i = 0; i < 8 && row < 4; i++) {
         if (!arr[i].alive) continue;
@@ -133,13 +192,11 @@ static void draw_notifications() {
     }
 }
 
-// ─── Desktop background ───
 static void draw_desktop_bg() {
     const theme_t* t = theme();
     comp_gradient_v(0, 0, comp_width(), comp_height(), t->desktop_bg, t->desktop_bg2);
 }
 
-// ─── Cursor ───
 #define CW 12
 #define CH 18
 static const char* cursor_shape[CH] = {
@@ -158,16 +215,6 @@ static void draw_cursor(int x, int y) {
         }
 }
 
-static int point_in(int px, int py, int x, int y, int w, int h) {
-    return px >= x && px < x + w && py >= y && py < y + h;
-}
-static void bring_to_front(int i) {
-    if (i == win_count - 1) return;
-    window_t tmp = wins[i];
-    for (int k = i; k < win_count - 1; k++) wins[k] = wins[k+1];
-    wins[win_count - 1] = tmp;
-}
-
 static void render(int mx, int my) {
     draw_desktop_bg();
     for (int i = 0; i < win_count; i++)
@@ -184,17 +231,17 @@ void gui_run() {
     if (!comp_init())    return;
     theme_init();
 
-    wins[0] = (window_t){ 100, 90, 380, 220, "Welcome",
-                          "Vyro OS 2.0 desktop - drag, click dock, T=theme", 1,
+    wins[0] = (window_t){ 100, 90, 380, 220, 0,0,0,0, "Welcome",
+                          "Traffic lights work! red=close yel=min grn=max", 1,0,0,
                           timer_ticks() };
-    wins[1] = (window_t){ 540, 180, 380, 220, "About",
-                          "64-bit OS - hover dock icons, ESC to exit", 1,
+    wins[1] = (window_t){ 540, 180, 380, 220, 0,0,0,0, "About",
+                          "Drag corner to resize. T=theme N=notify", 1,0,0,
                           timer_ticks() };
     win_count = 2;
 
-    notify_post("Welcome to Vyro OS 2.0", "Click dock icons to launch apps");
+    notify_post("Vyro OS 2.0", "Window controls active");
 
-    int dragging = -1;
+    int dragging = -1, resizing = -1;
     int dox = 0, doy = 0;
     uint8_t prev_btn = 0;
 
@@ -202,12 +249,17 @@ void gui_run() {
         if (keyboard_has_input()) {
             char c = keyboard_getchar();
             if (c == 0x1B) break;
-            if (c == 't' || c == 'T') {
-                theme_set_dark(!theme()->is_dark);
-                notify_post("Theme switched", theme()->is_dark ? "Dark mode" : "Light mode");
+            if (c == 't' || c == 'T') theme_set_dark(!theme()->is_dark);
+            if (c == 'n' || c == 'N') notify_post("Test", "You pressed N");
+            // Snap shortcuts when a window is focused
+            if (win_count > 0 && wins[win_count-1].visible) {
+                window_t* w = &wins[win_count-1];
+                if (c == '1') snap_window(w, 1);
+                if (c == '2') snap_window(w, 2);
+                if (c == '3') snap_window(w, 3);
+                if (c == '4') snap_window(w, 4);
+                if (c == '0') maximize_window(w);
             }
-            if (c == 'n' || c == 'N')
-                notify_post("Test notification", "You pressed N");
         }
 
         int mx = mouse_x(), my = mouse_y();
@@ -218,20 +270,36 @@ void gui_run() {
         if (press) {
             if (hovered_dock >= 0) {
                 if (hovered_dock < win_count) {
-                    wins[hovered_dock].visible = !wins[hovered_dock].visible;
-                    if (wins[hovered_dock].visible) {
-                        wins[hovered_dock].opened_at = timer_ticks();
-                        bring_to_front(hovered_dock);
-                    }
+                    window_t* w = &wins[hovered_dock];
+                    if (w->minimized) { w->minimized = 0; w->visible = 1; }
+                    else if (w->visible) {
+                        // bring to front or minimize if already front
+                        if (hovered_dock == win_count - 1) w->minimized = 1;
+                        else bring_to_front(hovered_dock);
+                    } else { w->visible = 1; w->opened_at = timer_ticks(); }
+                    if (w->visible && !w->minimized) bring_to_front(hovered_dock);
                 }
-                notify_post("Launched", dock_icons[hovered_dock]->name);
             } else {
                 for (int i = win_count - 1; i >= 0; i--) {
                     window_t* w = &wins[i];
-                    if (!w->visible) continue;
-                    if (point_in(mx, my, w->x + 10, w->y + 8, 12, 12)) {
-                        w->visible = 0; break;
+                    if (!w->visible || w->minimized) continue;
+                    // Traffic-light: close (red)
+                    if (point_in(mx, my, w->x + 10, w->y + 8, 12, 12)) { w->visible = 0; break; }
+                    // Traffic-light: minimize (yellow)
+                    if (point_in(mx, my, w->x + 28, w->y + 8, 12, 12)) { w->minimized = 1; break; }
+                    // Traffic-light: maximize (green)
+                    if (point_in(mx, my, w->x + 46, w->y + 8, 12, 12)) { maximize_window(w); break; }
+                    // Resize grip (bottom-right)
+                    if (!w->maximized &&
+                        point_in(mx, my, w->x + w->w - RESIZE_GRIP, w->y + w->h - RESIZE_GRIP,
+                                 RESIZE_GRIP, RESIZE_GRIP)) {
+                        bring_to_front(i);
+                        resizing = win_count - 1;
+                        dox = mx - (w->x + w->w);
+                        doy = my - (w->y + w->h);
+                        break;
                     }
+                    // Title bar drag
                     if (point_in(mx, my, w->x, w->y, w->w, TITLE_H)) {
                         bring_to_front(i);
                         dragging = win_count - 1;
@@ -239,19 +307,26 @@ void gui_run() {
                         doy = my - wins[dragging].y;
                         break;
                     }
-                    if (point_in(mx, my, w->x, w->y, w->w, w->h)) {
-                        bring_to_front(i); break;
-                    }
+                    if (point_in(mx, my, w->x, w->y, w->w, w->h)) { bring_to_front(i); break; }
                 }
             }
         }
-        if (rel) dragging = -1;
+        if (rel) { dragging = -1; resizing = -1; }
 
         if (dragging >= 0 && (btn & 1)) {
             window_t* w = &wins[dragging];
             int nx = mx - dox, ny = my - doy;
             if (ny < TOPBAR_H) ny = TOPBAR_H;
             w->x = nx; w->y = ny;
+            w->maximized = 0;
+        }
+        if (resizing >= 0 && (btn & 1)) {
+            window_t* w = &wins[resizing];
+            int nw = mx - dox - w->x;
+            int nh = my - doy - w->y;
+            if (nw < 200) nw = 200;
+            if (nh < 100) nh = 100;
+            w->w = nw; w->h = nh;
         }
 
         render(mx, my);
