@@ -1,4 +1,6 @@
 #include "shell.h"
+#include "pmm.h"
+#include "heap.h"
 #include "../drivers/screen.h"
 #include "../drivers/keyboard.h"
 #include "../include/types.h"
@@ -39,7 +41,6 @@ static void kstrcpy(char* dst, const char* src) {
 // ─────────────────────────────────────────────────
 static char    history[HISTORY_SIZE][MAX_INPUT];
 static int     history_count   = 0;
-static int     history_index   = -1;
 
 static void history_push(const char* cmd) {
     if (cmd[0] == '\0') return;
@@ -98,6 +99,8 @@ static void cmd_help() {
     print("Change terminal color (0-15)\n");
     print_color("  history  ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show command history\n");
+    print_color("  mem      ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show memory usage\n");
     print_color("  reboot   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Reboot the system\n");
     print_color("  ─────────────────────────────────────\n\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
@@ -173,6 +176,34 @@ static void cmd_color() {
     screen_set_color(WHITE_ON_BLACK);
 }
 
+static void cmd_mem() {
+    uint32_t total_pages = pmm_total_pages();
+    uint32_t used_pages  = pmm_used_pages();
+    uint32_t free_pages  = pmm_free_pages();
+    uint64_t heap_u      = heap_used();
+    uint64_t heap_t      = heap_total();
+
+    print_color("\n  Physical Memory\n", YELLOW_ON_BLACK);
+    print("  Total pages : "); print_int(total_pages);
+    print(" ("); print_int(total_pages * 4); print(" KB)\n");
+    print("  Used pages  : "); print_int(used_pages);
+    print(" ("); print_int(used_pages * 4); print(" KB)\n");
+    print("  Free pages  : "); print_int(free_pages);
+    print(" ("); print_int(free_pages * 4); print(" KB)\n");
+
+    print_color("\n  Heap Memory\n", YELLOW_ON_BLACK);
+    print("  Total : "); print_int(heap_t / 1024); print(" KB\n");
+    print("  Used  : "); print_int(heap_u); print(" bytes\n");
+    print("  Free  : "); print_int((heap_t - heap_u) / 1024); print(" KB\n");
+
+    print_color("\n  Memory Map\n", YELLOW_ON_BLACK);
+    print("  0x000000 - 0x00FFFF  Bootloader + page tables\n");
+    print("  0x010000 - 0x017FFF  Kernel binary\n");
+    print("  0x100000 - 0x1FFFFF  PMM bitmap\n");
+    print("  0x200000 - 0x4FFFFF  PMM managed pages\n");
+    print("  0x500000 - 0xCFFFFF  Heap (8MB)\n\n");
+}
+
 static void cmd_reboot() {
     print_color("\n  Rebooting Vyro OS...\n", YELLOW_ON_BLACK);
     // Triple fault reboot — write bad IDT and trigger interrupt
@@ -206,6 +237,7 @@ static const command_t commands[] = {
     { "about",   cmd_about   },
     { "history", cmd_history },
     { "color",   cmd_color   },
+    { "mem",     cmd_mem     },
     { "reboot",  cmd_reboot  },
 };
 

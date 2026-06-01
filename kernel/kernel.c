@@ -1,10 +1,13 @@
 #include "../drivers/screen.h"
+#include "../drivers/framebuffer.h"
 #include "../drivers/pic.h"
 #include "../drivers/keyboard.h"
 #include "../include/types.h"
 #include "idt.h"
 #include "isr.h"
 #include "shell.h"
+#include "pmm.h"
+#include "heap.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -19,16 +22,22 @@ static void pending(const char* msg) {
 }
 
 void kernel_main() {
+    // Read LFB address stored by bootloader at physical 0x0500.
+    // Use inline asm to prevent the optimizer from treating 0x0500 as
+    // a NULL-region dereference (which triggers a spurious Warray-bounds).
+    uint32_t lfb32 = 0;
+    __asm__ volatile("movl (0x500), %0" : "=r"(lfb32));
+    uint64_t lfb = (uint64_t)lfb32;
+    fb_init(lfb);
+
     screen_init();
 
-    // Print header
-    print_color("  +------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |  VYRO OS  v0.6.0   64-bit   x86_64       |\n", CYAN_ON_BLACK);
-    print_color("  |  MIT License       $0 Budget              |\n", CYAN_ON_BLACK);
-    print_color("  +------------------------------------------+\n", CYAN_ON_BLACK);
+    print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.7.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
+    print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
 
-    // Boot sequence
     print_color("  Boot Sequence:\n", WHITE_ON_BLACK);
 
     idt_init();
@@ -40,16 +49,20 @@ void kernel_main() {
     keyboard_init();
     ok("Keyboard driver (PS/2, IRQ1)");
 
-    ok("Shell initialized (v0.6.0)");
+    pmm_init();
+    ok("Physical Memory Manager (62MB managed)");
 
-    pending("Memory manager     [Phase 7]");
+    heap_init();
+    ok("Heap allocator (8MB, kmalloc/kfree)");
+
+    ok("Shell (v0.7.0)");
+
     pending("Process scheduler  [Phase 12]");
+    pending("Filesystem         [Phase 14]");
     print_char('\n');
 
-    // Enable interrupts
     __asm__ volatile("sti");
 
-    // Hand off to shell — never returns
     shell_init();
     shell_run();
 }

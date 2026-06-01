@@ -5,8 +5,11 @@
 
 // VGA text mode constants
 #define VGA_ADDRESS    0xb8000
-#define VGA_COLS       80
-#define VGA_ROWS       25
+// When framebuffer is active these match 1024x768 / 8x16 font (128x48 cells).
+// When VGA text fallback is used, only the first 80 cols / 50 rows are valid,
+// but we keep the same macros so the rest of the code is uniform.
+#define VGA_COLS       128
+#define VGA_ROWS       48
 
 // Color attributes (foreground | background << 4)
 #define COLOR_BLACK        0x0

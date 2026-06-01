@@ -30,9 +30,12 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/idt.o          \
        $(BUILD)/isr.o          \
        $(BUILD)/screen.o       \
+       $(BUILD)/framebuffer.o  \
        $(BUILD)/pic.o          \
        $(BUILD)/keyboard.o  \
-       $(BUILD)/shell.o
+       $(BUILD)/shell.o     \
+       $(BUILD)/pmm.o       \
+       $(BUILD)/heap.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -41,7 +44,9 @@ all: $(BUILD)/vyro.img
 	qemu-system-x86_64 \
 		-drive format=raw,file=$(BUILD)/vyro.img \
 		-m 256M \
-		-name "Vyro OS"
+		-name "Vyro OS" \
+		-display cocoa \
+		-vga std
 
 build: $(BUILD)/vyro.img
 
@@ -101,6 +106,10 @@ $(BUILD)/screen.o: drivers/screen.c
 	$(CC) $(CFLAGS) drivers/screen.c -o $(BUILD)/screen.o
 	@echo "  [CC]    screen.o"
 
+$(BUILD)/framebuffer.o: drivers/framebuffer.c
+	$(CC) $(CFLAGS) drivers/framebuffer.c -o $(BUILD)/framebuffer.o
+	@echo "  [CC]    framebuffer.o"
+
 $(BUILD)/pic.o: drivers/pic.c
 	$(CC) $(CFLAGS) drivers/pic.c -o $(BUILD)/pic.o
 	@echo "  [CC]    pic.o"
@@ -112,6 +121,14 @@ $(BUILD)/keyboard.o: drivers/keyboard.c
 $(BUILD)/shell.o: kernel/shell.c
 	$(CC) $(CFLAGS) kernel/shell.c -o $(BUILD)/shell.o
 	@echo "  [CC]    shell.o"
+
+$(BUILD)/pmm.o: kernel/pmm.c
+	$(CC) $(CFLAGS) kernel/pmm.c -o $(BUILD)/pmm.o
+	@echo "  [CC]    pmm.o"
+
+$(BUILD)/heap.o: kernel/heap.c
+	$(CC) $(CFLAGS) kernel/heap.c -o $(BUILD)/heap.o
+	@echo "  [CC]    heap.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

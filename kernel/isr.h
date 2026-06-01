@@ -4,7 +4,7 @@
 #include "idt.h"
 
 // Exception names for display
-static const char* exception_messages[] = {
+__attribute__((unused)) static const char* exception_messages[] = {
     "Division By Zero",
     "Debug",
     "Non-Maskable Interrupt",

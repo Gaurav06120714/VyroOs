@@ -40,7 +40,7 @@ static const char scancode_ascii_upper[] = {
 static char     kb_buffer[KB_BUFFER_SIZE];
 static uint32_t kb_read_pos  = 0;
 static uint32_t kb_write_pos = 0;
-static uint8_t  kb_count     = 0;
+static uint32_t kb_count     = 0;
 
 // Keyboard state
 static uint8_t shift_held    = 0;
