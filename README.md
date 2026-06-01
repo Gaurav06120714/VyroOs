@@ -74,7 +74,7 @@ make clean  # Remove build artifacts
 - [x] Phase 3 — C kernel (screen driver, kernel_main, boot status display)
 - [x] Phase 4 — Interrupt system (IDT, ISR, IRQ, PIC remapping)
 - [x] Phase 5 — Keyboard driver (PS/2, scan codes, shift, caps lock, shell)
-- [ ] Phase 6 — Interactive shell (commands)
+- [x] Phase 6 — Shell (history, args, arrow keys, command table)
 - [ ] Phase 7 — Memory management
 - [ ] Phase 8 — File system
 - [ ] Phase 9 — GUI (long term)

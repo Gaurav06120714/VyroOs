@@ -43,8 +43,9 @@ static uint32_t kb_write_pos = 0;
 static uint8_t  kb_count     = 0;
 
 // Keyboard state
-static uint8_t shift_held  = 0;
-static uint8_t caps_lock   = 0;
+static uint8_t shift_held    = 0;
+static uint8_t caps_lock     = 0;
+static uint8_t extended_mode = 0;   // Set when 0xE0 prefix received
 
 // ─────────────────────────────────────────────────
 // buffer_push: add character to circular buffer
@@ -85,14 +86,30 @@ void keyboard_handler(registers_t* regs) {
 
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
 
+    // 0xE0 = extended key prefix (arrow keys, etc.)
+    if (scancode == 0xE0) {
+        extended_mode = 1;
+        return;
+    }
+
     // Scan codes >= 0x80 are key RELEASE events
     if (scancode & 0x80) {
         uint8_t release = scancode & 0x7F;
-        // Track shift key release
-        if (release == 0x2A || release == 0x36) {
-            shift_held = 0;
+        if (release == 0x2A || release == 0x36) shift_held = 0;
+        extended_mode = 0;
+        return;
+    }
+
+    // Handle extended (0xE0 prefixed) keys — arrow keys
+    if (extended_mode) {
+        extended_mode = 0;
+        switch (scancode) {
+            case 0x48: buffer_push(0x01); return;  // Up    arrow → KEY_UP
+            case 0x50: buffer_push(0x02); return;  // Down  arrow → KEY_DOWN
+            case 0x4B: buffer_push(0x03); return;  // Left  arrow → KEY_LEFT
+            case 0x4D: buffer_push(0x04); return;  // Right arrow → KEY_RIGHT
         }
-        return;  // Ignore all other releases
+        return;
     }
 
     // Track modifier keys (press events)

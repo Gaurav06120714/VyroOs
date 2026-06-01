@@ -71,7 +71,16 @@ void set_cursor(uint8_t row, uint8_t col) {
 // print_char: write one character, handle newline
 // ─────────────────────────────────────────────────
 void print_char(char c) {
-    if (c == '\n') {
+    if (c == '\b') {
+        if (cursor_col > 0) {
+            cursor_col--;
+        } else if (cursor_row > 0) {
+            cursor_row--;
+            cursor_col = VGA_COLS - 1;
+        }
+        vga_write(cursor_row, cursor_col, ' ', current_color);
+        return;
+    } else if (c == '\n') {
         cursor_col = 0;
         cursor_row++;
     } else if (c == '\r') {
