@@ -70,7 +70,48 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/icons.o     \
        $(BUILD)/notify.o    \
        $(BUILD)/widgets.o   \
-       $(BUILD)/app.o
+       $(BUILD)/app.o       \
+       $(BUILD)/app_settings.o \
+       $(BUILD)/app_files.o    \
+       $(BUILD)/app_terminal.o \
+       $(BUILD)/app_textedit.o \
+       $(BUILD)/app_calc.o     \
+       $(BUILD)/app_clock.o    \
+       $(BUILD)/app_taskmgr.o  \
+       $(BUILD)/app_launcher.o \
+       $(BUILD)/app_notecenter.o \
+       $(BUILD)/app_control.o  \
+       $(BUILD)/app_browser.o  \
+       $(BUILD)/app_pkgstore.o \
+       $(BUILD)/apps_reg.o
+
+# App build rules
+$(BUILD)/app_settings.o: kernel/apps/settings.c
+	$(CC) $(CFLAGS) kernel/apps/settings.c -o $(BUILD)/app_settings.o
+$(BUILD)/app_files.o: kernel/apps/files.c
+	$(CC) $(CFLAGS) kernel/apps/files.c -o $(BUILD)/app_files.o
+$(BUILD)/app_terminal.o: kernel/apps/terminal.c
+	$(CC) $(CFLAGS) kernel/apps/terminal.c -o $(BUILD)/app_terminal.o
+$(BUILD)/app_textedit.o: kernel/apps/textedit.c
+	$(CC) $(CFLAGS) kernel/apps/textedit.c -o $(BUILD)/app_textedit.o
+$(BUILD)/app_calc.o: kernel/apps/calc.c
+	$(CC) $(CFLAGS) kernel/apps/calc.c -o $(BUILD)/app_calc.o
+$(BUILD)/app_clock.o: kernel/apps/clock.c
+	$(CC) $(CFLAGS) kernel/apps/clock.c -o $(BUILD)/app_clock.o
+$(BUILD)/app_taskmgr.o: kernel/apps/taskmgr.c
+	$(CC) $(CFLAGS) kernel/apps/taskmgr.c -o $(BUILD)/app_taskmgr.o
+$(BUILD)/app_launcher.o: kernel/apps/launcher.c
+	$(CC) $(CFLAGS) kernel/apps/launcher.c -o $(BUILD)/app_launcher.o
+$(BUILD)/app_notecenter.o: kernel/apps/notecenter.c
+	$(CC) $(CFLAGS) kernel/apps/notecenter.c -o $(BUILD)/app_notecenter.o
+$(BUILD)/app_control.o: kernel/apps/control.c
+	$(CC) $(CFLAGS) kernel/apps/control.c -o $(BUILD)/app_control.o
+$(BUILD)/app_browser.o: kernel/apps/browser.c
+	$(CC) $(CFLAGS) kernel/apps/browser.c -o $(BUILD)/app_browser.o
+$(BUILD)/app_pkgstore.o: kernel/apps/pkgstore.c
+	$(CC) $(CFLAGS) kernel/apps/pkgstore.c -o $(BUILD)/app_pkgstore.o
+$(BUILD)/apps_reg.o: kernel/apps/apps.c
+	$(CC) $(CFLAGS) kernel/apps/apps.c -o $(BUILD)/apps_reg.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -101,8 +142,8 @@ $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
 	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 98304b max)"
-	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 98304 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 130048b max)"
+	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 130048 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
 
 # ───────────────────────────────────────────────
 # Bootloader
