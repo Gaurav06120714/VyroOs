@@ -44,7 +44,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/rtc.o       \
        $(BUILD)/vfs.o       \
        $(BUILD)/switch.o    \
-       $(BUILD)/task.o
+       $(BUILD)/task.o      \
+       $(BUILD)/syscall.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -159,6 +160,10 @@ $(BUILD)/vfs.o: kernel/vfs.c
 $(BUILD)/task.o: kernel/task.c
 	$(CC) $(CFLAGS) kernel/task.c -o $(BUILD)/task.o
 	@echo "  [CC]    task.o"
+
+$(BUILD)/syscall.o: kernel/syscall.c
+	$(CC) $(CFLAGS) kernel/syscall.c -o $(BUILD)/syscall.o
+	@echo "  [CC]    syscall.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

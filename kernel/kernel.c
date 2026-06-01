@@ -11,6 +11,7 @@
 #include "heap.h"
 #include "vfs.h"
 #include "task.h"
+#include "syscall.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -36,7 +37,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.12.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.13.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -67,9 +68,12 @@ void kernel_main() {
     tasking_init();
     ok("Scheduler (cooperative round-robin)");
 
-    ok("Shell (v0.12.0)");
+    syscall_init();
+    ok("System calls (int 0x80)");
 
-    pending("System calls       [Phase 13]");
+    ok("Shell (v0.13.0)");
+
+    pending("User mode (ring 3) [Phase 14]");
     pending("ELF loader         [Phase 15]");
     print_char('\n');
 

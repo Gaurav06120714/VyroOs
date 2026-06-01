@@ -181,3 +181,52 @@ IRQ 12, 44    ; PS/2 Mouse
 IRQ 13, 45    ; FPU
 IRQ 14, 46    ; ATA Primary
 IRQ 15, 47    ; ATA Secondary
+
+; ─────────────────────────────────────────────────
+; System call stub — int 0x80 (vector 128)
+; Saves all registers, calls syscall_dispatch, restores.
+; The dispatcher may modify regs->rax (return value), which
+; is then popped back into rax before iretq.
+; ─────────────────────────────────────────────────
+[extern syscall_dispatch]
+[global isr128]
+isr128:
+    push qword 0        ; dummy error code
+    push qword 128      ; int_no
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov rdi, rsp
+    call syscall_dispatch
+
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
+    add rsp, 16
+    iretq

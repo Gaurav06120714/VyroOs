@@ -7,7 +7,21 @@
 #include "../drivers/rtc.h"
 #include "vfs.h"
 #include "task.h"
+#include "syscall.h"
 #include "../include/types.h"
+
+// ─────────────────────────────────────────────────
+// Userland-style syscall wrappers — invoke int 0x80
+// (exactly how a user program would call the kernel)
+// ─────────────────────────────────────────────────
+static uint64_t do_syscall(uint64_t num, uint64_t arg1) {
+    uint64_t ret;
+    __asm__ volatile("int $0x80"
+                     : "=a"(ret)
+                     : "a"(num), "D"(arg1)
+                     : "memory");
+    return ret;
+}
 
 // ─────────────────────────────────────────────────
 // Constants
@@ -111,6 +125,8 @@ static void cmd_help() {
     print("Run multitasking demo\n");
     print_color("  ps       ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("List processes\n");
+    print_color("  syscall  ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Demo system calls (int 0x80)\n");
     print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show system uptime\n");
     print_color("  date     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -555,6 +571,33 @@ static void cmd_ps() {
     print_char('\n');
 }
 
+static void cmd_syscall() {
+    print_color("\n  Invoking system calls via int 0x80:\n\n", YELLOW_ON_BLACK);
+
+    // SYS_WRITE
+    print("  SYS_WRITE  -> ");
+    uint64_t n = do_syscall(SYS_WRITE, (uint64_t)"Hello from a syscall!");
+    print("  ("); print_int(n); print(" bytes)\n");
+
+    // SYS_GETPID
+    print("  SYS_GETPID -> pid ");
+    print_int(do_syscall(SYS_GETPID, 0));
+    print_char('\n');
+
+    // SYS_UPTIME
+    print("  SYS_UPTIME -> ");
+    print_int(do_syscall(SYS_UPTIME, 0));
+    print(" ms\n");
+
+    // SYS_VERSION
+    print("  SYS_VERSION-> phase ");
+    print_int(do_syscall(SYS_VERSION, 0));
+    print_char('\n');
+
+    print_color("\n  All syscalls returned via rax.\n\n",
+                MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+}
+
 static void cmd_sysinfo() {
     rtc_time_t t;
     rtc_read(&t);
@@ -619,6 +662,7 @@ static const command_t commands[] = {
     { "sysinfo", cmd_sysinfo },
     { "tasks",   cmd_tasks   },
     { "ps",      cmd_ps      },
+    { "syscall", cmd_syscall },
     { "uptime",  cmd_uptime  },
     { "date",    cmd_date    },
     { "time",    cmd_time    },
