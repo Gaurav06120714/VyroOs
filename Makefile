@@ -61,7 +61,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/sha256.o    \
        $(BUILD)/security.o  \
        $(BUILD)/pkg.o       \
-       $(BUILD)/smp.o
+       $(BUILD)/smp.o       \
+       $(BUILD)/power.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -248,6 +249,10 @@ $(BUILD)/pkg.o: kernel/pkg.c
 $(BUILD)/smp.o: kernel/smp.c
 	$(CC) $(CFLAGS) kernel/smp.c -o $(BUILD)/smp.o
 	@echo "  [CC]    smp.o"
+
+$(BUILD)/power.o: kernel/power.c
+	$(CC) $(CFLAGS) kernel/power.c -o $(BUILD)/power.o
+	@echo "  [CC]    power.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:

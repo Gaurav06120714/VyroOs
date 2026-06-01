@@ -46,7 +46,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.24.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.25.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -119,10 +119,12 @@ void kernel_main() {
     smp_init();
     ok("SMP / ACPI core detection");
 
-    ok("Shell (v0.24.0)");
+    ok("Power management (ACPI off/reboot)");
 
-    pending("Power mgmt (ACPI)  [Phase 25]");
+    ok("Shell (v0.25.0)");
+
     pending("Developer tools    [Phase 27]");
+    pending("Vyro OS 1.0        [Phase 30]");
     print_char('\n');
 
     __asm__ volatile("sti");
