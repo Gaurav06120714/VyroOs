@@ -13,6 +13,8 @@
 #include "task.h"
 #include "syscall.h"
 #include "gdt.h"
+#include "pci.h"
+#include "net.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -38,7 +40,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.15.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.16.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -79,10 +81,16 @@ void kernel_main() {
 
     ok("ELF64 loader");
 
-    ok("Shell (v0.15.0)");
+    pci_scan();
+    ok("PCI bus scan");
 
-    pending("Networking         [Phase 16]");
+    net_init();
+    ok("Network stack (Eth/ARP/IPv4/ICMP)");
+
+    ok("Shell (v0.16.0)");
+
     pending("Disk driver        [Phase 17]");
+    pending("Sound              [Phase 19]");
     print_char('\n');
 
     __asm__ volatile("sti");

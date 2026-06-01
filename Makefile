@@ -50,7 +50,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/gdt_flush.o \
        $(BUILD)/usermode.o  \
        $(BUILD)/elf.o       \
-       $(BUILD)/user_init.o
+       $(BUILD)/user_init.o \
+       $(BUILD)/pci.o       \
+       $(BUILD)/net.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -61,7 +63,9 @@ all: $(BUILD)/vyro.img
 		-m 256M \
 		-name "Vyro OS" \
 		-display cocoa \
-		-vga std
+		-vga std \
+		-netdev user,id=n0 \
+		-device rtl8139,netdev=n0
 
 build: $(BUILD)/vyro.img
 
@@ -185,6 +189,14 @@ $(BUILD)/gdt.o: kernel/gdt.c
 $(BUILD)/elf.o: kernel/elf.c
 	$(CC) $(CFLAGS) kernel/elf.c -o $(BUILD)/elf.o
 	@echo "  [CC]    elf.o"
+
+$(BUILD)/pci.o: kernel/pci.c
+	$(CC) $(CFLAGS) kernel/pci.c -o $(BUILD)/pci.o
+	@echo "  [CC]    pci.o"
+
+$(BUILD)/net.o: kernel/net.c
+	$(CC) $(CFLAGS) kernel/net.c -o $(BUILD)/net.o
+	@echo "  [CC]    net.o"
 
 # ───────────────────────────────────────────────
 # User ELF program → embedded as a C byte array
