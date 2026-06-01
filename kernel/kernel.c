@@ -1,17 +1,9 @@
 #include "../drivers/screen.h"
+#include "../drivers/pic.h"
 #include "../include/types.h"
+#include "idt.h"
+#include "isr.h"
 
-// ─────────────────────────────────────────────────
-// Print a horizontal divider line
-// ─────────────────────────────────────────────────
-static void print_divider(char c, int len) {
-    for (int i = 0; i < len; i++) print_char(c);
-    print_char('\n');
-}
-
-// ─────────────────────────────────────────────────
-// Print the Vyro OS banner
-// ─────────────────────────────────────────────────
 static void print_banner() {
     print_color("\n", WHITE_ON_BLACK);
     print_color("  ██╗   ██╗██╗   ██╗██████╗  ██████╗      ██████╗ ███████╗\n", CYAN_ON_BLACK);
@@ -23,61 +15,49 @@ static void print_banner() {
     print_char('\n');
 }
 
-// ─────────────────────────────────────────────────
-// Print system info table
-// ─────────────────────────────────────────────────
 static void print_info() {
     print_color("  ┌──────────────────────────────────────────┐\n", YELLOW_ON_BLACK);
-    print_color("  │           VYRO OS  v0.3.0                │\n", YELLOW_ON_BLACK);
+    print_color("  │           VYRO OS  v0.4.0                │\n", YELLOW_ON_BLACK);
     print_color("  │     64-bit Kernel  |  x86_64             │\n", YELLOW_ON_BLACK);
     print_color("  │     MIT License    |  $0 Budget          │\n", YELLOW_ON_BLACK);
     print_color("  └──────────────────────────────────────────┘\n", YELLOW_ON_BLACK);
     print_char('\n');
 }
 
-// ─────────────────────────────────────────────────
-// Print boot status checklist
-// ─────────────────────────────────────────────────
-static void print_boot_status() {
-    print_color("  Boot Status:\n", WHITE_ON_BLACK);
+static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
-    print_color("Bootloader Stage 1\n", WHITE_ON_BLACK);
-
-    print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
-    print_color("64-bit Long Mode Active\n", WHITE_ON_BLACK);
-
-    print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
-    print_color("Kernel Loaded at 0x100000\n", WHITE_ON_BLACK);
-
-    print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
-    print_color("Screen Driver Initialized\n", WHITE_ON_BLACK);
-
-    print_color("  [  ] ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
-    print_color("Interrupt System        [Phase 4]\n", WHITE_ON_BLACK);
-
-    print_color("  [  ] ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
-    print_color("Keyboard Driver         [Phase 5]\n", WHITE_ON_BLACK);
-
-    print_color("  [  ] ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
-    print_color("Memory Manager          [Phase 7]\n", WHITE_ON_BLACK);
-
+    print_color(msg, WHITE_ON_BLACK);
     print_char('\n');
-    print_color("  Vyro OS kernel running. System halted.\n\n",
-                MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
 }
 
-// ─────────────────────────────────────────────────
-// kernel_main: entry point called from kernel_entry.asm
-// This function never returns.
-// ─────────────────────────────────────────────────
+static void pending(const char* msg) {
+    print_color("  [  ] ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    print_color(msg, MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+    print_char('\n');
+}
+
 void kernel_main() {
     screen_init();
     print_banner();
     print_info();
-    print_boot_status();
 
-    // Kernel idle loop — will be replaced by scheduler in Phase 12
-    while (1) {
-        __asm__ volatile("hlt");
-    }
+    idt_init();
+    pic_init();
+
+    print_color("  Boot Sequence:\n", WHITE_ON_BLACK);
+    ok("Bootloader — CHS disk read");
+    ok("64-bit Long Mode active");
+    ok("Kernel loaded at 0x10000");
+    ok("Screen driver initialized");
+    ok("IDT loaded (256 vectors)");
+    ok("PIC remapped (IRQs 32-47)");
+    pending("Interrupts             [enabling now]");
+    pending("Keyboard driver        [Phase 5]");
+    pending("Memory manager         [Phase 7]");
+    pending("Process scheduler      [Phase 12]");
+    print_char('\n');
+    print_color("  Vyro OS running.\n", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+
+    __asm__ volatile("sti");   // Enable interrupts last — after all output
+    while (1) __asm__ volatile("hlt");
 }

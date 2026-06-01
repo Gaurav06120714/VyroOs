@@ -1,17 +1,17 @@
 #include "screen.h"
 
-// Internal state
-static uint8_t  cursor_row   = 0;
-static uint8_t  cursor_col   = 0;
-static uint8_t  current_color = WHITE_ON_BLACK;
-static uint16_t* vga = (uint16_t*) VGA_ADDRESS;
+// Internal state — use macro for VGA to avoid .data pointer relocation issues
+#define VGA ((volatile uint16_t*)VGA_ADDRESS)
+static uint8_t cursor_row    = 0;
+static uint8_t cursor_col    = 0;
+static uint8_t current_color = WHITE_ON_BLACK;
 
 // ─────────────────────────────────────────────────
 // Internal: write one character cell to VGA memory
 // ─────────────────────────────────────────────────
 static void vga_write(uint8_t row, uint8_t col, char c, uint8_t color) {
     uint32_t index = row * VGA_COLS + col;
-    vga[index] = (uint16_t)c | ((uint16_t)color << 8);
+    VGA[index] = (uint16_t)c | ((uint16_t)color << 8);
 }
 
 // ─────────────────────────────────────────────────
@@ -20,7 +20,7 @@ static void vga_write(uint8_t row, uint8_t col, char c, uint8_t color) {
 static void scroll() {
     for (uint8_t row = 1; row < VGA_ROWS; row++) {
         for (uint8_t col = 0; col < VGA_COLS; col++) {
-            vga[(row - 1) * VGA_COLS + col] = vga[row * VGA_COLS + col];
+            VGA[(row - 1) * VGA_COLS + col] = VGA[row * VGA_COLS + col];
         }
     }
     // Clear last row

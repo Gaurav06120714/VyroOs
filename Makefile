@@ -1,12 +1,6 @@
 # ═══════════════════════════════════════════════
 # VYRO OS — Build System
 # ═══════════════════════════════════════════════
-# Usage:
-#   make          → build disk image + launch QEMU
-#   make build    → build only (no QEMU)
-#   make clean    → remove all build artifacts
-#   make debug    → launch with GDB server on :1234
-
 ASM     = nasm
 CC      = x86_64-elf-gcc
 LD      = x86_64-elf-ld
@@ -28,7 +22,18 @@ LDFLAGS = -T link.ld \
 BUILD   = build
 
 # ───────────────────────────────────────────────
-# Default target: build and run
+# All object files
+# ───────────────────────────────────────────────
+OBJS = $(BUILD)/kernel_entry.o \
+       $(BUILD)/isr_stubs.o    \
+       $(BUILD)/kernel.o       \
+       $(BUILD)/idt.o          \
+       $(BUILD)/isr.o          \
+       $(BUILD)/screen.o       \
+       $(BUILD)/pic.o
+
+# ───────────────────────────────────────────────
+# Default: build + run
 # ───────────────────────────────────────────────
 all: $(BUILD)/vyro.img
 	qemu-system-x86_64 \
@@ -36,20 +41,17 @@ all: $(BUILD)/vyro.img
 		-m 256M \
 		-name "Vyro OS"
 
-# ───────────────────────────────────────────────
-# Build only (no QEMU)
-# ───────────────────────────────────────────────
 build: $(BUILD)/vyro.img
 
 # ───────────────────────────────────────────────
-# Disk image: bootloader + kernel padded to 1.44MB
+# Disk image
 # ───────────────────────────────────────────────
 $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	@mkdir -p $(BUILD)
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
-	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img conv=notrunc 2>/dev/null
-	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img seek=1 conv=notrunc 2>/dev/null
-	@echo "  [BUILD] vyro.img ready ($(shell wc -c < $(BUILD)/kernel.bin) bytes kernel)"
+	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
+	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b)"
 
 # ───────────────────────────────────────────────
 # Bootloader
@@ -60,46 +62,58 @@ $(BUILD)/boot.bin: boot/boot.asm
 	@echo "  [ASM]   boot.bin"
 
 # ───────────────────────────────────────────────
-# Kernel binary (linked flat binary at 0x10000)
+# Kernel binary
 # ───────────────────────────────────────────────
-$(BUILD)/kernel.bin: $(BUILD)/kernel_entry.o $(BUILD)/kernel.o $(BUILD)/screen.o
-	$(LD) $(LDFLAGS) -o $(BUILD)/kernel.bin \
-		$(BUILD)/kernel_entry.o \
-		$(BUILD)/kernel.o \
-		$(BUILD)/screen.o
+$(BUILD)/kernel.bin: $(OBJS)
+	$(LD) $(LDFLAGS) -o $(BUILD)/kernel.bin $(OBJS)
 	@echo "  [LINK]  kernel.bin"
 
 # ───────────────────────────────────────────────
-# Object files
+# Assembly objects
 # ───────────────────────────────────────────────
 $(BUILD)/kernel_entry.o: kernel/kernel_entry.asm
 	@mkdir -p $(BUILD)
 	$(ASM) -f elf64 kernel/kernel_entry.asm -o $(BUILD)/kernel_entry.o
 	@echo "  [ASM]   kernel_entry.o"
 
+$(BUILD)/isr_stubs.o: kernel/isr_stubs.asm
+	$(ASM) -f elf64 kernel/isr_stubs.asm -o $(BUILD)/isr_stubs.o
+	@echo "  [ASM]   isr_stubs.o"
+
+# ───────────────────────────────────────────────
+# C objects
+# ───────────────────────────────────────────────
 $(BUILD)/kernel.o: kernel/kernel.c
 	$(CC) $(CFLAGS) kernel/kernel.c -o $(BUILD)/kernel.o
 	@echo "  [CC]    kernel.o"
+
+$(BUILD)/idt.o: kernel/idt.c
+	$(CC) $(CFLAGS) kernel/idt.c -o $(BUILD)/idt.o
+	@echo "  [CC]    idt.o"
+
+$(BUILD)/isr.o: kernel/isr.c
+	$(CC) $(CFLAGS) kernel/isr.c -o $(BUILD)/isr.o
+	@echo "  [CC]    isr.o"
 
 $(BUILD)/screen.o: drivers/screen.c
 	$(CC) $(CFLAGS) drivers/screen.c -o $(BUILD)/screen.o
 	@echo "  [CC]    screen.o"
 
+$(BUILD)/pic.o: drivers/pic.c
+	$(CC) $(CFLAGS) drivers/pic.c -o $(BUILD)/pic.o
+	@echo "  [CC]    pic.o"
+
 # ───────────────────────────────────────────────
-# Debug: launch QEMU with GDB server
+# Debug with GDB
 # ───────────────────────────────────────────────
 debug: $(BUILD)/vyro.img
 	qemu-system-x86_64 \
 		-drive format=raw,file=$(BUILD)/vyro.img \
-		-m 256M \
-		-s -S \
+		-m 256M -s -S \
 		-name "Vyro OS [DEBUG]"
 
-# ───────────────────────────────────────────────
-# Clean build artifacts
-# ───────────────────────────────────────────────
 clean:
 	rm -rf $(BUILD)/
-	@echo "  [CLEAN] build directory removed"
+	@echo "  [CLEAN] done"
 
 .PHONY: all build debug clean

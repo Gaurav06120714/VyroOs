@@ -72,7 +72,7 @@ make clean  # Remove build artifacts
 - [x] Phase 1 — Bootloader (print "VYRO OS" on screen)
 - [x] Phase 2 — 64-bit Long Mode (16-bit → 32-bit → 64-bit)
 - [x] Phase 3 — C kernel (screen driver, kernel_main, boot status display)
-- [ ] Phase 4 — Screen driver (`print()` function)
+- [x] Phase 4 — Interrupt system (IDT, ISR, IRQ, PIC remapping)
 - [ ] Phase 5 — Keyboard driver (read input)
 - [ ] Phase 6 — Interactive shell (commands)
 - [ ] Phase 7 — Memory management
