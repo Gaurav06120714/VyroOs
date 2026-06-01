@@ -70,7 +70,7 @@ make clean  # Remove build artifacts
 
 - [x] Phase 0 — Project structure & tooling setup
 - [x] Phase 1 — Bootloader (print "VYRO OS" on screen)
-- [ ] Phase 2 — 32-bit protected mode
+- [x] Phase 2 — 64-bit Long Mode (16-bit → 32-bit → 64-bit)
 - [ ] Phase 3 — C kernel (text via video memory)
 - [ ] Phase 4 — Screen driver (`print()` function)
 - [ ] Phase 5 — Keyboard driver (read input)
