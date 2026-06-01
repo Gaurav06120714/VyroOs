@@ -9,6 +9,7 @@
 #include "shell.h"
 #include "pmm.h"
 #include "heap.h"
+#include "vfs.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -34,7 +35,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.9.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.10.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -59,7 +60,10 @@ void kernel_main() {
     heap_init();
     ok("Heap allocator (8MB, kmalloc/kfree)");
 
-    ok("Shell (v0.9.0)");
+    vfs_init();
+    ok("VyFS filesystem (in-memory)");
+
+    ok("Shell (v0.10.0)");
 
     pending("Process scheduler  [Phase 12]");
     pending("Filesystem         [Phase 14]");

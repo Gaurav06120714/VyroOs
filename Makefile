@@ -41,7 +41,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/pmm.o       \
        $(BUILD)/heap.o      \
        $(BUILD)/timer.o     \
-       $(BUILD)/rtc.o
+       $(BUILD)/rtc.o       \
+       $(BUILD)/vfs.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -144,6 +145,10 @@ $(BUILD)/timer.o: drivers/timer.c
 $(BUILD)/rtc.o: drivers/rtc.c
 	$(CC) $(CFLAGS) drivers/rtc.c -o $(BUILD)/rtc.o
 	@echo "  [CC]    rtc.o"
+
+$(BUILD)/vfs.o: kernel/vfs.c
+	$(CC) $(CFLAGS) kernel/vfs.c -o $(BUILD)/vfs.o
+	@echo "  [CC]    vfs.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

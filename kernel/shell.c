@@ -5,6 +5,7 @@
 #include "../drivers/keyboard.h"
 #include "../drivers/timer.h"
 #include "../drivers/rtc.h"
+#include "vfs.h"
 #include "../include/types.h"
 
 // ─────────────────────────────────────────────────
@@ -109,6 +110,24 @@ static void cmd_help() {
     print("Show current date & time\n");
     print_color("  time     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show current time\n");
+    print_color("  ls       ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("List directory contents\n");
+    print_color("  pwd      ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Print working directory\n");
+    print_color("  cd       ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Change directory\n");
+    print_color("  mkdir    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Create directory\n");
+    print_color("  touch    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Create empty file\n");
+    print_color("  write    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Write text to a file\n");
+    print_color("  cat      ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show file contents\n");
+    print_color("  rm       ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Remove file or directory\n");
+    print_color("  tree     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show filesystem tree\n");
     print_color("  sleep    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Sleep N milliseconds\n");
     print_color("  reboot   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -285,6 +304,195 @@ static void cmd_sleep() {
     print_color(" done.\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
 }
 
+// ─────────────────────────────────────────────────
+// Filesystem commands — track current working directory
+// ─────────────────────────────────────────────────
+static vfs_node_t* cwd = 0;
+
+static void fs_ensure() {
+    if (!cwd) cwd = vfs_root();
+}
+
+static void cmd_pwd() {
+    fs_ensure();
+    char path[256];
+    vfs_full_path(cwd, path, sizeof(path));
+    print("\n  ");
+    print(path);
+    print("\n\n");
+}
+
+static void cmd_ls() {
+    fs_ensure();
+    vfs_node_t* dir = cwd;
+
+    // Optional argument: ls <dir>
+    if (argc >= 2) {
+        vfs_node_t* target = vfs_find(cwd, argv[1]);
+        if (!target) {
+            print_color("\n  ls: no such directory: ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+            print(argv[1]); print("\n\n");
+            return;
+        }
+        dir = target;
+    }
+
+    print_char('\n');
+    vfs_node_t* cur = dir->first_child;
+    if (!cur) {
+        print_color("  (empty)\n\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+        return;
+    }
+    while (cur) {
+        if (cur->type == VFS_DIRECTORY) {
+            print_color("  ", WHITE_ON_BLACK);
+            print_color(cur->name, MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+            print_color("/\n", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+        } else {
+            print("  ");
+            print(cur->name);
+            print("  (");
+            print_int(cur->size);
+            print(" bytes)\n");
+        }
+        cur = cur->next_sibling;
+    }
+    print_char('\n');
+}
+
+static void cmd_cd() {
+    fs_ensure();
+    if (argc < 2) { cwd = vfs_root(); return; }
+
+    vfs_node_t* target = vfs_find(cwd, argv[1]);
+    if (!target) {
+        print_color("\n  cd: no such directory: ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("\n\n");
+        return;
+    }
+    if (target->type != VFS_DIRECTORY) {
+        print_color("\n  cd: not a directory: ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("\n\n");
+        return;
+    }
+    cwd = target;
+}
+
+static void cmd_mkdir() {
+    fs_ensure();
+    if (argc < 2) {
+        print_color("\n  Usage: mkdir <name>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (!vfs_create(cwd, argv[1], VFS_DIRECTORY)) {
+        print_color("\n  mkdir: cannot create '", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("' (exists?)\n\n");
+    }
+}
+
+static void cmd_touch() {
+    fs_ensure();
+    if (argc < 2) {
+        print_color("\n  Usage: touch <name>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (!vfs_create(cwd, argv[1], VFS_FILE)) {
+        print_color("\n  touch: cannot create '", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("' (exists?)\n\n");
+    }
+}
+
+static void cmd_write() {
+    fs_ensure();
+    if (argc < 3) {
+        print_color("\n  Usage: write <file> <text...>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    vfs_node_t* file = vfs_find(cwd, argv[1]);
+    if (!file) {
+        // Auto-create the file
+        file = vfs_create(cwd, argv[1], VFS_FILE);
+        if (!file) {
+            print_color("\n  write: cannot create file\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+            return;
+        }
+    }
+    if (file->type != VFS_FILE) {
+        print_color("\n  write: not a file\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+
+    // Join argv[2..] into one string buffer
+    static char buf[1024];
+    int pos = 0;
+    for (int i = 2; i < argc && pos < 1020; i++) {
+        const char* w = argv[i];
+        for (int j = 0; w[j] && pos < 1020; j++) buf[pos++] = w[j];
+        if (i < argc - 1 && pos < 1020) buf[pos++] = ' ';
+    }
+    buf[pos] = '\0';
+
+    vfs_write(file, buf);
+}
+
+static void cmd_cat() {
+    fs_ensure();
+    if (argc < 2) {
+        print_color("\n  Usage: cat <file>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    vfs_node_t* file = vfs_find(cwd, argv[1]);
+    if (!file) {
+        print_color("\n  cat: no such file: ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("\n\n");
+        return;
+    }
+    if (file->type != VFS_FILE) {
+        print_color("\n  cat: is a directory\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print("\n  ");
+    print(vfs_read(file));
+    print("\n\n");
+}
+
+static void cmd_rm() {
+    fs_ensure();
+    if (argc < 2) {
+        print_color("\n  Usage: rm <name>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (!vfs_remove(cwd, argv[1])) {
+        print_color("\n  rm: no such file or directory: ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(argv[1]); print("\n\n");
+    }
+}
+
+// Recursive tree printer
+static void tree_print(vfs_node_t* node, int depth) {
+    vfs_node_t* cur = node->first_child;
+    while (cur) {
+        for (int i = 0; i < depth; i++) print("  ");
+        print("  ");
+        if (cur->type == VFS_DIRECTORY) {
+            print_color(cur->name, MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+            print_color("/\n", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+            tree_print(cur, depth + 1);
+        } else {
+            print(cur->name);
+            print_char('\n');
+        }
+        cur = cur->next_sibling;
+    }
+}
+
+static void cmd_tree() {
+    fs_ensure();
+    print_color("\n  /\n", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+    tree_print(vfs_root(), 0);
+    print_char('\n');
+}
+
 static void cmd_reboot() {
     print_color("\n  Rebooting Vyro OS...\n", YELLOW_ON_BLACK);
     // Triple fault reboot — write bad IDT and trigger interrupt
@@ -323,6 +531,15 @@ static const command_t commands[] = {
     { "date",    cmd_date    },
     { "time",    cmd_time    },
     { "sleep",   cmd_sleep   },
+    { "ls",      cmd_ls      },
+    { "pwd",     cmd_pwd     },
+    { "cd",      cmd_cd      },
+    { "mkdir",   cmd_mkdir   },
+    { "touch",   cmd_touch   },
+    { "write",   cmd_write   },
+    { "cat",     cmd_cat     },
+    { "rm",      cmd_rm      },
+    { "tree",    cmd_tree    },
     { "reboot",  cmd_reboot  },
 };
 
@@ -347,7 +564,12 @@ static void dispatch(const char* input) {
 // Print the shell prompt
 // ─────────────────────────────────────────────────
 static void print_prompt() {
+    fs_ensure();
+    char path[256];
+    vfs_full_path(cwd, path, sizeof(path));
     print_color("vyro", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    print_color(":", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+    print_color(path, MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
     print_color("> ", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
 }
 
