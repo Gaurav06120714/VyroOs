@@ -21,11 +21,13 @@
 #include "security.h"
 #include "pkg.h"
 #include "smp.h"
+#include "klog.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
     print(msg);
     print_char('\n');
+    klog(msg);
 }
 
 static void pending(const char* msg) {
@@ -46,7 +48,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.25.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v1.0.0     64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -121,10 +123,16 @@ void kernel_main() {
 
     ok("Power management (ACPI off/reboot)");
 
-    ok("Shell (v0.25.0)");
+    ok("Dev tools (dmesg/peek/prof)");
 
-    pending("Developer tools    [Phase 27]");
-    pending("Vyro OS 1.0        [Phase 30]");
+    ok("App framework (libvyro)");
+
+    ok("VyroBrowser (HTML renderer)");
+
+    ok("Shell (v1.0.0)");
+
+    print_char('\n');
+    print_color("  *** VYRO OS 1.0 - feature complete ***\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     print_char('\n');
 
     __asm__ volatile("sti");

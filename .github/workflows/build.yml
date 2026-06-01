@@ -1,0 +1,55 @@
+name: Build Vyro OS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm qemu-system-x86 build-essential python3 \
+                                  gcc-x86-64-linux-gnu binutils
+
+      - name: Build cross toolchain shim
+        run: |
+          # Use the Linux x86_64 GCC as the cross compiler.
+          sudo ln -sf /usr/bin/x86_64-linux-gnu-gcc /usr/local/bin/x86_64-elf-gcc
+          sudo ln -sf /usr/bin/x86_64-linux-gnu-ld  /usr/local/bin/x86_64-elf-ld
+
+      - name: Build kernel image
+        run: make build
+
+      - name: Verify image produced
+        run: |
+          test -f build/vyro.img || (echo "vyro.img missing" && exit 1)
+          ls -la build/vyro.img build/kernel.bin build/boot.bin
+          echo "Vyro OS built successfully."
+
+      - name: Smoke test (boot, no triple fault)
+        run: |
+          # Boot headless for 6s with fault logging; fail if a triple fault occurs.
+          dd if=/dev/zero of=build/disk.img bs=512 count=2048
+          timeout 8 qemu-system-x86_64 \
+            -drive file=build/vyro.img,format=raw,if=ide,index=0,media=disk \
+            -drive file=build/disk.img,format=raw,if=ide,index=1,media=disk \
+            -m 256M -smp 4 -display none -no-reboot \
+            -d cpu_reset -D /tmp/qemu.log || true
+          if grep -q "Triple fault" /tmp/qemu.log; then
+            echo "FAIL: triple fault during boot"; cat /tmp/qemu.log; exit 1
+          fi
+          echo "PASS: kernel booted without triple fault."
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyro-os-image
+          path: build/vyro.img

@@ -2,6 +2,7 @@
 #include "idt.h"
 #include "../drivers/screen.h"
 #include "../drivers/timer.h"
+#include "../include/types.h"
 
 // Defined in isr_stubs.asm
 extern void isr128();
@@ -59,8 +60,23 @@ void syscall_dispatch(registers_t* regs) {
             break;
 
         case SYS_VERSION:
-            regs->rax = 14;             // Phase 14
+            regs->rax = 25;             // current phase
             break;
+
+        case SYS_TICKS:
+            regs->rax = timer_ticks();
+            break;
+
+        case SYS_RAND: {
+            // xorshift PRNG seeded by uptime
+            static uint64_t seed = 0;
+            if (!seed) seed = timer_ticks() | 1;
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            regs->rax = seed;
+            break;
+        }
 
         case SYS_EXIT:
             // Ring-3 program is done — unwind back to the kernel.
