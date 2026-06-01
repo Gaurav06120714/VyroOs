@@ -11,6 +11,10 @@ CFLAGS  = -ffreestanding \
           -nostdlib \
           -nostdinc \
           -mno-red-zone \
+          -mno-sse \
+          -mno-sse2 \
+          -mno-mmx \
+          -mno-80387 \
           -O2 \
           -Wall \
           -Wextra \
@@ -58,7 +62,8 @@ $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
 	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b)"
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 32768b max)"
+	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 32768 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
 
 # ───────────────────────────────────────────────
 # Bootloader

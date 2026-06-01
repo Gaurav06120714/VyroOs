@@ -100,7 +100,7 @@ load_kernel:
     mov es, ax
     xor bx, bx
     mov ah, 0x02
-    mov al, 32
+    mov al, 64          ; Read 64 sectors = 32KB (handles kernel up to 32KB)
     mov ch, 0
     mov cl, 2
     mov dh, 0
@@ -153,66 +153,52 @@ pm32:
     mov ss, ax
     mov esp, 0x90000
 
-    ; Zero page tables at 0x1000–0x4FFF (covers PML4, PDPT, PD, PD_LFB)
+    ; ──────────────────────────────────────────
+    ; Full 0-4GB identity map using 2MB pages.
+    ; This guarantees the VBE framebuffer (wherever QEMU places it,
+    ; e.g. 0xFD000000) is always mapped — no fragile per-LFB math.
+    ;
+    ; Layout:
+    ;   0x1000 = PML4
+    ;   0x2000 = PDPT (4 entries → 4 PDs covering 4GB)
+    ;   0x70000..0x73FFF = 4 Page Directories (2048 x 2MB entries)
+    ; ──────────────────────────────────────────
+
+    ; Zero PML4 + PDPT (0x1000–0x2FFF)
     mov edi, 0x1000
+    mov ecx, 0x800          ; 2048 dwords = 8KB
+    xor eax, eax
+    rep stosd
+
+    ; Zero the 4 page directories (0x70000–0x73FFF)
+    mov edi, 0x70000
     mov ecx, 0x1000         ; 4096 dwords = 16KB
     xor eax, eax
     rep stosd
 
-    ; PML4 → PDPT → PD (first 1GB range, PDPT[0])
-    mov dword [0x1000], 0x2003      ; PML4[0] → PDPT at 0x2000
-    mov dword [0x2000], 0x3003      ; PDPT[0] → PD at 0x3000
+    ; PML4[0] → PDPT
+    mov dword [0x1000], 0x2003
 
-    ; Identity map 0–8MB (covers bootloader, kernel, VGA, font at 0x80000)
-    mov dword [0x3000 + 0],  0x000083
-    mov dword [0x3000 + 8],  0x200083
-    mov dword [0x3000 + 16], 0x400083
-    mov dword [0x3000 + 24], 0x600083
+    ; PDPT[0..3] → the 4 page directories
+    mov dword [0x2000 + 0],  0x70003
+    mov dword [0x2000 + 8],  0x71003
+    mov dword [0x2000 + 16], 0x72003
+    mov dword [0x2000 + 24], 0x73003
 
-    ; ──────────────────────────────────────────
-    ; Map LFB framebuffer pages
-    ; LFB address is stored at 0x0500 (set in 16-bit code above)
-    ; QEMU VBE LFB is typically at 0xE0000000
-    ; We use PDPT[3] → new PD at 0x4000 to cover the 3rd GB (0xC0000000-0xFFFFFFFF)
-    ; ──────────────────────────────────────────
-    mov eax, [0x0500]       ; Load LFB address
-    test eax, eax
-    jz .skip_lfb_map        ; If zero, VBE failed, skip
-
-    ; PDPT[3] → PD_LFB at 0x4000
-    mov dword [0x2000 + 3*8], 0x4003   ; PDPT[3] → 0x4000, present+writable
-
-    ; Calculate PD index: (LFB_addr - 0xC0000000) >> 21
-    ; Each PD entry covers 2MB. PDPT[3] covers 0xC0000000–0xFFFFFFFF.
-    mov ebx, eax            ; ebx = LFB base
-    sub ebx, 0xC0000000     ; offset within the 3rd GB
-    shr ebx, 21             ; PD index (2MB per entry)
-
-    ; Map 6 consecutive 2MB huge pages starting at LFB address
-    ; Flags: 0x83 = present | writable | huge (PS bit)
-    mov ecx, 0             ; loop counter
-.lfb_map_loop:
-    cmp ecx, 6
-    jge .skip_lfb_map
-
-    ; PD entry index = ebx + ecx
-    mov edx, ebx
-    add edx, ecx            ; PD index for this entry
-    shl edx, 3              ; * 8 bytes per entry
-
-    ; Entry value: LFB_base + ecx*2MB | 0x83
-    mov edi, ecx
-    shl edi, 21             ; ecx * 2MB
-    add edi, eax            ; + LFB base address
-    or edi, 0x83            ; present | writable | huge
-
-    mov [0x4000 + edx], edi
-    mov dword [0x4000 + edx + 4], 0    ; high 32 bits = 0
-
+    ; Fill 2048 contiguous 2MB page entries (0x70000 as one flat array)
+    ; entry[j] = (j * 2MB) | 0x83  (present | writable | huge)
+    mov edi, 0x70000
+    xor ecx, ecx            ; j = 0
+.map_4gb:
+    mov eax, ecx
+    shl eax, 21             ; physical addr = j * 2MB
+    or  eax, 0x83           ; present + writable + huge page
+    mov [edi], eax
+    mov dword [edi + 4], 0  ; high 32 bits = 0
+    add edi, 8
     inc ecx
-    jmp .lfb_map_loop
-
-.skip_lfb_map:
+    cmp ecx, 2048
+    jl .map_4gb
 
     ; Enable PAE
     mov eax, cr4
