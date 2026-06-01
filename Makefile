@@ -57,7 +57,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
        $(BUILD)/mouse.o     \
-       $(BUILD)/gui.o
+       $(BUILD)/gui.o       \
+       $(BUILD)/sha256.o    \
+       $(BUILD)/security.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -227,6 +229,14 @@ $(BUILD)/mouse.o: drivers/mouse.c
 $(BUILD)/gui.o: kernel/gui.c
 	$(CC) $(CFLAGS) kernel/gui.c -o $(BUILD)/gui.o
 	@echo "  [CC]    gui.o"
+
+$(BUILD)/sha256.o: kernel/sha256.c
+	$(CC) $(CFLAGS) kernel/sha256.c -o $(BUILD)/sha256.o
+	@echo "  [CC]    sha256.o"
+
+$(BUILD)/security.o: kernel/security.c
+	$(CC) $(CFLAGS) kernel/security.c -o $(BUILD)/security.o
+	@echo "  [CC]    security.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:

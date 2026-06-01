@@ -18,6 +18,7 @@
 #include "ata.h"
 #include "usb.h"
 #include "../drivers/mouse.h"
+#include "security.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -107,10 +108,13 @@ void kernel_main() {
 
     ok("Window manager (type 'gui')");
 
-    ok("Shell (v0.21.0)");
+    security_init();
+    ok("Security (users, SHA-256 auth)");
 
-    pending("Window manager     [Phase 21]");
+    ok("Shell (v0.22.0)");
+
     pending("Package manager    [Phase 23]");
+    pending("Multicore / SMP    [Phase 24]");
     print_char('\n');
 
     __asm__ volatile("sti");
