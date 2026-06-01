@@ -73,7 +73,7 @@ make clean  # Remove build artifacts
 - [x] Phase 2 — 64-bit Long Mode (16-bit → 32-bit → 64-bit)
 - [x] Phase 3 — C kernel (screen driver, kernel_main, boot status display)
 - [x] Phase 4 — Interrupt system (IDT, ISR, IRQ, PIC remapping)
-- [ ] Phase 5 — Keyboard driver (read input)
+- [x] Phase 5 — Keyboard driver (PS/2, scan codes, shift, caps lock, shell)
 - [ ] Phase 6 — Interactive shell (commands)
 - [ ] Phase 7 — Memory management
 - [ ] Phase 8 — File system

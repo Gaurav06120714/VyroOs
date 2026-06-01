@@ -30,7 +30,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/idt.o          \
        $(BUILD)/isr.o          \
        $(BUILD)/screen.o       \
-       $(BUILD)/pic.o
+       $(BUILD)/pic.o          \
+       $(BUILD)/keyboard.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -102,6 +103,10 @@ $(BUILD)/screen.o: drivers/screen.c
 $(BUILD)/pic.o: drivers/pic.c
 	$(CC) $(CFLAGS) drivers/pic.c -o $(BUILD)/pic.o
 	@echo "  [CC]    pic.o"
+
+$(BUILD)/keyboard.o: drivers/keyboard.c
+	$(CC) $(CFLAGS) drivers/keyboard.c -o $(BUILD)/keyboard.o
+	@echo "  [CC]    keyboard.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB
