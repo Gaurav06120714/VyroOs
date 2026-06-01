@@ -7,6 +7,14 @@ static uint8_t cursor_row    = 0;
 static uint8_t cursor_col    = 0;
 static uint8_t current_color = WHITE_ON_BLACK;
 
+// ─────────────────────────────────────────────────
+// Shadow text buffer — mirrors the visible screen in RAM.
+// Needed because we can't read the framebuffer back to scroll it.
+// Each cell stores the character and its color attribute.
+// ─────────────────────────────────────────────────
+static char    shadow_char[VGA_ROWS][VGA_COLS];
+static uint8_t shadow_attr[VGA_ROWS][VGA_COLS];
+
 // VGA 4-bit color index → 24-bit RGB for framebuffer
 static const uint32_t color_table[16] = {
     0x000000, /* 0  BLACK        */
@@ -40,10 +48,15 @@ static inline uint32_t vga_bg(uint8_t color) {
 // Uses framebuffer when available, falls back to VGA text memory
 // ─────────────────────────────────────────────────
 static void vga_write(uint8_t row, uint8_t col, char c, uint8_t color) {
+    if (row >= VGA_ROWS || col >= VGA_COLS) return;
+
+    // Always record in the shadow buffer so we can scroll later
+    shadow_char[row][col] = c;
+    shadow_attr[row][col] = color;
+
     if (fb_available()) {
         fb_putchar(col, row, c, vga_fg(color), vga_bg(color));
     } else {
-        // VGA text mode only has 80 cols / 50 rows; clamp to avoid corruption
         if (col >= 80 || row >= 50) return;
         uint32_t index = (uint32_t)row * 80 + col;
         VGA[index] = (uint16_t)c | ((uint16_t)color << 8);
@@ -51,28 +64,36 @@ static void vga_write(uint8_t row, uint8_t col, char c, uint8_t color) {
 }
 
 // ─────────────────────────────────────────────────
-// Internal: scroll screen up by one row
+// Internal: scroll screen up by one row using the shadow buffer
+// Shifts shadow rows up, clears bottom row, then re-renders everything.
 // ─────────────────────────────────────────────────
 static void scroll(void) {
+    // Shift shadow buffer up by one row
     for (uint8_t row = 1; row < VGA_ROWS; row++) {
         for (uint8_t col = 0; col < VGA_COLS; col++) {
+            shadow_char[row - 1][col] = shadow_char[row][col];
+            shadow_attr[row - 1][col] = shadow_attr[row][col];
+        }
+    }
+    // Clear the new bottom row
+    for (uint8_t col = 0; col < VGA_COLS; col++) {
+        shadow_char[VGA_ROWS - 1][col] = ' ';
+        shadow_attr[VGA_ROWS - 1][col] = current_color;
+    }
+
+    // Re-render the entire shadow buffer to the screen
+    for (uint8_t row = 0; row < VGA_ROWS; row++) {
+        for (uint8_t col = 0; col < VGA_COLS; col++) {
+            char    ch = shadow_char[row][col];
+            uint8_t at = shadow_attr[row][col];
             if (fb_available()) {
-                // Re-render the character from the row above
-                // We can't read the framebuffer easily, so just clear and let
-                // the shell re-draw — but for simplicity we shift via vga_write
-                // using spaces for now (a full shadow buffer would be needed for
-                // pixel-perfect scroll; acceptable for a kernel shell).
-                vga_write(row - 1, col, ' ', current_color);
-            } else {
-                if (col >= 80 || row >= 50 || (row - 1) >= 50) continue;
-                VGA[(uint32_t)(row - 1) * 80 + col] = VGA[(uint32_t)row * 80 + col];
+                fb_putchar(col, row, ch, vga_fg(at), vga_bg(at));
+            } else if (col < 80 && row < 50) {
+                VGA[(uint32_t)row * 80 + col] = (uint16_t)ch | ((uint16_t)at << 8);
             }
         }
     }
-    // Clear last row
-    for (uint8_t col = 0; col < VGA_COLS; col++) {
-        vga_write(VGA_ROWS - 1, col, ' ', current_color);
-    }
+
     cursor_row = VGA_ROWS - 1;
     cursor_col = 0;
 }
@@ -89,6 +110,15 @@ void screen_init(void) {
 // ─────────────────────────────────────────────────
 void screen_clear(uint8_t color) {
     current_color = color;
+
+    // Reset shadow buffer to blank cells
+    for (uint8_t row = 0; row < VGA_ROWS; row++) {
+        for (uint8_t col = 0; col < VGA_COLS; col++) {
+            shadow_char[row][col] = ' ';
+            shadow_attr[row][col] = color;
+        }
+    }
+
     if (fb_available()) {
         fb_clear(vga_bg(color));
     } else {

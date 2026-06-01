@@ -104,6 +104,8 @@ static void cmd_help() {
     print("Show command history\n");
     print_color("  mem      ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show memory usage\n");
+    print_color("  sysinfo  ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Full system dashboard\n");
     print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show system uptime\n");
     print_color("  date     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -493,6 +495,33 @@ static void cmd_tree() {
     print_char('\n');
 }
 
+static void cmd_sysinfo() {
+    rtc_time_t t;
+    rtc_read(&t);
+
+    print_color("\n  ===== VYRO OS SYSTEM INFO =====\n", CYAN_ON_BLACK);
+    print("  OS        : Vyro OS v0.11.0\n");
+    print("  Arch      : x86_64 (64-bit long mode)\n");
+    print("  Kernel    : custom monolithic\n");
+    print("  Display   : 1024x768 VESA framebuffer\n");
+
+    print("  Uptime    : ");
+    print_int(timer_uptime_seconds()); print(" s\n");
+
+    print("  Time      : ");
+    print_int(t.hour); print(":"); print_int(t.minute);
+    print(":"); print_int(t.second); print(" UTC\n");
+
+    print("  Phys mem  : ");
+    print_int(pmm_free_pages() * 4); print(" KB free / ");
+    print_int(pmm_total_pages() * 4); print(" KB\n");
+
+    print("  Heap      : ");
+    print_int(heap_used()); print(" bytes used\n");
+
+    print_color("  ===============================\n\n", CYAN_ON_BLACK);
+}
+
 static void cmd_reboot() {
     print_color("\n  Rebooting Vyro OS...\n", YELLOW_ON_BLACK);
     // Triple fault reboot — write bad IDT and trigger interrupt
@@ -527,6 +556,7 @@ static const command_t commands[] = {
     { "history", cmd_history },
     { "color",   cmd_color   },
     { "mem",     cmd_mem     },
+    { "sysinfo", cmd_sysinfo },
     { "uptime",  cmd_uptime  },
     { "date",    cmd_date    },
     { "time",    cmd_time    },

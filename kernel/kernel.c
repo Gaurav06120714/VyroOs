@@ -35,7 +35,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.10.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.11.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -63,7 +63,7 @@ void kernel_main() {
     vfs_init();
     ok("VyFS filesystem (in-memory)");
 
-    ok("Shell (v0.10.0)");
+    ok("Shell (v0.11.0)");
 
     pending("Process scheduler  [Phase 12]");
     pending("Filesystem         [Phase 14]");
