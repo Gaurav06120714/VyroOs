@@ -42,7 +42,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/heap.o      \
        $(BUILD)/timer.o     \
        $(BUILD)/rtc.o       \
-       $(BUILD)/vfs.o
+       $(BUILD)/vfs.o       \
+       $(BUILD)/switch.o    \
+       $(BUILD)/task.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -94,6 +96,10 @@ $(BUILD)/kernel_entry.o: kernel/kernel_entry.asm
 $(BUILD)/isr_stubs.o: kernel/isr_stubs.asm
 	$(ASM) -f elf64 kernel/isr_stubs.asm -o $(BUILD)/isr_stubs.o
 	@echo "  [ASM]   isr_stubs.o"
+
+$(BUILD)/switch.o: kernel/switch.asm
+	$(ASM) -f elf64 kernel/switch.asm -o $(BUILD)/switch.o
+	@echo "  [ASM]   switch.o"
 
 # ───────────────────────────────────────────────
 # C objects
@@ -149,6 +155,10 @@ $(BUILD)/rtc.o: drivers/rtc.c
 $(BUILD)/vfs.o: kernel/vfs.c
 	$(CC) $(CFLAGS) kernel/vfs.c -o $(BUILD)/vfs.o
 	@echo "  [CC]    vfs.o"
+
+$(BUILD)/task.o: kernel/task.c
+	$(CC) $(CFLAGS) kernel/task.c -o $(BUILD)/task.o
+	@echo "  [CC]    task.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

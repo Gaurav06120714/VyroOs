@@ -6,6 +6,7 @@
 #include "../drivers/timer.h"
 #include "../drivers/rtc.h"
 #include "vfs.h"
+#include "task.h"
 #include "../include/types.h"
 
 // ─────────────────────────────────────────────────
@@ -106,6 +107,10 @@ static void cmd_help() {
     print("Show memory usage\n");
     print_color("  sysinfo  ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Full system dashboard\n");
+    print_color("  tasks    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Run multitasking demo\n");
+    print_color("  ps       ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("List processes\n");
     print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show system uptime\n");
     print_color("  date     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -495,6 +500,61 @@ static void cmd_tree() {
     print_char('\n');
 }
 
+// ─────────────────────────────────────────────────
+// Multitasking demo tasks
+// Each prints its label a few times, yielding between,
+// so you can see the round-robin interleaving.
+// ─────────────────────────────────────────────────
+static void demo_task_a() {
+    for (int i = 0; i < 5; i++) {
+        print_color("[A]", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        task_yield();
+    }
+    task_exit();
+}
+
+static void demo_task_b() {
+    for (int i = 0; i < 5; i++) {
+        print_color("[B]", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+        task_yield();
+    }
+    task_exit();
+}
+
+static void demo_task_c() {
+    for (int i = 0; i < 5; i++) {
+        print_color("[C]", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        task_yield();
+    }
+    task_exit();
+}
+
+static void cmd_tasks() {
+    print_color("\n  Spawning 3 cooperative tasks...\n  Output: ", WHITE_ON_BLACK);
+
+    tasking_init();
+    task_create("task-a", demo_task_a);
+    task_create("task-b", demo_task_b);
+    task_create("task-c", demo_task_c);
+
+    // Run scheduler — returns when all tasks finish
+    task_run_all();
+
+    print_color("\n  All tasks finished.\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+}
+
+static void cmd_ps() {
+    print_color("\n  PID  NAME            STATE\n", YELLOW_ON_BLACK);
+    print_color("  ---  --------------  --------\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    print("  1    kernel/shell    RUNNING\n");
+
+    uint32_t n = task_count();
+    if (n == 0) {
+        print_color("  (no background tasks)\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    }
+    print_char('\n');
+}
+
 static void cmd_sysinfo() {
     rtc_time_t t;
     rtc_read(&t);
@@ -557,6 +617,8 @@ static const command_t commands[] = {
     { "color",   cmd_color   },
     { "mem",     cmd_mem     },
     { "sysinfo", cmd_sysinfo },
+    { "tasks",   cmd_tasks   },
+    { "ps",      cmd_ps      },
     { "uptime",  cmd_uptime  },
     { "date",    cmd_date    },
     { "time",    cmd_time    },

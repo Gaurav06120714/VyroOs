@@ -10,6 +10,7 @@
 #include "pmm.h"
 #include "heap.h"
 #include "vfs.h"
+#include "task.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -35,7 +36,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.11.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.12.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -63,10 +64,13 @@ void kernel_main() {
     vfs_init();
     ok("VyFS filesystem (in-memory)");
 
-    ok("Shell (v0.11.0)");
+    tasking_init();
+    ok("Scheduler (cooperative round-robin)");
 
-    pending("Process scheduler  [Phase 12]");
-    pending("Filesystem         [Phase 14]");
+    ok("Shell (v0.12.0)");
+
+    pending("System calls       [Phase 13]");
+    pending("ELF loader         [Phase 15]");
     print_char('\n');
 
     __asm__ volatile("sti");
