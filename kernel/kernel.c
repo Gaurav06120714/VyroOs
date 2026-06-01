@@ -2,6 +2,7 @@
 #include "../drivers/framebuffer.h"
 #include "../drivers/pic.h"
 #include "../drivers/keyboard.h"
+#include "../drivers/timer.h"
 #include "../include/types.h"
 #include "idt.h"
 #include "isr.h"
@@ -33,7 +34,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.7.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.8.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -49,13 +50,16 @@ void kernel_main() {
     keyboard_init();
     ok("Keyboard driver (PS/2, IRQ1)");
 
+    timer_init(TIMER_HZ);
+    ok("PIT timer (100 Hz, IRQ0)");
+
     pmm_init();
     ok("Physical Memory Manager (62MB managed)");
 
     heap_init();
     ok("Heap allocator (8MB, kmalloc/kfree)");
 
-    ok("Shell (v0.7.0)");
+    ok("Shell (v0.8.0)");
 
     pending("Process scheduler  [Phase 12]");
     pending("Filesystem         [Phase 14]");

@@ -3,6 +3,7 @@
 #include "heap.h"
 #include "../drivers/screen.h"
 #include "../drivers/keyboard.h"
+#include "../drivers/timer.h"
 #include "../include/types.h"
 
 // ─────────────────────────────────────────────────
@@ -101,6 +102,10 @@ static void cmd_help() {
     print("Show command history\n");
     print_color("  mem      ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show memory usage\n");
+    print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show system uptime\n");
+    print_color("  sleep    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Sleep N milliseconds\n");
     print_color("  reboot   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Reboot the system\n");
     print_color("  ─────────────────────────────────────\n\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
@@ -204,6 +209,40 @@ static void cmd_mem() {
     print("  0x500000 - 0xCFFFFF  Heap (8MB)\n\n");
 }
 
+static void cmd_uptime() {
+    uint64_t secs  = timer_uptime_seconds();
+    uint64_t ms    = timer_uptime_ms();
+    uint64_t ticks = timer_ticks();
+
+    uint64_t hours = secs / 3600;
+    uint64_t mins  = (secs % 3600) / 60;
+    uint64_t s     = secs % 60;
+
+    print_color("\n  System Uptime\n", YELLOW_ON_BLACK);
+    print("  ");
+    print_int(hours); print("h ");
+    print_int(mins);  print("m ");
+    print_int(s);     print("s\n");
+    print("  Total : "); print_int(ms);    print(" ms\n");
+    print("  Ticks : "); print_int(ticks); print(" (@100 Hz)\n\n");
+}
+
+static void cmd_sleep() {
+    if (argc < 2) {
+        print_color("\n  Usage: sleep <milliseconds>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint32_t ms = 0;
+    const char* p = argv[1];
+    while (*p >= '0' && *p <= '9') ms = ms * 10 + (*p++ - '0');
+
+    print("\n  Sleeping for ");
+    print_int(ms);
+    print(" ms...");
+    sleep_ms(ms);
+    print_color(" done.\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+}
+
 static void cmd_reboot() {
     print_color("\n  Rebooting Vyro OS...\n", YELLOW_ON_BLACK);
     // Triple fault reboot — write bad IDT and trigger interrupt
@@ -238,6 +277,8 @@ static const command_t commands[] = {
     { "history", cmd_history },
     { "color",   cmd_color   },
     { "mem",     cmd_mem     },
+    { "uptime",  cmd_uptime  },
+    { "sleep",   cmd_sleep   },
     { "reboot",  cmd_reboot  },
 };
 

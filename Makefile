@@ -39,7 +39,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/keyboard.o  \
        $(BUILD)/shell.o     \
        $(BUILD)/pmm.o       \
-       $(BUILD)/heap.o
+       $(BUILD)/heap.o      \
+       $(BUILD)/timer.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -134,6 +135,10 @@ $(BUILD)/pmm.o: kernel/pmm.c
 $(BUILD)/heap.o: kernel/heap.c
 	$(CC) $(CFLAGS) kernel/heap.c -o $(BUILD)/heap.o
 	@echo "  [CC]    heap.o"
+
+$(BUILD)/timer.o: drivers/timer.c
+	$(CC) $(CFLAGS) drivers/timer.c -o $(BUILD)/timer.o
+	@echo "  [CC]    timer.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB
