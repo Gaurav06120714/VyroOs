@@ -60,7 +60,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/gui.o       \
        $(BUILD)/sha256.o    \
        $(BUILD)/security.o  \
-       $(BUILD)/pkg.o
+       $(BUILD)/pkg.o       \
+       $(BUILD)/smp.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -70,6 +71,7 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-drive file=$(BUILD)/vyro.img,format=raw,if=ide,index=0,media=disk \
 		-drive file=$(BUILD)/disk.img,format=raw,if=ide,index=1,media=disk \
 		-m 256M \
+		-smp 4 \
 		-name "Vyro OS" \
 		-display cocoa \
 		-vga std \
@@ -90,8 +92,8 @@ $(BUILD)/vyro.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
 	dd if=/dev/zero bs=512 count=2880 of=$(BUILD)/vyro.img 2>/dev/null
 	dd if=$(BUILD)/boot.bin of=$(BUILD)/vyro.img bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro.img bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 65536b max)"
-	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 65536 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
+	@echo "  [IMG]   vyro.img ready (boot=$(shell wc -c < $(BUILD)/boot.bin)b kernel=$(shell wc -c < $(BUILD)/kernel.bin)b / 98304b max)"
+	@if [ $$(wc -c < $(BUILD)/kernel.bin) -gt 98304 ]; then echo "  [WARN]  kernel exceeds 32KB! Increase sector count in boot.asm"; fi
 
 # ───────────────────────────────────────────────
 # Bootloader
@@ -242,6 +244,10 @@ $(BUILD)/security.o: kernel/security.c
 $(BUILD)/pkg.o: kernel/pkg.c
 	$(CC) $(CFLAGS) kernel/pkg.c -o $(BUILD)/pkg.o
 	@echo "  [CC]    pkg.o"
+
+$(BUILD)/smp.o: kernel/smp.c
+	$(CC) $(CFLAGS) kernel/smp.c -o $(BUILD)/smp.o
+	@echo "  [CC]    smp.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:

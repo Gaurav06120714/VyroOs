@@ -93,26 +93,50 @@ start:
     jmp dword CODE32:pm32
 
 ; ──────────────────────────────────────────────
-; CHS disk read: 32 sectors from sector 2 → 0x10000
+; LBA extended read (int 0x13 AH=42h) in chunks.
+; Reads 192 sectors from LBA 1 → 0x10000, 16 at a time
+; (16-sector chunks never cross track/BIOS limits).
 ; ──────────────────────────────────────────────
 load_kernel:
-    mov ax, 0x1000
-    mov es, ax
-    xor bx, bx
-    mov ah, 0x02
-    mov al, 128         ; Read 128 sectors = 64KB
-    mov ch, 0
-    mov cl, 2
-    mov dh, 0
+    mov word [dap_count], 16        ; sectors per chunk
+    mov word [dap_seg],   0x1000    ; dest segment (0x1000:0 = 0x10000)
+    mov word [dap_off],   0x0000
+    mov dword [dap_lba],  1         ; start LBA (sector 1, after boot sector)
+    mov cx, 12                      ; 12 chunks * 16 = 192 sectors
+
+.read_chunk:
+    push cx
+    mov ah, 0x42
     mov dl, [boot_drive]
+    mov si, dap
     int 0x13
     jc disk_error
+    pop cx
+
+    add word [dap_seg], 0x200       ; advance 16 sectors = 0x2000 bytes = 0x200 paragraphs
+    add dword [dap_lba], 16
+    dec cx
+    jnz .read_chunk
+
     xor ax, ax
     mov es, ax
     ret
 
 disk_error:
+    mov ah, 0x0e
+    mov al, 'D'
+    int 0x10
     jmp $
+
+; Disk Address Packet for extended read
+align 4
+dap:
+    db 0x10                 ; DAP size
+    db 0x00                 ; reserved
+dap_count: dw 16            ; sectors to read
+dap_off:   dw 0x0000        ; dest offset
+dap_seg:   dw 0x1000        ; dest segment
+dap_lba:   dq 1             ; start LBA
 
 ; ──────────────────────────────────────────────
 ; GDT
