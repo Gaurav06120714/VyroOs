@@ -4,6 +4,7 @@
 #include "../drivers/screen.h"
 #include "../drivers/keyboard.h"
 #include "../drivers/timer.h"
+#include "../drivers/rtc.h"
 #include "../include/types.h"
 
 // ─────────────────────────────────────────────────
@@ -104,6 +105,10 @@ static void cmd_help() {
     print("Show memory usage\n");
     print_color("  uptime   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Show system uptime\n");
+    print_color("  date     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show current date & time\n");
+    print_color("  time     ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    print("Show current time\n");
     print_color("  sleep    ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     print("Sleep N milliseconds\n");
     print_color("  reboot   ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
@@ -209,6 +214,43 @@ static void cmd_mem() {
     print("  0x500000 - 0xCFFFFF  Heap (8MB)\n\n");
 }
 
+// Print a 2-digit zero-padded number
+static void print_2d(uint8_t n) {
+    print_char('0' + (n / 10));
+    print_char('0' + (n % 10));
+}
+
+static const char* month_names[] = {
+    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+
+static void cmd_time() {
+    rtc_time_t t;
+    rtc_read(&t);
+    print("\n  ");
+    print_2d(t.hour);   print_char(':');
+    print_2d(t.minute); print_char(':');
+    print_2d(t.second);
+    print(" (UTC)\n\n");
+}
+
+static void cmd_date() {
+    rtc_time_t t;
+    rtc_read(&t);
+    print("\n  ");
+    if (t.month >= 1 && t.month <= 12) print(month_names[t.month]);
+    print_char(' ');
+    print_int(t.day);
+    print(", ");
+    print_int(t.year);
+    print("  ");
+    print_2d(t.hour);   print_char(':');
+    print_2d(t.minute); print_char(':');
+    print_2d(t.second);
+    print(" UTC\n\n");
+}
+
 static void cmd_uptime() {
     uint64_t secs  = timer_uptime_seconds();
     uint64_t ms    = timer_uptime_ms();
@@ -278,6 +320,8 @@ static const command_t commands[] = {
     { "color",   cmd_color   },
     { "mem",     cmd_mem     },
     { "uptime",  cmd_uptime  },
+    { "date",    cmd_date    },
+    { "time",    cmd_time    },
     { "sleep",   cmd_sleep   },
     { "reboot",  cmd_reboot  },
 };

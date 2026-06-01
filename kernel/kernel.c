@@ -34,7 +34,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v0.8.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v0.9.0    64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -59,7 +59,7 @@ void kernel_main() {
     heap_init();
     ok("Heap allocator (8MB, kmalloc/kfree)");
 
-    ok("Shell (v0.8.0)");
+    ok("Shell (v0.9.0)");
 
     pending("Process scheduler  [Phase 12]");
     pending("Filesystem         [Phase 14]");

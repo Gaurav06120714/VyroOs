@@ -40,7 +40,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/shell.o     \
        $(BUILD)/pmm.o       \
        $(BUILD)/heap.o      \
-       $(BUILD)/timer.o
+       $(BUILD)/timer.o     \
+       $(BUILD)/rtc.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -139,6 +140,10 @@ $(BUILD)/heap.o: kernel/heap.c
 $(BUILD)/timer.o: drivers/timer.c
 	$(CC) $(CFLAGS) drivers/timer.c -o $(BUILD)/timer.o
 	@echo "  [CC]    timer.o"
+
+$(BUILD)/rtc.o: drivers/rtc.c
+	$(CC) $(CFLAGS) drivers/rtc.c -o $(BUILD)/rtc.o
+	@echo "  [CC]    rtc.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB

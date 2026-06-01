@@ -76,7 +76,9 @@ make clean  # Remove build artifacts
 - [x] Phase 5 — Keyboard driver (PS/2, scan codes, shift, caps lock, shell)
 - [x] Phase 6 — Shell (history, args, arrow keys, command table)
 - [x] Phase 7 — Memory manager (PMM bitmap, heap kmalloc/kfree, 80x50 screen)
-- [ ] Phase 8 — File system
+- [x] Phase 8 — Timer (PIT 100Hz, IRQ0, uptime, sleep)
+- [x] Phase 9 — RTC real-time clock (date, time commands)
+- [ ] Phase 8b — File system
 - [ ] Phase 9 — GUI (long term)
 
 ---
