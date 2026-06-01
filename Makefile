@@ -66,7 +66,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/klog.o      \
        $(BUILD)/html.o      \
        $(BUILD)/theme.o     \
-       $(BUILD)/compositor.o
+       $(BUILD)/compositor.o \
+       $(BUILD)/icons.o     \
+       $(BUILD)/notify.o
 
 # ───────────────────────────────────────────────
 # Default: build + run
@@ -273,6 +275,14 @@ $(BUILD)/theme.o: kernel/theme.c
 $(BUILD)/compositor.o: kernel/compositor.c
 	$(CC) $(CFLAGS) kernel/compositor.c -o $(BUILD)/compositor.o
 	@echo "  [CC]    compositor.o"
+
+$(BUILD)/icons.o: kernel/icons.c
+	$(CC) $(CFLAGS) kernel/icons.c -o $(BUILD)/icons.o
+	@echo "  [CC]    icons.o"
+
+$(BUILD)/notify.o: kernel/notify.c
+	$(CC) $(CFLAGS) kernel/notify.c -o $(BUILD)/notify.o
+	@echo "  [CC]    notify.o"
 
 # Scratch disk for ATA driver (persists between runs, NOT recreated by clean)
 $(BUILD)/disk.img:
