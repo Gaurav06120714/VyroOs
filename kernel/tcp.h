@@ -8,7 +8,9 @@
 
 enum tcp_state {
     TCP_CLOSED = 0,
+    TCP_LISTEN,
     TCP_SYN_SENT,
+    TCP_SYN_RECEIVED,
     TCP_ESTABLISHED,
     TCP_FIN_WAIT_1,
     TCP_FIN_WAIT_2,
@@ -27,12 +29,21 @@ typedef struct {
     uint64_t syn_sent_at_ms;
     uint8_t  retries;
     uint8_t  active;
+    uint8_t  is_listener;     // 1 = passive (listen) socket
+    uint8_t  accepted;        // 1 = already returned by tcp_accept
 } tcp_tcb_t;
 
 void tcp_init(void);
 
 // Active open. Returns conn id (>=0) on success, -1 on failure.
 int  tcp_connect(const uint8_t dst_ip[4], uint16_t dst_port);
+
+// Passive open. Returns listener id (>=0) on success, -1 on failure.
+int  tcp_listen(uint16_t local_port);
+
+// Pull a completed inbound connection on `local_port`. Returns conn id (>=0)
+// of a freshly ESTABLISHED child not yet returned, or -1 if none ready.
+int  tcp_accept(uint16_t local_port);
 
 // Begin a graceful close. Returns 0 on success.
 int  tcp_close(int id);

@@ -1276,15 +1276,17 @@ static void udp_print_listener(uint16_t port, void* user) {
 
 static const char* tcp_state_name(int s) {
     switch (s) {
-    case TCP_CLOSED:      return "CLOSED";
-    case TCP_SYN_SENT:    return "SYN_SENT";
-    case TCP_ESTABLISHED: return "ESTABLISHED";
-    case TCP_FIN_WAIT_1:  return "FIN_WAIT_1";
-    case TCP_FIN_WAIT_2:  return "FIN_WAIT_2";
-    case TCP_CLOSE_WAIT:  return "CLOSE_WAIT";
-    case TCP_LAST_ACK:    return "LAST_ACK";
-    case TCP_TIME_WAIT:   return "TIME_WAIT";
-    default:              return "?";
+    case TCP_CLOSED:        return "CLOSED";
+    case TCP_LISTEN:        return "LISTEN";
+    case TCP_SYN_SENT:      return "SYN_SENT";
+    case TCP_SYN_RECEIVED:  return "SYN_RECEIVED";
+    case TCP_ESTABLISHED:   return "ESTABLISHED";
+    case TCP_FIN_WAIT_1:    return "FIN_WAIT_1";
+    case TCP_FIN_WAIT_2:    return "FIN_WAIT_2";
+    case TCP_CLOSE_WAIT:    return "CLOSE_WAIT";
+    case TCP_LAST_ACK:      return "LAST_ACK";
+    case TCP_TIME_WAIT:     return "TIME_WAIT";
+    default:                return "?";
     }
 }
 
@@ -1360,6 +1362,60 @@ static void cmd_tcpconnect() {
         print_color("  (no connection)\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
     }
     print_char('\n');
+}
+
+static void cmd_tcplisten() {
+    if (argc < 2) {
+        print_color("\n  Usage: tcplisten <port>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int port;
+    if (!parse_int_safe(argv[1], &port) || port <= 0 || port > 65535) {
+        print_color("\n  Bad port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int id = tcp_listen((uint16_t)port);
+    if (id < 0) {
+        print_color("\n  tcp_listen failed (port taken or TCB table full)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  Listening on port ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    print_int(port); print(" (TCB id="); print_int(id); print(")\n\n");
+}
+
+static void cmd_tcpaccept() {
+    if (argc < 2) {
+        print_color("\n  Usage: tcpaccept <port> [wait_ms]\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int port, wait_ms = 3000;
+    if (!parse_int_safe(argv[1], &port) || port <= 0 || port > 65535) {
+        print_color("\n  Bad port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (argc >= 3) parse_int_safe(argv[2], &wait_ms);
+
+    print_color("\n  Waiting for incoming connection on port ", YELLOW_ON_BLACK);
+    print_int(port); print(" (up to "); print_int(wait_ms); print(" ms)...\n");
+
+    int id = -1;
+    int slices = wait_ms / 100;
+    if (slices < 1) slices = 1;
+    for (int i = 0; i < slices; i++) {
+        net_pump_run(100);
+        id = tcp_accept((uint16_t)port);
+        if (id >= 0) break;
+    }
+    if (id < 0) {
+        print_color("  No connection arrived\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("  Accepted! conn id=", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    print_int(id); print_char('\n');
+    print("  (state: "); print(tcp_state_name(tcp_state(id))); print(")\n\n");
 }
 
 static void cmd_udp() {
@@ -1593,6 +1649,8 @@ static const command_t commands[] = {
     { "udp",       cmd_udp     },
     { "tcp",       cmd_tcp     },
     { "tcpconnect",cmd_tcpconnect},
+    { "tcplisten", cmd_tcplisten },
+    { "tcpaccept", cmd_tcpaccept },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

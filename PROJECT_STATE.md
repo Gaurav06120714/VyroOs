@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.2
-**Last update:** Phase v3.2 (Networking Phase 13: TCP Connection Establishment)
+**Current release:** v3.3
+**Last update:** Phase v3.3 (TCP Listen / Accept)
 
 ## Subsystem matrix
 
@@ -21,9 +21,9 @@
 | Networking — UDP transport | shipped (v3.1) | port-dispatch, RFC 768 checksum |
 | Networking — DHCP client | shipped, refactored on UDP | live DHCPDISCOVER/OFFER over RTL8139 |
 | Networking — DNS resolver | shipped, refactored on UDP | real UDP/53 queries |
-| Networking — TCP active open | **shipped (v3.2)** | SYN/SYN-ACK/ACK, FIN close, RST, retransmit |
-| Networking — TCP listen/accept | next | v3.3 |
-| Networking — TCP data transfer | future | v3.4 |
+| Networking — TCP active open | shipped (v3.2) | SYN/SYN-ACK/ACK, FIN close, RST, retransmit |
+| Networking — TCP listen/accept | **shipped (v3.3)** | passive open, SYN_RECEIVED, accept queue |
+| Networking — TCP data transfer | next | v3.4 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -49,4 +49,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.3 — TCP listen/accept** (passive open, full server-side state machine, SYN backlog).
+Next phase: **v3.4 — TCP data transfer** (segment send/recv on an established connection, simple sliding window).

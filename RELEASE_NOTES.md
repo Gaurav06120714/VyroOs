@@ -1,5 +1,29 @@
 # Release Notes
 
+## v3.3 — TCP Listen / Accept
+
+Vyro OS can now act as a TCP server. The state machine gains `LISTEN` and `SYN_RECEIVED`. Inbound SYNs to a listening port allocate a child TCB, the kernel replies with SYN-ACK, and the completing ACK transitions the child to ESTABLISHED — at which point `tcp_accept(port)` returns the conn id.
+
+### What's new
+- **Passive open** — `tcp_listen(port)` creates a LISTEN-state TCB.
+- **SYN_RECEIVED state** handled with SYN-ACK retransmit on duplicate SYN.
+- **`tcp_accept(port)`** returns the next freshly ESTABLISHED unaccepted child.
+- **`tcplisten <port>`** and **`tcpaccept <port> [wait_ms]`** shell commands.
+
+### Compatibility
+- Wire format: unchanged from v3.2 (still no TCP options).
+- Kernel size: 136,806 bytes (was 134,662) — 58 KB headroom remaining.
+
+### Known limitations
+- No data send/recv yet — accepted connections are silent until close.
+- No backlog cap beyond the global 16-TCB pool.
+- No SYN-cookie protection.
+
+### Next
+**v3.4 — TCP data transfer.** `tcp_send(id, buf, len)` / `tcp_recv(id, buf, len)` with a simple sliding window and basic retransmit.
+
+---
+
 ## v3.2 — TCP Connection Establishment
 
 Vyro OS now speaks TCP. The active-open client path is complete: `tcp_connect()` performs the RFC 793 three-way handshake, transitions through the full client state machine, and tears down cleanly with a FIN exchange.

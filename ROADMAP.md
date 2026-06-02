@@ -28,6 +28,13 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.3 (shipped) — TCP listen / accept
+
+- `TCP_LISTEN` and `TCP_SYN_RECEIVED` states
+- `tcp_listen(port)` / `tcp_accept(port)`
+- Inbound SYN spawns child TCB, kernel replies SYN-ACK, ACK completes handshake
+- `tcplisten` / `tcpaccept` shell commands
+
 ## ✅ v3.2 (shipped) — TCP connection establishment
 
 - `tcp.c` / `tcp.h` — RFC 793 active-open client

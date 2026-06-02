@@ -32,9 +32,61 @@ static uint16_t  next_eph_port = 32768;
 
 void tcp_init(void) {
     for (int i = 0; i < TCB_COUNT; i++) {
-        tcbs[i].state  = TCP_CLOSED;
-        tcbs[i].active = 0;
+        tcbs[i].state       = TCP_CLOSED;
+        tcbs[i].active      = 0;
+        tcbs[i].is_listener = 0;
+        tcbs[i].accepted    = 0;
     }
+}
+
+static int alloc_tcb(void) {
+    for (int i = 0; i < TCB_COUNT; i++) if (!tcbs[i].active) return i;
+    return -1;
+}
+
+int tcp_listen(uint16_t local_port) {
+    if (!local_port) return -1;
+    // Reject duplicate listener on same port
+    for (int i = 0; i < TCB_COUNT; i++) {
+        if (tcbs[i].active && tcbs[i].is_listener && tcbs[i].local_port == local_port)
+            return -1;
+    }
+    int id = alloc_tcb();
+    if (id < 0) return -1;
+    tcp_tcb_t* t = &tcbs[id];
+    t->state       = TCP_LISTEN;
+    t->is_listener = 1;
+    t->accepted    = 0;
+    for (int i = 0; i < 4; i++) { t->local_ip[i] = net_ip()[i]; t->remote_ip[i] = 0; }
+    t->local_port  = local_port;
+    t->remote_port = 0;
+    t->snd_nxt = t->snd_una = t->rcv_nxt = 0;
+    t->retries = 0;
+    t->syn_sent_at_ms = 0;
+    t->active = 1;
+    return id;
+}
+
+int tcp_accept(uint16_t local_port) {
+    for (int i = 0; i < TCB_COUNT; i++) {
+        tcp_tcb_t* t = &tcbs[i];
+        if (!t->active || t->is_listener) continue;
+        if (t->local_port != local_port)  continue;
+        if (t->state != TCP_ESTABLISHED && t->state != TCP_CLOSE_WAIT) continue;
+        if (t->accepted) continue;
+        t->accepted = 1;
+        return i;
+    }
+    return -1;
+}
+
+static int find_listener(uint16_t local_port) {
+    for (int i = 0; i < TCB_COUNT; i++) {
+        if (tcbs[i].active && tcbs[i].is_listener &&
+            tcbs[i].state == TCP_LISTEN &&
+            tcbs[i].local_port == local_port) return i;
+    }
+    return -1;
 }
 
 int tcp_state(int id) {
@@ -155,7 +207,9 @@ int tcp_connect(const uint8_t dst_ip[4], uint16_t dst_port) {
     t->rcv_nxt     = 0;
     t->retries     = 0;
     t->syn_sent_at_ms = timer_uptime_ms();
-    t->active = 1;
+    t->active      = 1;
+    t->is_listener = 0;
+    t->accepted    = 0;
 
     int sent = build_and_send(t, TCP_SYN, t->snd_nxt, 0);
     t->snd_nxt += 1;
@@ -220,7 +274,32 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
 
     tcp_tcb_t* t = find_tcb(ip->src, sport, dport);
     if (!t) {
-        // No matching TCB — RST unless the incoming segment is itself a RST
+        // No full-tuple match — but is there a listener on dport?
+        int lid = find_listener(dport);
+        if (lid >= 0 && (flags & TCP_SYN) && !(flags & TCP_ACK) && !(flags & TCP_RST)) {
+            int child = alloc_tcb();
+            if (child < 0) {
+                send_rst_reply(ip->src, ip->dst, sport, dport,
+                               seg_seq, seg_ack, flags, payload);
+                return 1;
+            }
+            tcp_tcb_t* c = &tcbs[child];
+            c->is_listener = 0;
+            c->accepted    = 0;
+            for (int i = 0; i < 4; i++) { c->local_ip[i] = ip->dst[i]; c->remote_ip[i] = ip->src[i]; }
+            c->local_port  = dport;
+            c->remote_port = sport;
+            c->snd_nxt     = (uint32_t)timer_uptime_ms();
+            c->snd_una     = c->snd_nxt;
+            c->rcv_nxt     = seg_seq + 1;
+            c->retries     = 0;
+            c->syn_sent_at_ms = timer_uptime_ms();
+            c->active      = 1;
+            c->state       = TCP_SYN_RECEIVED;
+            build_and_send(c, TCP_SYN | TCP_ACK, c->snd_nxt, c->rcv_nxt);
+            c->snd_nxt += 1;
+            return 1;
+        }
         if (!(flags & TCP_RST)) {
             send_rst_reply(ip->src, ip->dst, sport, dport,
                            seg_seq, seg_ack, flags, payload);
@@ -235,6 +314,16 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
     }
 
     switch (t->state) {
+    case TCP_SYN_RECEIVED:
+        if ((flags & TCP_ACK) && seg_ack == t->snd_nxt) {
+            t->snd_una = seg_ack;
+            t->state   = TCP_ESTABLISHED;
+        } else if (flags & TCP_SYN) {
+            // Retransmitted SYN — resend SYN-ACK
+            build_and_send(t, TCP_SYN | TCP_ACK, t->snd_una, t->rcv_nxt);
+        }
+        break;
+
     case TCP_SYN_SENT:
         if ((flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK)) {
             if (seg_ack != t->snd_nxt) {

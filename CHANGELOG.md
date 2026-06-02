@@ -2,6 +2,25 @@
 
 All notable changes to Vyro OS.
 
+## [v3.3] — TCP Listen / Accept (Passive Open)
+
+### Added
+- States `TCP_LISTEN` and `TCP_SYN_RECEIVED` in the TCP state machine.
+- `tcp_listen(port)` — create a passive listener TCB.
+- `tcp_accept(port)` — pull a freshly ESTABLISHED inbound child, or -1 if none.
+- Inbound SYN to a listening local port allocates a child TCB and replies with SYN-ACK; subsequent ACK completes the handshake.
+- Retransmitted SYN to a SYN_RECEIVED TCB resends SYN-ACK.
+- `tcplisten <port>` and `tcpaccept <port> [wait_ms]` shell commands.
+
+### Changed
+- TCB struct: new `is_listener` and `accepted` fields.
+- Kernel size: 136,806 bytes (was 134,662) — 58 KB headroom remaining.
+
+### Limitations (deferred)
+- No data send/recv yet — accept hands back an established connection that can only be closed.
+- Single accept-queue per port via linear scan; no explicit backlog limit beyond the global 16-TCB pool.
+- No SYN-cookie defense against SYN floods.
+
 ## [v3.2] — Networking Phase 13: TCP Connection Establishment
 
 ### Added
