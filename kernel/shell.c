@@ -1364,6 +1364,78 @@ static void cmd_tcpconnect() {
     print_char('\n');
 }
 
+static uint16_t mini_strlen(const char* s) {
+    uint16_t n = 0; while (s[n]) n++; return n;
+}
+
+static void cmd_tcpsend() {
+    if (argc < 3) {
+        print_color("\n  Usage: tcpsend <conn_id> <text>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int id;
+    if (!parse_int_safe(argv[1], &id)) {
+        print_color("\n  Bad id\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint16_t total = 0;
+    for (int i = 2; i < argc; i++) {
+        uint16_t n = mini_strlen(argv[i]);
+        int sent = tcp_send(id, (const uint8_t*)argv[i], n);
+        if (sent < 0) {
+            print_color("\n  tcp_send: not ESTABLISHED or bad id\n\n",
+                        MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+            return;
+        }
+        total += (uint16_t)sent;
+        if (i + 1 < argc) {
+            uint8_t sp = ' ';
+            int s2 = tcp_send(id, &sp, 1);
+            if (s2 > 0) total++;
+        }
+    }
+    uint8_t nl = '\n';
+    tcp_send(id, &nl, 1);
+    print_color("\n  Sent ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    print_int(total + 1); print(" bytes\n\n");
+}
+
+static void cmd_tcprecv() {
+    if (argc < 2) {
+        print_color("\n  Usage: tcprecv <conn_id> [wait_ms]\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int id, wait_ms = 1000;
+    if (!parse_int_safe(argv[1], &id)) {
+        print_color("\n  Bad id\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (argc >= 3) parse_int_safe(argv[2], &wait_ms);
+
+    static uint8_t buf[1024];
+    int total = 0;
+    int slices = wait_ms / 100;
+    if (slices < 1) slices = 1;
+    for (int s = 0; s < slices; s++) {
+        net_pump_run(100);
+        int n = tcp_recv(id, buf, sizeof(buf) - 1);
+        if (n < 0) {
+            print_color("\n  tcp_recv: bad id\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+            return;
+        }
+        if (n > 0) {
+            buf[n] = 0;
+            for (int i = 0; i < n; i++) print_char((char)buf[i]);
+            total += n;
+        }
+    }
+    if (total == 0) print_color("\n  (no data)\n\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    else            { print_color("\n  -- ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+                      print_int(total); print(" bytes received --\n\n"); }
+}
+
 static void cmd_tcplisten() {
     if (argc < 2) {
         print_color("\n  Usage: tcplisten <port>\n\n",
@@ -1651,6 +1723,8 @@ static const command_t commands[] = {
     { "tcpconnect",cmd_tcpconnect},
     { "tcplisten", cmd_tcplisten },
     { "tcpaccept", cmd_tcpaccept },
+    { "tcpsend",   cmd_tcpsend   },
+    { "tcprecv",   cmd_tcprecv   },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

@@ -2,6 +2,27 @@
 
 All notable changes to Vyro OS.
 
+## [v3.4] — TCP Data Transfer
+
+### Added
+- `tcp_send(id, data, len)` — append to per-TCB send buffer and transmit as PSH+ACK segments, MSS-sized chunks.
+- `tcp_recv(id, buf, max)` — drain received bytes into caller's buffer.
+- Per-TCB 1024-byte send and receive linear buffers (32 KB total static).
+- Inbound data handling in ESTABLISHED state: in-order data appended to recv buffer, advances `rcv_nxt`, sends cumulative ACK. Out-of-order segments trigger duplicate ACK (no reassembly buffer yet).
+- ACK processing slides the send window forward by `(seg_ack - snd_una)` bytes.
+- 1 s fixed RTO data retransmit driven by `tcp_tick()`.
+- `tcpsend <id> <text...>` and `tcprecv <id> [wait_ms]` shell commands.
+
+### Changed
+- TCB allocation paths (active open, passive listener, child from listener) now reset send/recv buffers explicitly.
+- Kernel size: 140,550 bytes (was 136,806) — 55 KB headroom remaining.
+
+### Limitations (deferred)
+- No out-of-order reassembly (drops + duplicate ACK only).
+- No window scaling, SACK, fast retransmit, or RTT estimation — single fixed 1 s RTO.
+- No congestion control (cwnd, slow start).
+- Buffers are linear `memcpy`-shifted, not ring buffers — O(N) drain.
+
 ## [v3.3] — TCP Listen / Accept (Passive Open)
 
 ### Added

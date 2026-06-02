@@ -28,6 +28,14 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.4 (shipped) — TCP data transfer
+
+- `tcp_send` / `tcp_recv` with 1 KB linear send/recv buffers per TCB
+- PSH+ACK segments at MSS-sized chunks
+- Send window slides on inbound ACK
+- 1 s fixed RTO retransmit
+- `tcpsend` / `tcprecv` shell commands
+
 ## ✅ v3.3 (shipped) — TCP listen / accept
 
 - `TCP_LISTEN` and `TCP_SYN_RECEIVED` states

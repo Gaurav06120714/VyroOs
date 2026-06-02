@@ -1,5 +1,31 @@
 # Release Notes
 
+## v3.4 — TCP Data Transfer
+
+Vyro OS now sends and receives bytes over established TCP connections. Each TCB carries a 1 KB send buffer (unacked bytes still in flight) and a 1 KB receive buffer (in-order bytes waiting for the application). Outbound writes go on the wire immediately as PSH+ACK segments at one MSS each; inbound data advances `rcv_nxt` and triggers a cumulative ACK.
+
+### What's new
+- **`tcp_send(id, data, len)`** — returns bytes accepted into the send buffer.
+- **`tcp_recv(id, buf, max)`** — drains the receive buffer.
+- **`tcpsend <id> <text>`** and **`tcprecv <id> [wait_ms]`** shell commands.
+- **1 s RTO retransmit** of unacked data, driven by the 100 ms `tcp_tick()`.
+
+### Compatibility
+- Wire format: standard PSH+ACK data segments, MSS=536, no options.
+- Kernel size: 140,550 bytes (was 136,806) — 55 KB headroom remaining.
+- 32 KB of static buffer space for TCBs (1 KB send + 1 KB recv × 16).
+
+### Known limitations
+- Strict in-order delivery — out-of-order arrivals dropped with duplicate ACK.
+- Fixed 1 s RTO; no RTT estimation.
+- No congestion window — always sends as much as fits in the send buffer.
+- No SACK, no window scaling, no fast retransmit.
+
+### Next
+**v3.5 — TCP reassembly + congestion control.** Out-of-order reassembly queue, RTT-estimated RTO, simple congestion window with slow start and fast retransmit.
+
+---
+
 ## v3.3 — TCP Listen / Accept
 
 Vyro OS can now act as a TCP server. The state machine gains `LISTEN` and `SYN_RECEIVED`. Inbound SYNs to a listening port allocate a child TCB, the kernel replies with SYN-ACK, and the completing ACK transitions the child to ESTABLISHED — at which point `tcp_accept(port)` returns the conn id.

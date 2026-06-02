@@ -48,6 +48,14 @@ int  tcp_accept(uint16_t local_port);
 // Begin a graceful close. Returns 0 on success.
 int  tcp_close(int id);
 
+// Send bytes on an ESTABLISHED conn. Returns bytes accepted into the send buffer
+// (may be less than `len` if the send window is congested).
+int  tcp_send(int id, const uint8_t* data, uint16_t len);
+
+// Drain up to `max` bytes from the conn's receive buffer. Returns bytes copied.
+// Returns 0 if no data is ready, -1 on bad id.
+int  tcp_recv(int id, uint8_t* out, uint16_t max);
+
 // State accessor for the given conn id. Returns TCP_CLOSED for invalid id.
 int  tcp_state(int id);
 

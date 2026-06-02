@@ -8,6 +8,8 @@
 #define TCP_PROTO      6
 #define TCP_MSS        536
 #define SYN_RETRY_MAX  3
+#define TCP_BUF_SIZE   1024
+#define TCP_DATA_RTO_MS 1000
 
 #define TCP_FIN  0x01
 #define TCP_SYN  0x02
@@ -30,12 +32,23 @@ typedef struct {
 static tcp_tcb_t tcbs[TCB_COUNT];
 static uint16_t  next_eph_port = 32768;
 
+// Per-TCB linear buffers. snd_buf holds outstanding (unacked) data starting at
+// sequence snd_una; rcv_buf holds bytes received in order but not yet drained.
+static uint8_t   snd_buf[TCB_COUNT][TCP_BUF_SIZE];
+static uint16_t  snd_len[TCB_COUNT];
+static uint64_t  snd_oldest_ms[TCB_COUNT];
+static uint8_t   rcv_buf[TCB_COUNT][TCP_BUF_SIZE];
+static uint16_t  rcv_len[TCB_COUNT];
+
 void tcp_init(void) {
     for (int i = 0; i < TCB_COUNT; i++) {
         tcbs[i].state       = TCP_CLOSED;
         tcbs[i].active      = 0;
         tcbs[i].is_listener = 0;
         tcbs[i].accepted    = 0;
+        snd_len[i] = 0;
+        rcv_len[i] = 0;
+        snd_oldest_ms[i] = 0;
     }
 }
 
@@ -64,6 +77,9 @@ int tcp_listen(uint16_t local_port) {
     t->retries = 0;
     t->syn_sent_at_ms = 0;
     t->active = 1;
+    snd_len[id] = 0;
+    rcv_len[id] = 0;
+    snd_oldest_ms[id] = 0;
     return id;
 }
 
@@ -78,6 +94,68 @@ int tcp_accept(uint16_t local_port) {
         return i;
     }
     return -1;
+}
+
+static int build_and_send_data(const tcp_tcb_t* t, uint8_t flags,
+                               uint32_t seq, uint32_t ack,
+                               const uint8_t* data, uint16_t dlen);
+
+int tcp_send(int id, const uint8_t* data, uint16_t len) {
+    if (id < 0 || id >= TCB_COUNT) return -1;
+    tcp_tcb_t* t = &tcbs[id];
+    if (!t->active || t->state != TCP_ESTABLISHED) return -1;
+    uint16_t free_space = TCP_BUF_SIZE - snd_len[id];
+    if (len > free_space) len = free_space;
+    if (len == 0) return 0;
+
+    // Append to snd_buf.
+    for (uint16_t i = 0; i < len; i++) snd_buf[id][snd_len[id] + i] = data[i];
+    uint16_t off_in_buf = snd_len[id];      // where the new bytes start
+    snd_len[id] += len;
+    if (snd_oldest_ms[id] == 0) snd_oldest_ms[id] = timer_uptime_ms();
+
+    // Transmit the new bytes immediately, MSS at a time.
+    uint16_t emitted = 0;
+    while (emitted < len) {
+        uint16_t chunk = len - emitted;
+        if (chunk > TCP_MSS) chunk = TCP_MSS;
+        build_and_send_data(t, TCP_ACK | TCP_PSH,
+                            t->snd_nxt, t->rcv_nxt,
+                            &snd_buf[id][off_in_buf + emitted], chunk);
+        t->snd_nxt += chunk;
+        emitted    += chunk;
+    }
+    return len;
+}
+
+int tcp_recv(int id, uint8_t* out, uint16_t max) {
+    if (id < 0 || id >= TCB_COUNT) return -1;
+    if (!tcbs[id].active) return -1;
+    uint16_t n = rcv_len[id];
+    if (n > max) n = max;
+    if (n == 0) return 0;
+    for (uint16_t i = 0; i < n; i++) out[i] = rcv_buf[id][i];
+    // Shift remainder forward.
+    for (uint16_t i = 0; i < rcv_len[id] - n; i++) rcv_buf[id][i] = rcv_buf[id][n + i];
+    rcv_len[id] -= n;
+    return n;
+}
+
+// Called from tcp_input when a peer ACKs new bytes.
+static void slide_snd_window(int id, uint32_t acked) {
+    if (acked == 0 || acked > snd_len[id]) {
+        // Nothing acknowledged, or peer over-ACKed (should not happen with strict RFC)
+        if (acked > snd_len[id]) acked = snd_len[id];
+        else return;
+    }
+    for (uint16_t i = 0; i < snd_len[id] - acked; i++) snd_buf[id][i] = snd_buf[id][acked + i];
+    snd_len[id] -= acked;
+    if (snd_len[id] == 0) snd_oldest_ms[id] = 0;
+    else                   snd_oldest_ms[id] = timer_uptime_ms();
+}
+
+static int tcb_index(const tcp_tcb_t* t) {
+    return (int)(t - tcbs);
 }
 
 static int find_listener(uint16_t local_port) {
@@ -121,6 +199,55 @@ uint16_t tcp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
 
     while (sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
     return (uint16_t)(~sum);
+}
+
+static int build_and_send_data(const tcp_tcb_t* t, uint8_t flags,
+                               uint32_t seq, uint32_t ack,
+                               const uint8_t* data, uint16_t dlen) {
+    uint8_t frame[14 + 20 + 20 + TCP_MSS];
+    if (dlen > TCP_MSS) dlen = TCP_MSS;
+    for (uint32_t i = 0; i < 14 + 20 + 20; i++) frame[i] = 0;
+
+    uint8_t dst_mac[6];
+    if (!arp_resolve(t->remote_ip, 500, dst_mac)) {
+        for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;
+    }
+
+    eth_header_t* eh = (eth_header_t*) frame;
+    for (int i = 0; i < 6; i++) { eh->dst[i] = dst_mac[i]; eh->src[i] = net_mac()[i]; }
+    eh->ethertype = htons(ETHERTYPE_IPV4);
+
+    ipv4_header_t* ip = (ipv4_header_t*)(frame + 14);
+    ip->ver_ihl    = 0x45;
+    ip->tos        = 0;
+    ip->total_len  = htons(20 + 20 + dlen);
+    ip->id         = htons(1);
+    ip->flags_frag = 0;
+    ip->ttl        = 64;
+    ip->protocol   = TCP_PROTO;
+    for (int i = 0; i < 4; i++) ip->src[i] = t->local_ip[i];
+    for (int i = 0; i < 4; i++) ip->dst[i] = t->remote_ip[i];
+    ip->checksum   = 0;
+    ip->checksum   = htons(net_checksum(ip, 20));
+
+    tcp_header_t* th = (tcp_header_t*)(frame + 14 + 20);
+    th->src_port = htons(t->local_port);
+    th->dst_port = htons(t->remote_port);
+    th->seq      = htonl(seq);
+    th->ack      = htonl(ack);
+    th->data_off = (5 << 4);
+    th->flags    = flags;
+    th->window   = htons(TCP_BUF_SIZE);
+    th->checksum = 0;
+    th->urgent   = 0;
+
+    uint8_t* payload = frame + 14 + 20 + 20;
+    for (uint16_t i = 0; i < dlen; i++) payload[i] = data[i];
+
+    uint16_t cs = tcp_checksum(t->local_ip, t->remote_ip, (const uint8_t*)th, 20 + dlen);
+    th->checksum = htons(cs);
+
+    return rtl8139_send(frame, 14 + 20 + 20 + dlen);
 }
 
 static int build_and_send(const tcp_tcb_t* t, uint8_t flags,
@@ -210,6 +337,9 @@ int tcp_connect(const uint8_t dst_ip[4], uint16_t dst_port) {
     t->active      = 1;
     t->is_listener = 0;
     t->accepted    = 0;
+    snd_len[slot] = 0;
+    rcv_len[slot] = 0;
+    snd_oldest_ms[slot] = 0;
 
     int sent = build_and_send(t, TCP_SYN, t->snd_nxt, 0);
     t->snd_nxt += 1;
@@ -296,6 +426,9 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
             c->syn_sent_at_ms = timer_uptime_ms();
             c->active      = 1;
             c->state       = TCP_SYN_RECEIVED;
+            snd_len[child] = 0;
+            rcv_len[child] = 0;
+            snd_oldest_ms[child] = 0;
             build_and_send(c, TCP_SYN | TCP_ACK, c->snd_nxt, c->rcv_nxt);
             c->snd_nxt += 1;
             return 1;
@@ -342,14 +475,38 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
         }
         break;
 
-    case TCP_ESTABLISHED:
-        if (flags & TCP_ACK) t->snd_una = seg_ack;
+    case TCP_ESTABLISHED: {
+        int id = tcb_index(t);
+        if (flags & TCP_ACK) {
+            uint32_t newly_acked = seg_ack - t->snd_una;
+            if (newly_acked > 0 && newly_acked <= snd_len[id]) {
+                slide_snd_window(id, newly_acked);
+                t->snd_una = seg_ack;
+            }
+        }
+        // Inbound data payload (TCP options not parsed; data_off accounts for them)
+        if (payload > 0) {
+            const uint8_t* pdata = (const uint8_t*)th + hdr_len;
+            if (seg_seq == t->rcv_nxt) {
+                uint16_t free_space = TCP_BUF_SIZE - rcv_len[id];
+                uint16_t to_copy = payload;
+                if (to_copy > free_space) to_copy = free_space;
+                for (uint16_t i = 0; i < to_copy; i++) rcv_buf[id][rcv_len[id] + i] = pdata[i];
+                rcv_len[id] += to_copy;
+                t->rcv_nxt  += to_copy;
+                build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
+            } else {
+                // Out of order — duplicate ACK
+                build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
+            }
+        }
         if (flags & TCP_FIN) {
-            t->rcv_nxt = seg_seq + 1;
+            t->rcv_nxt = seg_seq + payload + 1;
             build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             t->state = TCP_CLOSE_WAIT;
         }
         break;
+    }
 
     case TCP_FIN_WAIT_1:
         if (flags & TCP_ACK) t->snd_una = seg_ack;
@@ -407,6 +564,21 @@ void tcp_tick(void) {
             if (now - t->syn_sent_at_ms >= 2000) {
                 t->state  = TCP_CLOSED;
                 t->active = 0;
+            }
+        } else if (t->state == TCP_ESTABLISHED && snd_len[i] > 0) {
+            if (snd_oldest_ms[i] && now - snd_oldest_ms[i] >= TCP_DATA_RTO_MS) {
+                // Retransmit everything in the unacked window, MSS at a time.
+                uint32_t seq = t->snd_una;
+                uint16_t off = 0;
+                while (off < snd_len[i]) {
+                    uint16_t chunk = snd_len[i] - off;
+                    if (chunk > TCP_MSS) chunk = TCP_MSS;
+                    build_and_send_data(t, TCP_ACK | TCP_PSH, seq, t->rcv_nxt,
+                                        &snd_buf[i][off], chunk);
+                    seq += chunk;
+                    off += chunk;
+                }
+                snd_oldest_ms[i] = now;
             }
         }
     }
