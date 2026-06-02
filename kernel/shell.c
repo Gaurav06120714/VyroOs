@@ -1441,6 +1441,26 @@ static void cmd_tcprecv() {
 #include "x25519.h"
 #include "tls.h"
 #include "fat32.h"
+#include "lapic.h"
+
+static void cmd_lapic() {
+    print_color("\n  Local APIC\n", YELLOW_ON_BLACK);
+    if (!lapic_is_enabled()) {
+        print("  not initialised\n\n");
+        return;
+    }
+    uint64_t b = lapic_base();
+    print("  MMIO base : 0x");
+    for (int i = 60; i >= 0; i -= 4) {
+        int nib = (int)((b >> i) & 0xF);
+        print_char(nib < 10 ? ('0' + nib) : ('A' + nib - 10));
+    }
+    print_char('\n');
+    print("  APIC ID   : "); print_int(lapic_id()); print_char('\n');
+    print("  Version   : 0x"); print_hex(lapic_version()); print_char('\n');
+    print_char('\n');
+}
+
 
 static void cmd_fatls() {
     if (!fat32_is_mounted()) {
@@ -1919,6 +1939,7 @@ static const command_t commands[] = {
     { "tlshandshake", cmd_tlshandshake },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
+    { "lapic",     cmd_lapic     },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

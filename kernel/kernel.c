@@ -151,6 +151,10 @@ void kernel_main() {
     if (fat32_mount()) ok("FAT32 read-only driver (volume mounted)");
     else               ok("FAT32 read-only driver (no FAT32 volume found)");
 
+    extern int lapic_init();
+    if (lapic_init()) ok("Local APIC (enabled, MMIO mapped)");
+    else              ok("Local APIC (not available)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
