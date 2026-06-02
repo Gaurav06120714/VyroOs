@@ -48,7 +48,7 @@ void kernel_main() {
     screen_init();
 
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
-    print_color("  |    VYRO OS  v2.0a        64-bit    x86_64            |\n", CYAN_ON_BLACK);
+    print_color("  |    VYRO OS  v2.0.0       64-bit    x86_64            |\n", CYAN_ON_BLACK);
     print_color("  |    MIT License        $0 Budget                   |\n", CYAN_ON_BLACK);
     print_color("  +--------------------------------------------------+\n", CYAN_ON_BLACK);
     print_char('\n');
@@ -124,16 +124,20 @@ void kernel_main() {
     ok("Power management (ACPI off/reboot)");
 
     ok("Dev tools (dmesg/peek/prof)");
-
     ok("App framework (libvyro)");
-
-    ok("VyroBrowser (HTML renderer)");
-
-    ok("Shell (v1.0.0)");
+    ok("Compositor v2 (back-buffered, themed)");
+    ok("Widget toolkit (button/label/panel/toggle/list)");
+    ok("Desktop apps (12 registered)");
+    ok("Sockets API (TCP/UDP, RFC 793 state machine)");
+    ok("DHCP + DNS client");
+    ok("IPC (pipes, message queues, signals)");
+    ok("Shell (v2.0.0)");
 
     print_char('\n');
-    print_color("  *** VYRO OS 1.0 - feature complete ***\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    print_char('\n');
+    print_color("  *** VYRO OS 2.0 - desktop edition ***\n",
+                MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    print_color("  Type 'gui' for the graphical desktop.\n\n",
+                MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
 
     __asm__ volatile("sti");
 
