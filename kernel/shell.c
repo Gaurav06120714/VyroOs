@@ -24,6 +24,7 @@
 #include "html.h"
 #include "../drivers/rtl8139.h"
 #include "net_io.h"
+#include "arp.h"
 #include "dhcp_real.h"
 #include "dns_real.h"
 #include "../include/types.h"
@@ -1103,11 +1104,27 @@ static void cmd_realping() {
     print_color("\n  PING ", YELLOW_ON_BLACK);
     print_ip(dst_ip); print(" via RTL8139\n");
 
+    // Resolve destination MAC via ARP (gateway if dst is off-link — but for now
+    // we ARP the dst directly; QEMU SLIRP answers for both LAN and 10.0.2.2).
+    uint8_t dst_mac[6];
+    if (!arp_resolve(dst_ip, 1000, dst_mac)) {
+        print_color("  ARP failed (no reply in 1s) — falling back to broadcast MAC\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;
+    } else {
+        print("  ARP: ");
+        for (int i = 0; i < 6; i++) {
+            print_hex2(dst_mac[i]);
+            if (i < 5) print_char(':');
+        }
+        print_char('\n');
+    }
+
     static uint8_t frame[64];
     for (int i = 0; i < 64; i++) frame[i] = 0;
 
     eth_header_t* eh = (eth_header_t*) frame;
-    for (int i = 0; i < 6; i++) { eh->dst[i] = 0xFF; eh->src[i] = net_mac()[i]; }
+    for (int i = 0; i < 6; i++) { eh->dst[i] = dst_mac[i]; eh->src[i] = net_mac()[i]; }
     eh->ethertype = htons(ETHERTYPE_IPV4);
 
     ipv4_header_t* ip = (ipv4_header_t*)(frame + sizeof(eth_header_t));
@@ -1145,6 +1162,7 @@ static void cmd_realping() {
     while (timer_uptime_ms() < deadline) {
         netio_pkt_t in;
         while (net_io_poll(&in)) {
+            if (arp_input(in.data, in.len)) continue;       // ARP consumed it
             if (in.len < 14 + 20 + 8) continue;
             if (!(in.data[12] == 0x08 && in.data[13] == 0x00)) continue;
             const uint8_t* rip  = in.data + 14;
