@@ -1445,6 +1445,22 @@ static void cmd_tcprecv() {
 #include "compositor.h"
 #include "smp_boot.h"
 #include "http.h"
+#include "xhci.h"
+
+static void cmd_xhci() {
+    const xhci_info_t* x = xhci_info();
+    print_color("\n  xHCI USB 3.0 controller\n", YELLOW_ON_BLACK);
+    if (!x->present) { print("  not detected\n\n"); return; }
+    print("  MMIO base    : 0x"); print_hex((uint32_t)(x->mmio_base & 0xFFFFFFFF)); print_char('\n');
+    print("  CAPLENGTH    : "); print_int(x->caplength); print_char('\n');
+    print("  HCI version  : 0x"); print_hex(x->hci_version); print_char('\n');
+    print("  Slots (max)  : "); print_int(x->max_slots); print_char('\n');
+    print("  Ports (max)  : "); print_int(x->max_ports); print_char('\n');
+    print("  Interrupters : "); print_int(x->max_intrs); print_char('\n');
+    print("  Page size    : "); print_int(x->page_size_bytes); print_char('\n');
+    print_char('\n');
+}
+
 
 static void cmd_httpget() {
     if (argc < 4) {
@@ -2078,6 +2094,7 @@ static const command_t commands[] = {
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
     { "httpsget",  cmd_httpsget  },
+    { "xhci",      cmd_xhci      },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

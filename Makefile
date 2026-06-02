@@ -73,6 +73,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/bignum.o    \
        $(BUILD)/rsa.o       \
        $(BUILD)/http.o      \
+       $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
@@ -163,6 +164,8 @@ $(BUILD)/rsa.o: kernel/rsa.c
 	$(CC) $(CFLAGS) kernel/rsa.c -o $(BUILD)/rsa.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
+$(BUILD)/xhci.o: kernel/xhci.c
+	$(CC) $(CFLAGS) kernel/xhci.c -o $(BUILD)/xhci.o
 $(BUILD)/net_pump.o: kernel/net_pump.c
 	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 

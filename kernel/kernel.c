@@ -172,6 +172,10 @@ void kernel_main() {
     if (rsa_selftest()) ok("RSA bignum + PKCS1-v1_5 (modexp selftest passes)");
     else                ok("RSA bignum + PKCS1-v1_5 (SELFTEST FAILED)");
 
+    extern int xhci_init();
+    if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
+    else             ok("xHCI USB 3.0 controller (none detected)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
