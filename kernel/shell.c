@@ -25,6 +25,7 @@
 #include "../drivers/rtl8139.h"
 #include "net_io.h"
 #include "arp.h"
+#include "udp.h"
 #include "dhcp_real.h"
 #include "dns_real.h"
 #include "../include/types.h"
@@ -1264,6 +1265,21 @@ static void cmd_pci() {
     print_char('\n');
 }
 
+static int udp_listener_count;
+static void udp_print_listener(uint16_t port, void* user) {
+    (void)user;
+    print("  port "); print_int(port); print_char('\n');
+    udp_listener_count++;
+}
+
+static void cmd_udp() {
+    print_color("\n  UDP listeners\n", YELLOW_ON_BLACK);
+    udp_listener_count = 0;
+    udp_for_each_listener(udp_print_listener, 0);
+    if (!udp_listener_count) print("  (none)\n");
+    print_char('\n');
+}
+
 static void cmd_net() {
     print_color("\n  Vyro OS Network Configuration\n", YELLOW_ON_BLACK);
 
@@ -1484,6 +1500,7 @@ static const command_t commands[] = {
     { "realping",  cmd_realping},
     { "dhcp",      cmd_dhcp    },
     { "nslookup",  cmd_nslookup},
+    { "udp",       cmd_udp     },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

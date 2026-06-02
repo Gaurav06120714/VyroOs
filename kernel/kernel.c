@@ -105,6 +105,10 @@ void kernel_main() {
     net_io_init();
     ok("Live packet I/O (RX queue, UDP TX)");
 
+    extern void udp_init();
+    udp_init();
+    ok("UDP transport layer (port dispatch)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

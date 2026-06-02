@@ -54,6 +54,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/pci.o       \
        $(BUILD)/net.o       \
        $(BUILD)/arp.o       \
+       $(BUILD)/udp.o       \
+       $(BUILD)/net_pump.o  \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
@@ -108,6 +110,10 @@ $(BUILD)/dns_real.o: kernel/dns_real.c
 	$(CC) $(CFLAGS) kernel/dns_real.c -o $(BUILD)/dns_real.o
 $(BUILD)/arp.o: kernel/arp.c
 	$(CC) $(CFLAGS) kernel/arp.c -o $(BUILD)/arp.o
+$(BUILD)/udp.o: kernel/udp.c
+	$(CC) $(CFLAGS) kernel/udp.c -o $(BUILD)/udp.o
+$(BUILD)/net_pump.o: kernel/net_pump.c
+	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 
 $(BUILD)/ctxmenu.o: kernel/ctxmenu.c
 	$(CC) $(CFLAGS) kernel/ctxmenu.c -o $(BUILD)/ctxmenu.o

@@ -24,7 +24,19 @@ Modern desktop OS layer:
 
 ---
 
-## 🔭 v3.0 — making the network real
+## ✅ v3.0 (shipped) — Live RTL8139 networking
+
+Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
+
+## ✅ v3.1 (shipped) — UDP transport layer
+
+- `udp.c` / `udp.h` — port-dispatch UDP/IPv4 (RFC 768) with checksum
+- `net_pump.c` — main-loop RX dispatcher (ARP → UDP → ICMP/TCP hooks)
+- DHCP and DNS refactored on top of `udp_listen` + `net_pump_run`
+- `udp` shell command for listener visibility
+- Compile-time `VYRO_UDP_LEGACY` fallback retained one release
+
+## 🔭 v3.2+ — TCP and beyond
 
 | Area | v2.0 status | v3.0 goal |
 |------|-------------|-----------|
