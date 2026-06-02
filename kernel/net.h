@@ -68,5 +68,6 @@ uint16_t net_checksum(const void* data, uint32_t len);
 void net_init();
 const uint8_t* net_mac();
 const uint8_t* net_ip();
+void net_set_ip(const uint8_t ip[4]);
 
 #endif

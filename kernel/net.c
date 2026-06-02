@@ -16,6 +16,9 @@ void net_init() {
 
 const uint8_t* net_mac() { return my_mac; }
 const uint8_t* net_ip()  { return my_ip; }
+void net_set_ip(const uint8_t ip[4]) {
+    for (int i = 0; i < 4; i++) my_ip[i] = ip[i];
+}
 
 // ─────────────────────────────────────────────────
 // net_checksum: the standard internet checksum (RFC 1071)

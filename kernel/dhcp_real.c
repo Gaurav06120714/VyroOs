@@ -83,7 +83,10 @@ int dhcp_real_run(uint32_t timeout_ms) {
     while (timer_uptime_ms() < deadline) {
         netio_pkt_t in;
         while (net_io_poll(&in)) {
-            if (parse_dhcp_reply(&in, xid)) return 1;
+            if (parse_dhcp_reply(&in, xid)) {
+                net_set_ip(got_ip);
+                return 1;
+            }
         }
         __asm__ volatile("hlt");
     }

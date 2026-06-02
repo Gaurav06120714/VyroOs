@@ -1073,45 +1073,108 @@ static void cmd_usb() {
                 MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
 }
 
-// realping: build a real ICMP echo request and actually transmit it
+// Parse "a.b.c.d" into out[4]. Returns 1 on success.
+static int parse_ipv4(const char* s, uint8_t out[4]) {
+    int part = 0, val = 0, digits = 0;
+    for (const char* p = s; ; p++) {
+        if (*p >= '0' && *p <= '9') {
+            val = val * 10 + (*p - '0');
+            if (val > 255) return 0;
+            digits++;
+        } else if (*p == '.' || *p == '\0') {
+            if (!digits || part > 3) return 0;
+            out[part++] = (uint8_t)val;
+            if (*p == '\0') return part == 4;
+            val = 0; digits = 0;
+        } else return 0;
+    }
+}
+
+static void print_ip(const uint8_t* ip);
+
+// realping <ip>: send ICMP echo via RTL8139 and wait for a reply, print RTT.
 static void cmd_realping() {
-    print_color("\n  Sending real ICMP echo via RTL8139...\n", YELLOW_ON_BLACK);
+    uint8_t dst_ip[4] = { 10, 0, 2, 2 };   // default: QEMU SLIRP gateway
+    if (argc >= 2 && !parse_ipv4(argv[1], dst_ip)) {
+        print_color("\n  Usage: realping <a.b.c.d>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+
+    print_color("\n  PING ", YELLOW_ON_BLACK);
+    print_ip(dst_ip); print(" via RTL8139\n");
 
     static uint8_t frame[64];
     for (int i = 0; i < 64; i++) frame[i] = 0;
 
-    // Ethernet: dst=broadcast, src=my MAC, type=IPv4
     eth_header_t* eh = (eth_header_t*) frame;
     for (int i = 0; i < 6; i++) { eh->dst[i] = 0xFF; eh->src[i] = net_mac()[i]; }
     eh->ethertype = htons(ETHERTYPE_IPV4);
 
-    // IPv4
     ipv4_header_t* ip = (ipv4_header_t*)(frame + sizeof(eth_header_t));
-    ip->ver_ihl = 0x45;
+    ip->ver_ihl   = 0x45;
     ip->total_len = htons(sizeof(ipv4_header_t) + sizeof(icmp_header_t));
-    ip->ttl = 64; ip->protocol = IP_PROTO_ICMP;
+    ip->ttl       = 64;
+    ip->protocol  = IP_PROTO_ICMP;
     for (int i = 0; i < 4; i++) ip->src[i] = net_ip()[i];
-    ip->dst[0] = 10; ip->dst[1] = 0; ip->dst[2] = 2; ip->dst[3] = 2;   // gateway
-    ip->checksum = 0;
-    ip->checksum = htons(net_checksum(ip, sizeof(ipv4_header_t)));
+    for (int i = 0; i < 4; i++) ip->dst[i] = dst_ip[i];
+    ip->checksum  = 0;
+    ip->checksum  = htons(net_checksum(ip, sizeof(ipv4_header_t)));
 
-    // ICMP echo
+    static uint16_t ping_seq = 0;
+    uint16_t my_id  = 0xBEEF;
+    uint16_t my_seq = ++ping_seq;
+
     icmp_header_t* icmp = (icmp_header_t*)((uint8_t*)ip + sizeof(ipv4_header_t));
     icmp->type = ICMP_ECHO_REQUEST; icmp->code = 0;
-    icmp->id = htons(1); icmp->seq = htons(1);
+    icmp->id   = htons(my_id);
+    icmp->seq  = htons(my_seq);
     icmp->checksum = 0;
     icmp->checksum = htons(net_checksum(icmp, sizeof(icmp_header_t)));
 
-    int sent = rtl8139_send(frame, sizeof(eth_header_t) + sizeof(ipv4_header_t) + sizeof(icmp_header_t));
+    uint64_t t0 = timer_uptime_ms();
+    int total = sizeof(eth_header_t) + sizeof(ipv4_header_t) + sizeof(icmp_header_t);
+    int sent  = rtl8139_send(frame, (uint16_t)total);
     if (sent < 0) {
-        print_color("  ERROR: NIC not initialised (no RTL8139 found)\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print_color("  ERROR: NIC not initialised (no RTL8139 found)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
         return;
     }
-    print("  Transmitted ");  print_int(sent);  print(" bytes\n");
-    sleep_ms(100);
-    print("  NIC TX count: "); print_int(rtl8139_tx_count()); print("\n");
-    print("  NIC RX count: "); print_int(rtl8139_rx_count());
-    print_color(" (replies received)\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+
+    // Wait up to 2s for a matching ICMP echo reply.
+    uint64_t deadline = t0 + 2000;
+    while (timer_uptime_ms() < deadline) {
+        netio_pkt_t in;
+        while (net_io_poll(&in)) {
+            if (in.len < 14 + 20 + 8) continue;
+            if (!(in.data[12] == 0x08 && in.data[13] == 0x00)) continue;
+            const uint8_t* rip  = in.data + 14;
+            if ((rip[0] & 0xF0) != 0x40)        continue;          // IPv4
+            uint8_t ihl = (rip[0] & 0x0F) * 4;
+            if (rip[9] != IP_PROTO_ICMP)        continue;
+            // Source IP must match what we pinged
+            int src_match = 1;
+            for (int i = 0; i < 4; i++) if (rip[12+i] != dst_ip[i]) { src_match = 0; break; }
+            if (!src_match) continue;
+            const uint8_t* ricmp = rip + ihl;
+            if (ricmp[0] != 0) continue;                            // 0 = echo reply
+            uint16_t r_id  = ((uint16_t)ricmp[4] << 8) | ricmp[5];
+            uint16_t r_seq = ((uint16_t)ricmp[6] << 8) | ricmp[7];
+            if (r_id != my_id || r_seq != my_seq) continue;
+
+            uint64_t rtt = timer_uptime_ms() - t0;
+            print("  Reply from "); print_ip(dst_ip);
+            print(": seq="); print_int(my_seq);
+            print(" ttl=");  print_int(rip[8]);
+            print(" time="); print_int((int)rtt); print(" ms\n");
+            print_color("  1 packet transmitted, 1 received, 0% loss\n\n",
+                        MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+            return;
+        }
+        __asm__ volatile("hlt");
+    }
+    print_color("  Request timed out (2s)\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    print("  TX/RX: "); print_int(net_io_tx_count()); print(" / ");
+    print_int(net_io_rx_count()); print("\n\n");
 }
 
 static void print_ip(const uint8_t* ip) {
