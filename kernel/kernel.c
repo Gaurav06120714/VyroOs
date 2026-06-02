@@ -125,6 +125,18 @@ void kernel_main() {
     else
         ok("X.509 certificate parser (SELFTEST FAILED)");
 
+    extern int hkdf_selftest();
+    if (hkdf_selftest())
+        ok("HMAC-SHA256 + HKDF (RFC 4231 / 5869 vectors pass)");
+    else
+        ok("HMAC-SHA256 + HKDF (SELFTEST FAILED)");
+
+    extern int x25519_selftest();
+    if (x25519_selftest())
+        ok("X25519 ECDH (RFC 7748 vectors pass)");
+    else
+        ok("X25519 ECDH (SELFTEST FAILED)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.8
-**Last update:** Phase v3.8 (X.509 Certificate Parser)
+**Current release:** v3.9
+**Last update:** Phase v3.9 (X25519 + HMAC/HKDF + TLS Key Schedule)
 
 ## Subsystem matrix
 
@@ -28,8 +28,11 @@
 | Networking — TCP congestion window | shipped (v3.6) | cwnd/ssthresh, slow start, CA, cwnd-throttled emit |
 | Networking — ChaCha20-Poly1305 AEAD | **shipped (v3.7)** | RFC 8439, host-verified selftest at boot |
 | Networking — X.509 parsing | **shipped (v3.8)** | DER reader, CN/SAN/validity/alg extraction, no verification |
-| Networking — TLS 1.3 handshake | future | v3.9 |
-| Networking — HTTPS client | future | v3.10 |
+| Crypto — HMAC/HKDF + TLS KDF | **shipped (v3.9)** | RFC 2104/5869, TLS 1.3 Expand-Label / Derive-Secret |
+| Crypto — X25519 ECDH | **shipped (v3.9)** | RFC 7748, 51-bit-limb field arithmetic, KAT-verified |
+| Networking — TLS 1.3 record layer + handshake | next | v3.10 |
+| Networking — server cert verification | future | v3.11 |
+| Networking — HTTPS client | future | v3.12 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -55,4 +58,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.9 — TLS 1.3 handshake**: ClientHello / ServerHello / EncryptedExtensions / Certificate (parsed via v3.8) / Finished. Key schedule from RFC 8446 §7, X25519 ECDHE.
+Next phase: **v3.10 — TLS 1.3 record layer + ClientHello/ServerHello + key derivation (trust-on-first-use, no signature verification yet — that's v3.11).**

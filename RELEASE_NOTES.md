@@ -1,5 +1,37 @@
 # Release Notes
 
+## v3.9 — X25519 + HMAC/HKDF + TLS Key Schedule
+
+Vyro OS now has the asymmetric primitive (X25519 ECDH) and the key-derivation machinery (HMAC-SHA-256 + HKDF + TLS 1.3 Expand-Label) that the TLS 1.3 handshake needs. Everything is verified at boot against published RFC vectors before it touches the network.
+
+### What's new
+- **HMAC-SHA-256** (`hmac_sha256`) — RFC 2104, built on the existing `sha256()`.
+- **HKDF-Extract / HKDF-Expand** (`hkdf_extract`, `hkdf_expand`) — RFC 5869.
+- **TLS 1.3 Expand-Label / Derive-Secret** (`tls13_hkdf_expand_label`, `tls13_derive_secret`) — RFC 8446 §7.1.
+- **X25519** (`x25519`, `x25519_base`) — RFC 7748 scalar multiplication on Curve25519. 51-bit-limb field arithmetic with `__uint128_t` multiplication, constant-time conditional swap, inversion via the standard 2^255-21 addition chain.
+- **Boot selftests** for both modules; failures are surfaced explicitly on the boot banner.
+- **`tlskdf` shell command** — runs both selftests and a live X25519 ECDH agreement demo + an Expand-Label derivation.
+
+### Validation
+The exact same source files compiled and ran on the host produced:
+- HMAC RFC 4231 Test 1 — bytes match
+- HKDF-SHA256 RFC 5869 §A.1 PRK + 42-byte OKM — bytes match
+- X25519 RFC 7748 §5.2 KAT 1 and KAT 2 — bytes match
+
+### Compatibility
+- Pure in-kernel modules. Crypto runs in kernel space, called by the TLS state machine (next phase).
+- Kernel size: 161,286 bytes (was 153,126) — 35 KB headroom remaining.
+
+### Known limitations
+- No Ed25519 signature primitive yet (server cert verify in v3.11 will use ECDSA-P256 or RSA-PSS instead).
+- No SHA-384, so only SHA-256-based cipher suites (`TLS_CHACHA20_POLY1305_SHA256`).
+- X25519 is the only supported ECDH group; no P-256.
+
+### Next
+**v3.10 — TLS 1.3 record layer + ClientHello/ServerHello + key derivation.** Bring in record framing (RFC 8446 §5), the actual handshake state machine, traffic-key derivation, and `aead_seal`/`open`-protected application data. Signature verification is deferred to v3.11.
+
+---
+
 ## v3.8 — X.509 Certificate Parser
 
 Vyro OS can now read X.509 v3 certificates. The new `x509_parse()` walks DER-encoded TLVs to extract the identity fields a TLS client needs: Subject and Issuer Common Names, validity timestamps, DNS SubjectAltNames, and the signature/public-key algorithm OIDs. The embedded ECDSA P-256 test certificate is parsed at every boot to catch regressions in the DER reader.

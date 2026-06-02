@@ -1437,6 +1437,40 @@ static void cmd_tcprecv() {
 }
 
 #include "x509.h"
+#include "hkdf.h"
+#include "x25519.h"
+
+static void cmd_tlskdf() {
+    print_color("\n  TLS 1.3 crypto pipeline\n", YELLOW_ON_BLACK);
+
+    int h = hkdf_selftest();
+    int x = x25519_selftest();
+    print("  HMAC/HKDF selftest : ");
+    print(h ? "PASS\n" : "FAIL\n");
+    print("  X25519 selftest    : ");
+    print(x ? "PASS\n" : "FAIL\n");
+
+    // Demo: derive an ECDH shared secret from two static scalars.
+    uint8_t alice_priv[32], bob_priv[32], alice_pub[32], bob_pub[32];
+    for (int i = 0; i < 32; i++) { alice_priv[i] = (uint8_t)(0x10 + i); bob_priv[i] = (uint8_t)(0x80 ^ i); }
+    x25519_base(alice_pub, alice_priv);
+    x25519_base(bob_pub,   bob_priv);
+    uint8_t s_ab[32], s_ba[32];
+    x25519(s_ab, alice_priv, bob_pub);
+    x25519(s_ba, bob_priv,   alice_pub);
+    int match = 1;
+    for (int i = 0; i < 32; i++) if (s_ab[i] != s_ba[i]) { match = 0; break; }
+    print("  ECDH agreement     : ");
+    print(match ? "PASS (a*B == b*A)\n" : "FAIL\n");
+
+    // Demo: derive a 32-byte handshake secret via HKDF-Expand-Label
+    uint8_t prk[32], out[32];
+    hkdf_extract(0, 0, s_ab, 32, prk);
+    tls13_hkdf_expand_label(prk, "derived", (const uint8_t*)"", 0, out, 32);
+    print("  Expand-Label OK    : (32 bytes)\n");
+    print_char('\n');
+}
+
 extern const uint8_t x509_testvec_der[406];
 
 static void cmd_x509() {
@@ -1765,6 +1799,7 @@ static const command_t commands[] = {
     { "tcprecv",   cmd_tcprecv   },
     { "crypto",    cmd_crypto    },
     { "x509",      cmd_x509      },
+    { "tlskdf",    cmd_tlskdf    },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

@@ -28,6 +28,13 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.9 (shipped) — X25519 + HMAC/HKDF + TLS key schedule
+
+- `kernel/hkdf.c` — HMAC-SHA-256, HKDF-Extract/Expand, TLS 1.3 Expand-Label, Derive-Secret
+- `kernel/x25519.c` — RFC 7748 scalar mult, 51-bit limbs, full Montgomery ladder
+- Boot selftests pass RFC 4231 / 5869 / 7748 vectors
+- `tlskdf` shell command (selftest + ECDH demo + Expand-Label)
+
 ## ✅ v3.8 (shipped) — X.509 certificate parser
 
 - `kernel/x509.c` — DER reader + X.509 v3 walker

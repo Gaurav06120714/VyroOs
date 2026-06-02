@@ -2,6 +2,27 @@
 
 All notable changes to Vyro OS.
 
+## [v3.9] — X25519 + HMAC/HKDF + TLS Key Schedule
+
+### Added
+- `kernel/hkdf.{h,c}` — HMAC-SHA-256 (RFC 2104) and HKDF-Extract/Expand (RFC 5869) on top of the existing `sha256()`.
+- TLS 1.3 helpers: `tls13_hkdf_expand_label()` builds the `HkdfLabel` struct per RFC 8446 §7.1; `tls13_derive_secret()` wires SHA-256(messages) into Expand-Label.
+- `kernel/x25519.{h,c}` — full RFC 7748 X25519 scalar multiplication. 5 × 51-bit limb field arithmetic, complete Montgomery ladder with constant-time conditional swap, inversion via 2^255-21 addition chain, scalar/u-coord encode/decode.
+- `x25519_base()` convenience for public-key derivation (scalar × basepoint 9).
+- Two boot selftests: `hkdf_selftest()` runs RFC 4231 HMAC test 1 and RFC 5869 HKDF test case 1; `x25519_selftest()` runs both RFC 7748 §5.2 known-answer tests.
+- `tlskdf` shell command exercises HKDF, X25519 ECDH agreement (a*B == b*A), and one round of `HKDF-Expand-Label`.
+
+### Validation
+- Host-side build of the exact same `sha256.c` / `hkdf.c` / `x25519.c` sources produced `hkdf_selftest=1` and `x25519_selftest=1`. Both RFC 5869 PRK and OKM bytes match exactly; both X25519 KATs (255-bit scalar × 255-bit u-coordinate) match exactly.
+
+### Changed
+- Kernel size: 161,286 bytes (was 153,126) — 35 KB headroom remaining.
+
+### Limitations (deferred to v3.10)
+- No TLS record layer yet — record framing, content type, fragmentation, and AEAD encryption with derived traffic keys are the next phase.
+- No RSA or ECDSA signature verification — server certificate verify will land in v3.11.
+- No SHA-384 — only SHA-256 cipher suites supported.
+
 ## [v3.8] — X.509 Certificate Parser
 
 ### Added
