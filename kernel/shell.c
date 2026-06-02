@@ -1444,6 +1444,49 @@ static void cmd_tcprecv() {
 #include "lapic.h"
 #include "compositor.h"
 #include "smp_boot.h"
+#include "http.h"
+
+static void cmd_httpget() {
+    if (argc < 4) {
+        print_color("\n  Usage: httpget <ip> <port> <host> [path]\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint8_t ip[4];
+    int port_int;
+    if (!parse_ipv4(argv[1], ip) || !parse_int_safe(argv[2], &port_int)) {
+        print_color("\n  Bad ip or port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const char* host = argv[3];
+    const char* path = (argc >= 5) ? argv[4] : "/";
+
+    print_color("\n  GET ", YELLOW_ON_BLACK);
+    print(host); print(path); print("\n");
+    static uint8_t resp[4096];
+    int n = http_get(ip, (uint16_t)port_int, host, path, resp, sizeof(resp) - 1, 8000);
+    if (n <= 0) {
+        print_color("  http_get failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    resp[n] = 0;
+    // Print up to first 800 bytes
+    int show = n < 800 ? n : 800;
+    for (int i = 0; i < show; i++) print_char((char)resp[i]);
+    if (n > show) { print("\n... ("); print_int(n - show); print(" more bytes)\n"); }
+    print_color("\n  -- ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    print_int(n); print(" bytes received --\n\n");
+}
+
+static void cmd_httpsget() {
+    print_color("\n  HTTPS GET: TLS application-data send/recv is wired in a future\n"
+                "  phase. The TLS handshake (v3.11) completes through server\n"
+                "  Finished MAC verification, but client Finished + application\n"
+                "  traffic key derivation are not yet implemented. Use httpget\n"
+                "  for plaintext HTTP, or tlshandshake to exercise the partial TLS path.\n\n",
+                MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+}
+
 
 static void cmd_smp() {
     print_color("\n  SMP / AP bring-up\n", YELLOW_ON_BLACK);
@@ -2033,6 +2076,8 @@ static const command_t commands[] = {
     { "lapic",     cmd_lapic     },
     { "glass",     cmd_glass     },
     { "smp",       cmd_smp       },
+    { "httpget",   cmd_httpget   },
+    { "httpsget",  cmd_httpsget  },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },
