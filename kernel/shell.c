@@ -1440,6 +1440,48 @@ static void cmd_tcprecv() {
 #include "hkdf.h"
 #include "x25519.h"
 #include "tls.h"
+#include "fat32.h"
+
+static void cmd_fatls() {
+    if (!fat32_is_mounted()) {
+        print_color("\n  No FAT32 volume mounted.\n  (Format the secondary disk in QEMU with mkfs.fat -F 32 to use this.)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    fat32_dirent_t es[32];
+    int n = fat32_list_root(es, 32);
+    print_color("\n  FAT32 root directory\n", YELLOW_ON_BLACK);
+    for (int i = 0; i < n; i++) {
+        print("  ");
+        if (es[i].attr & 0x10) print_color("[DIR] ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+        else                   print("      ");
+        print(es[i].name);
+        print("  ");
+        print_int(es[i].size);
+        print(" bytes\n");
+    }
+    if (n == 0) print("  (empty)\n");
+    print_char('\n');
+}
+
+static void cmd_fatcat() {
+    if (argc < 2) {
+        print_color("\n  Usage: fatcat <NAME.EXT>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    static uint8_t buf[2048];
+    int n = fat32_read_file(argv[1], buf, sizeof(buf) - 1);
+    if (n < 0) {
+        print_color("\n  File not found\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    buf[n] = 0;
+    print_char('\n');
+    for (int i = 0; i < n; i++) print_char((char)buf[i]);
+    print_color("\n  -- ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    print_int(n); print(" bytes --\n\n");
+}
+
 
 static void cmd_tlshandshake() {
     if (argc < 3) {
@@ -1875,6 +1917,8 @@ static const command_t commands[] = {
     { "tlskdf",    cmd_tlskdf    },
     { "tls",       cmd_tls       },
     { "tlshandshake", cmd_tlshandshake },
+    { "fatls",     cmd_fatls     },
+    { "fatcat",    cmd_fatcat    },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

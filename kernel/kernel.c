@@ -147,6 +147,10 @@ void kernel_main() {
     sched_init(20);
     ok("Preemptive scheduler (20ms quantum, PIT-driven)");
 
+    extern int fat32_mount();
+    if (fat32_mount()) ok("FAT32 read-only driver (volume mounted)");
+    else               ok("FAT32 read-only driver (no FAT32 volume found)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
