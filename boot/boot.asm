@@ -102,7 +102,7 @@ load_kernel:
     mov word [dap_seg],   0x1000    ; dest segment (0x1000:0 = 0x10000)
     mov word [dap_off],   0x0000
     mov dword [dap_lba],  1         ; start LBA (sector 1, after boot sector)
-    mov cx, 12                      ; 12 chunks * 16 = 192 sectors
+    mov cx, 24                      ; 24 chunks * 16 = 384 sectors = 192KB
 
 .read_chunk:
     push cx
