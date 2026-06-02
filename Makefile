@@ -94,7 +94,17 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/ipc.o       \
        $(BUILD)/widgets_panel.o \
        $(BUILD)/ctxmenu.o   \
-       $(BUILD)/rtl8139.o
+       $(BUILD)/rtl8139.o   \
+       $(BUILD)/net_io.o    \
+       $(BUILD)/dhcp_real.o \
+       $(BUILD)/dns_real.o
+
+$(BUILD)/net_io.o: kernel/net_io.c
+	$(CC) $(CFLAGS) kernel/net_io.c -o $(BUILD)/net_io.o
+$(BUILD)/dhcp_real.o: kernel/dhcp_real.c
+	$(CC) $(CFLAGS) kernel/dhcp_real.c -o $(BUILD)/dhcp_real.o
+$(BUILD)/dns_real.o: kernel/dns_real.c
+	$(CC) $(CFLAGS) kernel/dns_real.c -o $(BUILD)/dns_real.o
 
 $(BUILD)/ctxmenu.o: kernel/ctxmenu.c
 	$(CC) $(CFLAGS) kernel/ctxmenu.c -o $(BUILD)/ctxmenu.o

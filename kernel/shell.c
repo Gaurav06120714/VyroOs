@@ -23,6 +23,9 @@
 #include "klog.h"
 #include "html.h"
 #include "../drivers/rtl8139.h"
+#include "net_io.h"
+#include "dhcp_real.h"
+#include "dns_real.h"
 #include "../include/types.h"
 
 static const char* HOME_PAGE =
@@ -1111,6 +1114,51 @@ static void cmd_realping() {
     print_color(" (replies received)\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
 }
 
+static void print_ip(const uint8_t* ip) {
+    for (int i = 0; i < 4; i++) {
+        print_int(ip[i]);
+        if (i < 3) print_char('.');
+    }
+}
+
+static void cmd_dhcp() {
+    print_color("\n  Sending DHCPDISCOVER over RTL8139...\n", YELLOW_ON_BLACK);
+    if (dhcp_real_run(2000)) {
+        print_color("  DHCP success!\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print("  Offered IP : "); print_ip(dhcp_real_ip());  print_char('\n');
+        print("  Gateway    : "); print_ip(dhcp_real_gw());  print_char('\n');
+        print("  DNS server : "); print_ip(dhcp_real_dns()); print("\n\n");
+    } else {
+        print_color("  DHCP timeout (no OFFER received in 2s).\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print("  NIC TX count: "); print_int(net_io_tx_count()); print_char('\n');
+        print("  NIC RX count: "); print_int(net_io_rx_count()); print("\n\n");
+    }
+}
+
+static void cmd_nslookup() {
+    if (argc < 2) {
+        print_color("\n  Usage: nslookup <hostname>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    // Use DHCP-learned DNS if we have one; else QEMU default 10.0.2.3
+    uint8_t dns_ip[4] = { 10, 0, 2, 3 };
+    const uint8_t* learned = dhcp_real_dns();
+    int has = 0; for (int i = 0; i < 4; i++) if (learned[i]) has = 1;
+    if (has) for (int i = 0; i < 4; i++) dns_ip[i] = learned[i];
+
+    print_color("\n  Resolving '", YELLOW_ON_BLACK);
+    print(argv[1]); print("' via DNS server "); print_ip(dns_ip); print("...\n");
+    uint8_t out[4] = {0};
+    if (dns_real_resolve(argv[1], dns_ip, 2000, out)) {
+        print_color("  Resolved: ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print(argv[1]); print(" -> "); print_ip(out); print("\n\n");
+    } else {
+        print_color("  Timed out (no DNS response in 2s).\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print("  NIC TX/RX: "); print_int(net_io_tx_count()); print(" / ");
+        print_int(net_io_rx_count()); print("\n\n");
+    }
+}
+
 static void cmd_pci() {
     print_color("\n  PCI Devices\n", YELLOW_ON_BLACK);
     print_color("  BUS:SLOT  VENDOR:DEVICE  CLASS  DESC\n",
@@ -1353,6 +1401,8 @@ static const command_t commands[] = {
     { "net",       cmd_net     },
     { "ping",      cmd_ping    },
     { "realping",  cmd_realping},
+    { "dhcp",      cmd_dhcp    },
+    { "nslookup",  cmd_nslookup},
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

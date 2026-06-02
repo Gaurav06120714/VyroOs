@@ -101,6 +101,10 @@ void kernel_main() {
     net_init();
     ok("Network stack (Eth/ARP/IPv4/ICMP)");
 
+    extern void net_io_init();
+    net_io_init();
+    ok("Live packet I/O (RX queue, UDP TX)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
