@@ -55,4 +55,51 @@ void tls_derive_handshake_keys(const uint8_t shared_secret[32],
 // Selftest against RFC 8448 §3 (Simple 1-RTT Handshake) published bytes.
 int tls_selftest(void);
 
+// ─── TLS connection state machine (v3.11) ───
+enum tls_conn_state {
+    TLS_CS_INIT = 0,
+    TLS_CS_CH_SENT,
+    TLS_CS_SH_RECEIVED,
+    TLS_CS_FINISHED_OK,
+    TLS_CS_ERROR
+};
+
+#define TLS_TRANSCRIPT_MAX  8192
+#define TLS_RX_BUF_MAX     16384
+
+typedef struct {
+    int      tcp_id;
+    char     hostname[64];
+
+    uint8_t  client_priv[32];
+    uint8_t  client_pub[32];
+    uint8_t  client_random[32];
+    uint8_t  session_id[32];
+
+    // Transcript: raw bytes of every handshake message in order (no record header).
+    uint8_t  transcript[TLS_TRANSCRIPT_MAX];
+    uint32_t transcript_len;
+
+    // Inbound TCP byte buffer (TCP can deliver record-fragmented).
+    uint8_t  rx_buf[TLS_RX_BUF_MAX];
+    uint32_t rx_len;
+
+    // Derived after ServerHello.
+    tls_handshake_keys_t keys;
+    uint64_t server_seq;
+    uint8_t  saw_server_finished;
+
+    // Result of server-Finished MAC check.
+    uint8_t  finished_mac_ok;
+
+    uint8_t  state;
+} tls_ctx_t;
+
+// Run a full TLS 1.3 handshake on an already-ESTABLISHED TCP conn.
+// Returns 1 if we reached TLS_CS_FINISHED_OK with a valid server Finished MAC.
+int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
+                uint32_t timeout_ms);
+
+const char* tls_state_name(uint8_t s);
+
 #endif

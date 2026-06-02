@@ -1441,6 +1441,48 @@ static void cmd_tcprecv() {
 #include "x25519.h"
 #include "tls.h"
 
+static void cmd_tlshandshake() {
+    if (argc < 3) {
+        print_color("\n  Usage: tlshandshake <ip> <port> [hostname]\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint8_t ip[4];
+    int port_int;
+    if (!parse_ipv4(argv[1], ip) || !parse_int_safe(argv[2], &port_int)) {
+        print_color("\n  Bad ip or port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const char* hn = (argc >= 4) ? argv[3] : "vyro.test";
+
+    int id = tcp_connect(ip, (uint16_t)port_int);
+    if (id < 0) { print("  tcp_connect failed\n"); return; }
+    for (int i = 0; i < 50; i++) {
+        net_pump_run(100);
+        if (tcp_state(id) != TCP_SYN_SENT) break;
+    }
+    if (tcp_state(id) != TCP_ESTABLISHED) {
+        print_color("\n  TCP failed to connect\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+
+    static tls_ctx_t tctx;
+    print_color("\n  Running TLS 1.3 handshake to ", YELLOW_ON_BLACK);
+    print(hn); print("...\n");
+    int ok = tls_connect(&tctx, id, hn, 5000);
+    print("  State          : "); print(tls_state_name(tctx.state)); print_char('\n');
+    print("  Finished MAC   : ");
+    if (tctx.saw_server_finished) {
+        if (tctx.finished_mac_ok) print_color("VERIFIED\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                       print_color("MISMATCH\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    } else { print("(not received)\n"); }
+    print("  Transcript     : "); print_int(tctx.transcript_len); print(" bytes\n");
+    print("  Result         : ");
+    if (ok) print_color("HANDSHAKE COMPLETE\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    else    print_color("FAILED\n\n",             MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    tcp_close(id);
+}
+
 static void cmd_tls() {
     print_color("\n  TLS 1.3 primitives (RFC 8448 vectors)\n", YELLOW_ON_BLACK);
     if (tls_selftest()) {
@@ -1832,6 +1874,7 @@ static const command_t commands[] = {
     { "x509",      cmd_x509      },
     { "tlskdf",    cmd_tlskdf    },
     { "tls",       cmd_tls       },
+    { "tlshandshake", cmd_tlshandshake },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

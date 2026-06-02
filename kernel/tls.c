@@ -2,6 +2,10 @@
 #include "hkdf.h"
 #include "x25519.h"
 #include "sha256.h"
+#include "aead.h"
+#include "tcp.h"
+#include "net_pump.h"
+#include "../drivers/timer.h"
 
 static uint32_t mini_strlen(const char* s) {
     uint32_t n = 0; while (s && s[n]) n++; return n;
@@ -273,4 +277,203 @@ int tls_selftest(void) {
     if (!found) return 0;
 
     return 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TLS connect state machine (v3.11)
+// ─────────────────────────────────────────────────────────────────────
+
+static inline uint64_t rdtsc(void) {
+    uint32_t lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+static void rand_bytes(uint8_t* out, uint32_t n) {
+    static uint32_t ctr = 0;
+    while (n > 0) {
+        uint8_t in[24];
+        uint64_t a = timer_ticks();
+        uint64_t b = rdtsc();
+        uint64_t c = ((uint64_t)(ctr++) << 32) | timer_uptime_ms();
+        for (int i = 0; i < 8; i++) {
+            in[i]      = (uint8_t)(a >> (8 * i));
+            in[i + 8]  = (uint8_t)(b >> (8 * i));
+            in[i + 16] = (uint8_t)(c >> (8 * i));
+        }
+        uint8_t h[32];
+        sha256(in, 24, h);
+        uint32_t take = n < 32 ? n : 32;
+        for (uint32_t i = 0; i < take; i++) out[i] = h[i];
+        out += take; n -= take;
+    }
+}
+
+const char* tls_state_name(uint8_t s) {
+    switch (s) {
+    case TLS_CS_INIT:         return "INIT";
+    case TLS_CS_CH_SENT:      return "CH_SENT";
+    case TLS_CS_SH_RECEIVED:  return "SH_RECEIVED";
+    case TLS_CS_FINISHED_OK:  return "FINISHED_OK";
+    case TLS_CS_ERROR:        return "ERROR";
+    default:                  return "?";
+    }
+}
+
+static int decrypt_record(const uint8_t* record5, uint8_t* body, uint32_t body_len,
+                          const uint8_t key[32], const uint8_t iv[12], uint64_t seq) {
+    if (body_len < 16) return -1;
+    uint32_t ct_len = body_len - 16;
+    uint8_t nonce[12];
+    for (int i = 0; i < 12; i++) nonce[i] = iv[i];
+    for (int i = 0; i < 8;  i++) nonce[11 - i] ^= (uint8_t)(seq >> (8 * i));
+    static uint8_t plain[TLS_RX_BUF_MAX];
+    if (!aead_open(key, nonce, record5, 5, body, ct_len, body + ct_len, plain)) return -1;
+    for (uint32_t i = 0; i < ct_len; i++) body[i] = plain[i];
+    return (int)ct_len;
+}
+
+static int process_handshake_payload(tls_ctx_t* ctx, const uint8_t* inner, uint32_t n) {
+    uint32_t p = 0;
+    while (p + 4 <= n) {
+        uint8_t  ht = inner[p];
+        uint32_t hl = ((uint32_t)inner[p + 1] << 16) |
+                      ((uint32_t)inner[p + 2] <<  8) | (uint32_t)inner[p + 3];
+        if (p + 4 + hl > n) return 0;
+        const uint8_t* msg = inner + p;
+        uint32_t msg_total = 4 + hl;
+        if (ht == 20) {
+            uint8_t th[32];
+            sha256(ctx->transcript, ctx->transcript_len, th);
+            uint8_t finished_key[32];
+            tls13_hkdf_expand_label(ctx->keys.server_hs_traffic_secret, "finished",
+                                    (const uint8_t*)"", 0, finished_key, 32);
+            uint8_t expected[32];
+            hmac_sha256(finished_key, 32, th, 32, expected);
+            int ok = (hl == 32);
+            if (ok) {
+                uint8_t diff = 0;
+                for (int i = 0; i < 32; i++) diff |= expected[i] ^ msg[4 + i];
+                ok = (diff == 0);
+            }
+            ctx->finished_mac_ok     = (uint8_t)ok;
+            ctx->saw_server_finished = 1;
+            if (ctx->transcript_len + msg_total <= TLS_TRANSCRIPT_MAX) {
+                for (uint32_t i = 0; i < msg_total; i++)
+                    ctx->transcript[ctx->transcript_len + i] = msg[i];
+                ctx->transcript_len += msg_total;
+            }
+            return 1;
+        }
+        if (ctx->transcript_len + msg_total > TLS_TRANSCRIPT_MAX) return 0;
+        for (uint32_t i = 0; i < msg_total; i++)
+            ctx->transcript[ctx->transcript_len + i] = msg[i];
+        ctx->transcript_len += msg_total;
+        p += msg_total;
+    }
+    return 0;
+}
+
+static int process_one_record(tls_ctx_t* ctx) {
+    if (ctx->rx_len < 5) return 0;
+    uint8_t type = ctx->rx_buf[0];
+    uint16_t body_len = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
+    uint32_t total = 5u + body_len;
+    if (ctx->rx_len < total) return 0;
+    uint8_t header[5];
+    for (int i = 0; i < 5; i++) header[i] = ctx->rx_buf[i];
+    uint8_t* body = ctx->rx_buf + 5;
+    int consumed_ok = 1;
+    if (type == TLS_RECORD_HANDSHAKE && ctx->state == TLS_CS_CH_SENT) {
+        if (body_len < 4 || body[0] != TLS_HS_SERVER_HELLO) { consumed_ok = 0; goto done; }
+        uint32_t hs_len = ((uint32_t)body[1] << 16) | ((uint32_t)body[2] << 8) | body[3];
+        if (hs_len + 4 > body_len) { consumed_ok = 0; goto done; }
+        uint8_t server_pub[32];
+        if (!tls_parse_server_hello(body + 4, hs_len, server_pub)) { consumed_ok = 0; goto done; }
+        if (ctx->transcript_len + 4 + hs_len > TLS_TRANSCRIPT_MAX) { consumed_ok = 0; goto done; }
+        for (uint32_t i = 0; i < 4 + hs_len; i++)
+            ctx->transcript[ctx->transcript_len + i] = body[i];
+        ctx->transcript_len += 4 + hs_len;
+        uint8_t shared[32];
+        x25519(shared, ctx->client_priv, server_pub);
+        uint8_t th[32];
+        sha256(ctx->transcript, ctx->transcript_len, th);
+        tls_derive_handshake_keys(shared, th, &ctx->keys);
+        ctx->server_seq = 0;
+        ctx->state      = TLS_CS_SH_RECEIVED;
+    } else if (type == TLS_RECORD_CCS) {
+        // ignore in TLS 1.3
+    } else if (type == TLS_RECORD_APP_DATA && ctx->state == TLS_CS_SH_RECEIVED) {
+        int plen = decrypt_record(header, body, body_len,
+                                  ctx->keys.server_key, ctx->keys.server_iv,
+                                  ctx->server_seq);
+        if (plen < 0) { consumed_ok = 0; goto done; }
+        ctx->server_seq++;
+        int last = plen - 1;
+        while (last >= 0 && body[last] == 0) last--;
+        if (last < 0) goto done;
+        uint8_t inner_type = body[last];
+        uint32_t inner_len = (uint32_t)last;
+        if (inner_type == TLS_RECORD_HANDSHAKE) {
+            int got_finished = process_handshake_payload(ctx, body, inner_len);
+            if (got_finished) {
+                ctx->state = ctx->finished_mac_ok ? TLS_CS_FINISHED_OK : TLS_CS_ERROR;
+            }
+        }
+    } else if (type == TLS_RECORD_ALERT) {
+        ctx->state = TLS_CS_ERROR;
+        consumed_ok = 0;
+    }
+done:
+    if (!consumed_ok) ctx->state = TLS_CS_ERROR;
+    uint32_t remain = ctx->rx_len - total;
+    for (uint32_t i = 0; i < remain; i++) ctx->rx_buf[i] = ctx->rx_buf[total + i];
+    ctx->rx_len = remain;
+    return consumed_ok ? 1 : -1;
+}
+
+int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
+                uint32_t timeout_ms) {
+    for (uint32_t i = 0; i < sizeof(*ctx); i++) ((uint8_t*)ctx)[i] = 0;
+    ctx->tcp_id = tcp_id;
+    uint32_t hn = mini_strlen(hostname);
+    if (hn > sizeof(ctx->hostname) - 1) hn = sizeof(ctx->hostname) - 1;
+    for (uint32_t i = 0; i < hn; i++) ctx->hostname[i] = hostname[i];
+
+    rand_bytes(ctx->client_priv, 32);
+    rand_bytes(ctx->client_random, 32);
+    rand_bytes(ctx->session_id, 32);
+    x25519_base(ctx->client_pub, ctx->client_priv);
+
+    static uint8_t ch[1024];
+    int ch_total = tls_build_client_hello(ch, sizeof(ch),
+                                          ctx->client_random, ctx->session_id,
+                                          ctx->client_pub, hostname);
+    if (ch_total < 0) { ctx->state = TLS_CS_ERROR; return 0; }
+    uint32_t hs_total = (uint32_t)ch_total - 5;
+    if (hs_total > TLS_TRANSCRIPT_MAX) { ctx->state = TLS_CS_ERROR; return 0; }
+    for (uint32_t i = 0; i < hs_total; i++) ctx->transcript[i] = ch[5 + i];
+    ctx->transcript_len = hs_total;
+
+    int sent = tcp_send(tcp_id, ch, (uint16_t)ch_total);
+    if (sent != ch_total) { ctx->state = TLS_CS_ERROR; return 0; }
+    ctx->state = TLS_CS_CH_SENT;
+
+    uint64_t deadline = timer_uptime_ms() + timeout_ms;
+    while (timer_uptime_ms() < deadline &&
+           ctx->state != TLS_CS_FINISHED_OK &&
+           ctx->state != TLS_CS_ERROR) {
+        net_pump_run(50);
+        uint32_t free_space = TLS_RX_BUF_MAX - ctx->rx_len;
+        if (free_space > 0) {
+            int n = tcp_recv(tcp_id, ctx->rx_buf + ctx->rx_len, (uint16_t)free_space);
+            if (n > 0) ctx->rx_len += (uint32_t)n;
+        }
+        int progress = 1;
+        while (progress > 0 && ctx->state != TLS_CS_FINISHED_OK &&
+                              ctx->state != TLS_CS_ERROR) {
+            progress = process_one_record(ctx);
+        }
+    }
+    return ctx->state == TLS_CS_FINISHED_OK ? 1 : 0;
 }
