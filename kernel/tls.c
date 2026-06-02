@@ -5,6 +5,7 @@
 #include "aead.h"
 #include "tcp.h"
 #include "net_pump.h"
+#include "csprng.h"
 #include "../drivers/timer.h"
 
 static uint32_t mini_strlen(const char* s) {
