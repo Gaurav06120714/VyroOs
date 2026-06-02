@@ -1,6 +1,7 @@
 #include "timer.h"
 #include "pic.h"
 #include "../kernel/isr.h"
+#include "../kernel/sched.h"
 
 // Global tick counter — incremented on every IRQ0
 static volatile uint64_t tick_count = 0;
@@ -13,6 +14,7 @@ static uint32_t          timer_freq = TIMER_HZ;
 void timer_handler(registers_t* regs) {
     (void)regs;
     tick_count++;
+    sched_tick();
 }
 
 // ─────────────────────────────────────────────────

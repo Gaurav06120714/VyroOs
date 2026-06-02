@@ -143,6 +143,10 @@ void kernel_main() {
     else
         ok("TLS 1.3 primitives (SELFTEST FAILED)");
 
+    extern void sched_init(uint32_t);
+    sched_init(20);
+    ok("Preemptive scheduler (20ms quantum, PIT-driven)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
