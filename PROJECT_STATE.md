@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.7
-**Last update:** Phase v3.7 (ChaCha20-Poly1305 AEAD, RFC 8439)
+**Current release:** v3.8
+**Last update:** Phase v3.8 (X.509 Certificate Parser)
 
 ## Subsystem matrix
 
@@ -27,7 +27,7 @@
 | Networking — TCP reassembly / RTT / fast retx | shipped (v3.5) | 1-slot OoO, RFC 6298 RTO, 3-dupack fast retx |
 | Networking — TCP congestion window | shipped (v3.6) | cwnd/ssthresh, slow start, CA, cwnd-throttled emit |
 | Networking — ChaCha20-Poly1305 AEAD | **shipped (v3.7)** | RFC 8439, host-verified selftest at boot |
-| Networking — X.509 parsing | next | v3.8 |
+| Networking — X.509 parsing | **shipped (v3.8)** | DER reader, CN/SAN/validity/alg extraction, no verification |
 | Networking — TLS 1.3 handshake | future | v3.9 |
 | Networking — HTTPS client | future | v3.10 |
 | SMP | detection only | bring-up in SMP Phase 3 |
@@ -55,4 +55,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.8 — X.509 certificate parser** (DER reader, RDN/Subject/Issuer extraction, SignatureAlgorithm and SAN extension parsing — no chain validation yet).
+Next phase: **v3.9 — TLS 1.3 handshake**: ClientHello / ServerHello / EncryptedExtensions / Certificate (parsed via v3.8) / Finished. Key schedule from RFC 8446 §7, X25519 ECDHE.

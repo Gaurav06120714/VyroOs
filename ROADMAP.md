@@ -28,6 +28,14 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.8 (shipped) — X.509 certificate parser
+
+- `kernel/x509.c` — DER reader + X.509 v3 walker
+- Extracts Subject CN, Issuer CN, NotBefore/NotAfter, DNS SANs (≤8), sig alg, pkey alg
+- Recognizes 7 algorithm OIDs (RSA + ECDSA SHA-256/384/512)
+- Embedded ECDSA P-256 test cert, boot selftest, `x509` shell command
+- Host-verified against openssl-generated RSA and ECDSA certs
+
 ## ✅ v3.7 (shipped) — ChaCha20-Poly1305 AEAD
 
 - `chacha20.c` — RFC 8439 §2.4 stream cipher

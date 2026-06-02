@@ -1,5 +1,34 @@
 # Release Notes
 
+## v3.8 — X.509 Certificate Parser
+
+Vyro OS can now read X.509 v3 certificates. The new `x509_parse()` walks DER-encoded TLVs to extract the identity fields a TLS client needs: Subject and Issuer Common Names, validity timestamps, DNS SubjectAltNames, and the signature/public-key algorithm OIDs. The embedded ECDSA P-256 test certificate is parsed at every boot to catch regressions in the DER reader.
+
+### What's new
+- **`kernel/x509.c`** — DER reader (TLV with multi-byte length, constructed sequences, OPTIONAL fields, IMPLICIT tagging) plus an X.509 v3 walker.
+- **`x509_parse()`** populates an `x509_cert_t` with up to 8 DNS SANs.
+- **Algorithm OID recognition** for the seven SignatureAlgorithm/PublicKeyAlgorithm OIDs that TLS 1.3 will need.
+- **`x509_selftest()`** validates the embedded ECDSA P-256 certificate at boot.
+- **`x509` shell command** dumps the parsed test certificate.
+
+### Validation
+Same parser was built on the host and ran successfully against two openssl-generated certificates (RSA-2048 and ECDSA-P256), proving the DER reader handles both formats without modification.
+
+### Compatibility
+- Pure parser. No cryptographic verification, no chain building, no clock checks.
+- Kernel size: 153,126 bytes (was 147,270) — 42 KB headroom remaining.
+
+### Known limitations
+- Signature verification deferred to v3.9.
+- Chain building / trust anchors deferred.
+- Subject public key bytes are not extracted; only the algorithm OID is captured.
+- Time strings are kept as raw ASCII; no parsing into a date struct.
+
+### Next
+**v3.9 — TLS 1.3 handshake.** ClientHello → ServerHello → EncryptedExtensions → Certificate → Finished. X25519 ECDHE key share, HKDF key schedule per RFC 8446 §7. The X.509 parser, ChaCha20-Poly1305 AEAD, and TCP layer all converge here.
+
+---
+
 ## v3.7 — ChaCha20-Poly1305 AEAD
 
 Vyro OS now has the symmetric cryptography building block for TLS 1.3. The implementation follows RFC 8439 line by line: ChaCha20 (RFC 8439 §2.4), Poly1305 (§2.5, 26-bit-limb arithmetic), and the AEAD composition (§2.8). All three published RFC test vectors are validated at every boot.

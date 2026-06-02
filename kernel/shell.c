@@ -1436,6 +1436,29 @@ static void cmd_tcprecv() {
                       print_int(total); print(" bytes received --\n\n"); }
 }
 
+#include "x509.h"
+extern const uint8_t x509_testvec_der[406];
+
+static void cmd_x509() {
+    x509_cert_t c;
+    if (!x509_parse(x509_testvec_der, 406, &c)) {
+        print_color("\n  x509_parse FAILED\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  X.509 test certificate\n", YELLOW_ON_BLACK);
+    print("  Subject CN : "); print(c.subject_cn); print_char('\n');
+    print("  Issuer  CN : "); print(c.issuer_cn);  print_char('\n');
+    print("  Not before : "); print(c.not_before); print_char('\n');
+    print("  Not after  : "); print(c.not_after);  print_char('\n');
+    print("  Sig alg    : "); print(x509_sig_alg_name(c.sig_alg));   print_char('\n');
+    print("  PKey alg   : "); print(x509_pkey_alg_name(c.pkey_alg)); print_char('\n');
+    print("  SANs ("); print_int(c.san_count); print("):\n");
+    for (int i = 0; i < c.san_count; i++) {
+        print("    "); print(c.san[i]); print_char('\n');
+    }
+    print_char('\n');
+}
+
 extern int aead_selftest(void);
 static void cmd_crypto() {
     print_color("\n  Running ChaCha20-Poly1305 RFC 8439 vectors...\n", YELLOW_ON_BLACK);
@@ -1741,6 +1764,7 @@ static const command_t commands[] = {
     { "tcpsend",   cmd_tcpsend   },
     { "tcprecv",   cmd_tcprecv   },
     { "crypto",    cmd_crypto    },
+    { "x509",      cmd_x509      },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

@@ -2,6 +2,30 @@
 
 All notable changes to Vyro OS.
 
+## [v3.8] — X.509 Certificate Parser
+
+### Added
+- `kernel/x509.{h,c}` — minimal DER reader + X.509 v3 parser.
+- Extracts: Subject CN, Issuer CN, NotBefore, NotAfter (raw ASCII), DNS SANs (up to 8), signature algorithm enum, public-key algorithm enum.
+- Recognizes algorithm OIDs: `sha{256,384,512}WithRSAEncryption`, `ecdsa-with-SHA{256,384}`, `rsaEncryption`, `ecPublicKey`.
+- `kernel/x509_testvec.c` — embedded 406-byte ECDSA-P256 self-signed test certificate.
+- `x509_selftest()` parses the embedded cert at boot and verifies all extracted fields.
+- `x509` shell command — re-parses the embedded cert and displays the result.
+
+### Validation
+- Host-side build of the same `x509.c` source ran against an `openssl req -x509`-generated RSA cert: extracted CN, issuer CN, two SANs, sig_alg=SHA256_RSA, pkey_alg=RSA all match.
+- Same parser against an openssl-generated ECDSA P-256 cert: extracted CN, SAN, sig_alg=ECDSA_SHA256, pkey_alg=EC all match.
+- Both cert formats parse without modification.
+
+### Changed
+- Kernel size: 153,126 bytes (was 147,270) — 42 KB headroom remaining.
+
+### Limitations (deferred to v3.9)
+- No signature verification (`signatureValue` BIT STRING is skipped).
+- No chain building or trust-anchor handling.
+- No certificate revocation (CRL, OCSP) checks.
+- Public key bytes are not extracted from `SubjectPublicKeyInfo` — only the algorithm OID is recognized.
+
 ## [v3.7] — ChaCha20-Poly1305 AEAD (RFC 8439)
 
 ### Added

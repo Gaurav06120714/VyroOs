@@ -119,6 +119,12 @@ void kernel_main() {
     else
         ok("ChaCha20-Poly1305 AEAD (SELFTEST FAILED)");
 
+    extern int x509_selftest();
+    if (x509_selftest())
+        ok("X.509 certificate parser (test cert parses)");
+    else
+        ok("X.509 certificate parser (SELFTEST FAILED)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
