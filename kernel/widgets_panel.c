@@ -55,17 +55,50 @@ static void draw_ring(uint32_t cx, uint32_t cy, uint32_t r, uint32_t thickness,
     }
 }
 
-// Large 2x-scaled text
-static void big_text(uint32_t x, uint32_t y, const char* s, uint32_t color) {
-    for (int i = 0; s[i]; i++) {
-        // Draw glyph at 2x via two stacked copies (limited but readable)
-        for (int dy = 0; dy < 2; dy++)
-            for (int dx = 0; dx < 2; dx++)
-                comp_glyph(x + i * 16 + dx, y + dy, s[i], color, 0xFFFFFFFF == 0 ? color : color);
+// Crisper double-size glyph: render the bitmap doubled in both axes against a known bg
+static void big_glyph(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
+    uint8_t* font = (uint8_t*)0x80000;
+    uint8_t gi = (uint8_t)c;
+    for (int gy = 0; gy < 16; gy++) {
+        uint8_t row = font[gi * 16 + gy];
+        for (int gx = 0; gx < 8; gx++) {
+            uint32_t col = (row & (0x80 >> gx)) ? fg : bg;
+            comp_pixel(x + gx*2,     y + gy*2,     col);
+            comp_pixel(x + gx*2 + 1, y + gy*2,     col);
+            comp_pixel(x + gx*2,     y + gy*2 + 1, col);
+            comp_pixel(x + gx*2 + 1, y + gy*2 + 1, col);
+        }
     }
+}
+static void big_text(uint32_t x, uint32_t y, const char* s, uint32_t color, uint32_t bg) {
+    for (int i = 0; s[i]; i++) big_glyph(x + i * 18, y, s[i], color, bg);
+}
+// Triple-size for very big numbers
+static void huge_glyph(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
+    uint8_t* font = (uint8_t*)0x80000;
+    uint8_t gi = (uint8_t)c;
+    for (int gy = 0; gy < 16; gy++) {
+        uint8_t row = font[gi * 16 + gy];
+        for (int gx = 0; gx < 8; gx++) {
+            uint32_t col = (row & (0x80 >> gx)) ? fg : bg;
+            for (int dy = 0; dy < 3; dy++)
+                for (int dx = 0; dx < 3; dx++)
+                    comp_pixel(x + gx*3 + dx, y + gy*3 + dy, col);
+        }
+    }
+}
+static void huge_text(uint32_t x, uint32_t y, const char* s, uint32_t color, uint32_t bg) {
+    for (int i = 0; s[i]; i++) huge_glyph(x + i * 26, y, s[i], color, bg);
 }
 
 static void d2(char* b, int n) { b[0] = '0' + n/10; b[1] = '0' + n%10; }
+static int  int_to_str(uint64_t n, char* buf) {
+    if (n == 0) { buf[0] = '0'; buf[1] = 0; return 1; }
+    char rev[24]; int r = 0;
+    while (n) { rev[r++] = '0' + n%10; n /= 10; }
+    for (int i = 0; i < r; i++) buf[i] = rev[r-1-i];
+    buf[r] = 0; return r;
+}
 
 static const char* months[] = {"","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
 static const char* dow[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
@@ -83,75 +116,61 @@ static int day_of_week(int y, int m, int d) {
 static void widget_battery(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
+    uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
     uint32_t green = 0x60D070;
     uint32_t bg = t->is_dark ? 0x303848 : 0xE0E5EC;
 
-    uint32_t cx = x + 50, cy = y + h/2;
-    draw_ring(cx, cy, 30, 6, 100, green, bg);
-    // Center "100%" text
-    big_text(cx - 22, cy - 6, "100", t->text);
-    comp_text_bg_alpha(cx + 26, cy - 4, "%", t->text);
-
+    uint32_t cx = x + 46, cy = y + h/2;
+    draw_ring(cx, cy, 28, 6, 100, green, bg);
+    // Center "100" text with %
+    big_text(cx - 20, cy - 8, "100", t->text, bgc);
     // Label
-    comp_text_bg_alpha(x + 110, y + 16, "Battery", t->text);
-    comp_text_bg_alpha(x + 110, y + 38, "Full charge", t->text_dim);
+    comp_text_bg_alpha(x + 100, y + 18, "Battery", t->text);
+    big_text(x + 100, y + 36, "100%", green, bgc);
 }
 
 // ── Widget: Clock ──
 static void widget_clock(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
+    uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
     rtc_time_t rt; rtc_read(&rt);
     char clk[6]; d2(clk, rt.hour); clk[2] = ':'; d2(clk+3, rt.minute); clk[5] = 0;
-    // 3x size
-    int sx = x + w/2 - 36, sy = y + 18;
-    for (int i = 0; i < 5; i++) {
-        for (int dy = 0; dy < 3; dy++)
-            for (int dx = 0; dx < 3; dx++)
-                comp_glyph(sx + i * 16 + dx, sy + dy, clk[i], t->text, t->is_dark ? 0x202838 : 0xF0F2F8);
-    }
-    comp_text_bg_alpha(x + 12, y + h - 22, "Clock", t->text_dim);
+    int sx = x + w/2 - 65;
+    huge_text(sx, y + 14, clk, t->text, bgc);
+    comp_text_bg_alpha(x + 14, y + h - 22, "Clock", t->text_dim);
 }
 
 // ── Widget: Calendar ──
 static void widget_calendar(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
+    uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
     rtc_time_t rt; rtc_read(&rt);
 
-    // Day-of-week header
+    // Day-of-week header (red)
     int dw = day_of_week(rt.year, rt.month, rt.day);
     comp_text_bg_alpha(x + 14, y + 14, dow[dw], 0xFF6060);
     // Month
     const char* mo = (rt.month >= 1 && rt.month <= 12) ? months[rt.month] : "???";
-    comp_text_bg_alpha(x + 14, y + 32, mo, t->text_dim);
+    comp_text_bg_alpha(x + 14, y + 34, mo, t->text_dim);
 
-    // Day number — big
-    char buf[3]; d2(buf, rt.day); buf[2] = 0;
-    int sx = x + 14, sy = y + 52;
-    for (int i = 0; i < 2; i++) {
-        for (int dy = 0; dy < 4; dy++)
-            for (int dx = 0; dx < 4; dx++)
-                comp_glyph(sx + i * 22 + dx, sy + dy, buf[i], t->text, t->is_dark ? 0x202838 : 0xF0F2F8);
-    }
+    // Day number — huge
+    char buf[3];
+    if (rt.day >= 10) { d2(buf, rt.day); buf[2] = 0; }
+    else { buf[0] = '0' + rt.day; buf[1] = 0; }
+    huge_text(x + 14, y + 52, buf, t->text, bgc);
 }
 
 // ── Widget: Weather ──
 static void widget_weather(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
-    comp_text_bg_alpha(x + 14, y + 12, "Bhongir", t->text);
-    comp_text_bg_alpha(x + 14, y + 32, "Mostly Sunny", t->text_dim);
-    // Big temp
-    char temp[5] = "28";
-    int sx = x + 14, sy = y + 54;
-    for (int i = 0; i < 2; i++) {
-        for (int dy = 0; dy < 3; dy++)
-            for (int dx = 0; dx < 3; dx++)
-                comp_glyph(sx + i * 22 + dx, sy + dy, temp[i], t->text, t->is_dark ? 0x202838 : 0xF0F2F8);
-    }
-    comp_text_bg_alpha(sx + 50, sy + 6, "C", 0xFFC040);
-    // H/L
+    uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
+    comp_text_bg_alpha(x + 14, y + 14, "Bhongir", t->text);
+    comp_text_bg_alpha(x + 14, y + 34, "Mostly Sunny", t->text_dim);
+    huge_text(x + 14, y + 52, "28", t->text, bgc);
+    comp_text_bg_alpha(x + 62, y + 56, "C", 0xFFC040);
     comp_text_bg_alpha(x + 14, y + h - 22, "H:36 L:27", t->text_dim);
 }
 
@@ -159,26 +178,19 @@ static void widget_weather(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 static void widget_activity(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
-    comp_text_bg_alpha(x + 14, y + 12, "Activity", t->text);
+    uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
+    comp_text_bg_alpha(x + 14, y + 14, "Activity", t->text);
     uint64_t up_min = timer_uptime_seconds() / 60;
-    char buf[16]; int p = 0;
-    if (up_min == 0) buf[p++] = '0';
-    else { char rev[8]; int n = 0; uint64_t v = up_min;
-           while (v) { rev[n++] = '0' + v%10; v /= 10; }
-           while (n) buf[p++] = rev[--n]; }
-    buf[p++] = 'm'; buf[p] = 0;
-    // big
-    int sx = x + 14, sy = y + 30;
-    for (int i = 0; buf[i]; i++) {
-        for (int dy = 0; dy < 3; dy++)
-            for (int dx = 0; dx < 3; dx++)
-                comp_glyph(sx + i * 16 + dx, sy + dy, buf[i], 0xFFC040, t->is_dark ? 0x202838 : 0xF0F2F8);
-    }
-    // Bars graph
-    int gx = x + 14, gy = y + h - 36;
-    for (int b = 0; b < 12; b++) {
-        int bh = 8 + ((b * 17) % 24);
-        comp_rect(gx + b * 12, gy + (24 - bh), 8, bh, 0xFFC040);
+    if (up_min == 0) up_min = 1;
+    char buf[16];
+    int digits = int_to_str(up_min, buf);
+    huge_text(x + 14, y + 34, buf, 0xFFC040, bgc);
+    comp_text_bg_alpha(x + 14 + 26 * digits + 6, y + 60, "min", t->text_dim);
+    // Bars graph (last row)
+    int gx = x + 14, gy = y + h - 32;
+    for (int b = 0; b < 18; b++) {
+        int bh = 6 + ((b * 13 + 7) % 22);
+        comp_rect(gx + b * 11, gy + (22 - bh), 8, bh, 0xFFC040);
     }
 }
 

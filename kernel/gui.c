@@ -211,8 +211,9 @@ static void draw_notifications() {
     int row = 0;
     for (int i = 0; i < 8 && row < 4; i++) {
         if (!arr[i].alive) continue;
-        int nw = 320, nh = 56;
-        int nx = comp_width() - nw - 16;
+        int nw = 300, nh = 56;
+        // Place toasts to the LEFT of the widgets panel (320px wide on right)
+        int nx = comp_width() - 320 - nw - 16;
         int ny = TOPBAR_H + 12 + row * (nh + 8);
         comp_shadow(nx, ny, nw, nh, t->win_shadow);
         comp_rect(nx, ny, nw, nh, t->dock_bg);
@@ -271,9 +272,8 @@ void gui_run() {
     apps_register_all();
     launcher_set_callback(on_launch);
 
-    open_app("Files");
-    open_app("Clock");
-    notify_post("Vyro OS 2.0", "Desktop ready - click dock or Launchpad");
+    // Don't auto-open windows — let the user see the clean desktop with widgets.
+    notify_post("Welcome to Vyro OS 2.0", "Click any dock icon to launch an app");
 
     int dragging = -1, resizing = -1;
     int dox = 0, doy = 0;
