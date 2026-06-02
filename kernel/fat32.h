@@ -27,4 +27,14 @@ int fat32_list_root(fat32_dirent_t* out, int max);
 // Returns bytes read, or -1 on not found.
 int fat32_read_file(const char* name, uint8_t* out, uint32_t max_bytes);
 
+// Walk a `/`-separated path (e.g. "/dir/sub/file.txt") and fill *out with the
+// matching directory entry. Returns 1 on success.
+int fat32_path_lookup(const char* path, fat32_dirent_t* out);
+
+// List entries in any directory by its starting cluster.
+int fat32_list_cluster(uint32_t cluster, fat32_dirent_t* out, int max);
+
+// Create or overwrite a file in the root directory. Returns bytes written.
+int fat32_write_file(const char* name, const uint8_t* data, uint32_t len);
+
 #endif

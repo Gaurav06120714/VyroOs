@@ -1514,6 +1514,53 @@ static void cmd_fatls() {
     print_char('\n');
 }
 
+static void cmd_fatwrite() {
+    if (argc < 3) {
+        print_color("\n  Usage: fatwrite <NAME.EXT> <text...>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    static uint8_t buf[2048];
+    uint32_t p = 0;
+    for (int i = 2; i < argc && p < sizeof(buf); i++) {
+        for (int j = 0; argv[i][j] && p < sizeof(buf); j++) buf[p++] = (uint8_t)argv[i][j];
+        if (i + 1 < argc && p < sizeof(buf)) buf[p++] = ' ';
+    }
+    if (p < sizeof(buf)) buf[p++] = '\n';
+    int n = fat32_write_file(argv[1], buf, p);
+    if (n < 0) print_color("\n  write failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    else { print("\n  Wrote "); print_int(n); print(" bytes to "); print(argv[1]); print("\n\n"); }
+}
+
+static void cmd_fatpath() {
+    if (argc < 2) {
+        print_color("\n  Usage: fatpath /sub/dir/FILE.EXT\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    fat32_dirent_t e;
+    if (!fat32_path_lookup(argv[1], &e)) {
+        print_color("\n  not found\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print("\n  Found: "); print(e.name);
+    if (e.attr & 0x10) print(" [DIR]");
+    print("  cluster="); print_int(e.first_cluster);
+    print("  size=");    print_int(e.size);
+    print("\n\n");
+    if (e.attr & 0x10) {
+        fat32_dirent_t kids[16];
+        int n = fat32_list_cluster(e.first_cluster, kids, 16);
+        for (int i = 0; i < n; i++) {
+            print("    ");
+            if (kids[i].attr & 0x10) print("[DIR] ");
+            else                     print("      ");
+            print(kids[i].name); print_char('\n');
+        }
+        print_char('\n');
+    }
+}
+
 static void cmd_fatcat() {
     if (argc < 2) {
         print_color("\n  Usage: fatcat <NAME.EXT>\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
@@ -1969,6 +2016,8 @@ static const command_t commands[] = {
     { "tlshandshake", cmd_tlshandshake },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
+    { "fatwrite",  cmd_fatwrite  },
+    { "fatpath",   cmd_fatpath   },
     { "lapic",     cmd_lapic     },
     { "glass",     cmd_glass     },
     { "disk",      cmd_disk    },
