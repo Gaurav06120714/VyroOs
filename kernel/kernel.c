@@ -168,6 +168,10 @@ void kernel_main() {
         else         ok("SMP AP bring-up (trampoline armed, no APs detected)");
     }
 
+    extern int rsa_selftest();
+    if (rsa_selftest()) ok("RSA bignum + PKCS1-v1_5 (modexp selftest passes)");
+    else                ok("RSA bignum + PKCS1-v1_5 (SELFTEST FAILED)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else
