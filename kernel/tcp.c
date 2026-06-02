@@ -8,8 +8,11 @@
 #define TCP_PROTO      6
 #define TCP_MSS        536
 #define SYN_RETRY_MAX  3
-#define TCP_BUF_SIZE   1024
-#define TCP_DATA_RTO_MS 1000
+#define TCP_BUF_SIZE        1024
+#define TCP_DATA_RTO_MS     1000     // initial RTO before any RTT sample
+#define TCP_RTO_MIN_MS       200
+#define TCP_RTO_MAX_MS      5000
+#define TCP_DUP_ACK_THRESH     3
 
 #define TCP_FIN  0x01
 #define TCP_SYN  0x02
@@ -40,6 +43,11 @@ static uint64_t  snd_oldest_ms[TCB_COUNT];
 static uint8_t   rcv_buf[TCB_COUNT][TCP_BUF_SIZE];
 static uint16_t  rcv_len[TCB_COUNT];
 
+// Single-slot out-of-order reassembly buffer per TCB.
+static uint8_t   ooo_buf[TCB_COUNT][TCP_MSS];
+static uint16_t  ooo_len[TCB_COUNT];
+static uint32_t  ooo_seq[TCB_COUNT];
+
 void tcp_init(void) {
     for (int i = 0; i < TCB_COUNT; i++) {
         tcbs[i].state       = TCP_CLOSED;
@@ -48,6 +56,7 @@ void tcp_init(void) {
         tcbs[i].accepted    = 0;
         snd_len[i] = 0;
         rcv_len[i] = 0;
+        ooo_len[i] = 0;
         snd_oldest_ms[i] = 0;
     }
 }
@@ -79,7 +88,10 @@ int tcp_listen(uint16_t local_port) {
     t->active = 1;
     snd_len[id] = 0;
     rcv_len[id] = 0;
+    ooo_len[id] = 0;
     snd_oldest_ms[id] = 0;
+    t->srtt_ms = 0; t->rttvar_ms = 0; t->rto_ms = TCP_DATA_RTO_MS;
+    t->rtt_in_flight = 0; t->last_ack_recv = 0; t->dup_acks = 0;
     return id;
 }
 
@@ -99,6 +111,7 @@ int tcp_accept(uint16_t local_port) {
 static int build_and_send_data(const tcp_tcb_t* t, uint8_t flags,
                                uint32_t seq, uint32_t ack,
                                const uint8_t* data, uint16_t dlen);
+static void arm_rtt_probe(tcp_tcb_t* t, uint32_t seq_being_sent);
 
 int tcp_send(int id, const uint8_t* data, uint16_t len) {
     if (id < 0 || id >= TCB_COUNT) return -1;
@@ -119,6 +132,7 @@ int tcp_send(int id, const uint8_t* data, uint16_t len) {
     while (emitted < len) {
         uint16_t chunk = len - emitted;
         if (chunk > TCP_MSS) chunk = TCP_MSS;
+        arm_rtt_probe(t, t->snd_nxt);
         build_and_send_data(t, TCP_ACK | TCP_PSH,
                             t->snd_nxt, t->rcv_nxt,
                             &snd_buf[id][off_in_buf + emitted], chunk);
@@ -339,7 +353,10 @@ int tcp_connect(const uint8_t dst_ip[4], uint16_t dst_port) {
     t->accepted    = 0;
     snd_len[slot] = 0;
     rcv_len[slot] = 0;
+    ooo_len[slot] = 0;
     snd_oldest_ms[slot] = 0;
+    t->srtt_ms = 0; t->rttvar_ms = 0; t->rto_ms = TCP_DATA_RTO_MS;
+    t->rtt_in_flight = 0; t->last_ack_recv = 0; t->dup_acks = 0;
 
     int sent = build_and_send(t, TCP_SYN, t->snd_nxt, 0);
     t->snd_nxt += 1;
@@ -378,6 +395,34 @@ static tcp_tcb_t* find_tcb(const uint8_t remote_ip[4], uint16_t remote_port,
         if (m) return &tcbs[i];
     }
     return 0;
+}
+
+// RFC 6298 RTT estimator. Updates srtt/rttvar/rto on a fresh sample.
+static void rtt_sample(tcp_tcb_t* t, uint32_t sample_ms) {
+    if (sample_ms == 0) sample_ms = 1;
+    if (t->srtt_ms == 0) {
+        // First measurement
+        t->srtt_ms   = sample_ms;
+        t->rttvar_ms = sample_ms / 2;
+    } else {
+        // RFC 6298: RTTVAR <- (1-beta)*RTTVAR + beta*|SRTT - sample|, beta=1/4
+        //          SRTT   <- (1-alpha)*SRTT + alpha*sample, alpha=1/8
+        uint32_t diff = (t->srtt_ms > sample_ms) ? t->srtt_ms - sample_ms
+                                                 : sample_ms - t->srtt_ms;
+        t->rttvar_ms = (3 * t->rttvar_ms + diff) / 4;
+        t->srtt_ms   = (7 * t->srtt_ms + sample_ms) / 8;
+    }
+    uint32_t rto = t->srtt_ms + 4 * t->rttvar_ms;
+    if (rto < TCP_RTO_MIN_MS) rto = TCP_RTO_MIN_MS;
+    if (rto > TCP_RTO_MAX_MS) rto = TCP_RTO_MAX_MS;
+    t->rto_ms = rto;
+}
+
+static void arm_rtt_probe(tcp_tcb_t* t, uint32_t seq_being_sent) {
+    if (t->rtt_in_flight) return;   // already timing one
+    t->rtt_in_flight     = 1;
+    t->rtt_probe_seq     = seq_being_sent;
+    t->rtt_probe_sent_ms = timer_uptime_ms();
 }
 
 int tcp_input(const uint8_t* frame, uint16_t len) {
@@ -428,7 +473,10 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
             c->state       = TCP_SYN_RECEIVED;
             snd_len[child] = 0;
             rcv_len[child] = 0;
+            ooo_len[child] = 0;
             snd_oldest_ms[child] = 0;
+            c->srtt_ms = 0; c->rttvar_ms = 0; c->rto_ms = TCP_DATA_RTO_MS;
+            c->rtt_in_flight = 0; c->last_ack_recv = 0; c->dup_acks = 0;
             build_and_send(c, TCP_SYN | TCP_ACK, c->snd_nxt, c->rcv_nxt);
             c->snd_nxt += 1;
             return 1;
@@ -480,23 +528,73 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
         if (flags & TCP_ACK) {
             uint32_t newly_acked = seg_ack - t->snd_una;
             if (newly_acked > 0 && newly_acked <= snd_len[id]) {
+                // RTT sample: if the probed segment is now fully ACKed
+                if (t->rtt_in_flight &&
+                    (int32_t)(seg_ack - t->rtt_probe_seq) > 0) {
+                    uint32_t sample = (uint32_t)(timer_uptime_ms() - t->rtt_probe_sent_ms);
+                    rtt_sample(t, sample);
+                    t->rtt_in_flight = 0;
+                }
                 slide_snd_window(id, newly_acked);
-                t->snd_una = seg_ack;
+                t->snd_una     = seg_ack;
+                t->dup_acks    = 0;
+                t->last_ack_recv = seg_ack;
+            } else if (newly_acked == 0 && snd_len[id] > 0 && payload == 0 &&
+                       !(flags & (TCP_SYN | TCP_FIN))) {
+                // Duplicate ACK
+                if (seg_ack == t->last_ack_recv) {
+                    t->dup_acks++;
+                } else {
+                    t->dup_acks      = 1;
+                    t->last_ack_recv = seg_ack;
+                }
+                if (t->dup_acks == TCP_DUP_ACK_THRESH) {
+                    // Fast retransmit: re-emit the segment at snd_una
+                    uint16_t chunk = snd_len[id] < TCP_MSS ? snd_len[id] : TCP_MSS;
+                    build_and_send_data(t, TCP_ACK | TCP_PSH,
+                                        t->snd_una, t->rcv_nxt, &snd_buf[id][0], chunk);
+                    // Halve RTO floor as a crude congestion signal
+                    if (t->rto_ms > TCP_RTO_MIN_MS) {
+                        t->rto_ms = t->rto_ms / 2;
+                        if (t->rto_ms < TCP_RTO_MIN_MS) t->rto_ms = TCP_RTO_MIN_MS;
+                    }
+                }
             }
         }
-        // Inbound data payload (TCP options not parsed; data_off accounts for them)
         if (payload > 0) {
             const uint8_t* pdata = (const uint8_t*)th + hdr_len;
             if (seg_seq == t->rcv_nxt) {
+                // In-order: deliver to recv buf, drain OoO slot if it now fits
                 uint16_t free_space = TCP_BUF_SIZE - rcv_len[id];
                 uint16_t to_copy = payload;
                 if (to_copy > free_space) to_copy = free_space;
                 for (uint16_t i = 0; i < to_copy; i++) rcv_buf[id][rcv_len[id] + i] = pdata[i];
                 rcv_len[id] += to_copy;
                 t->rcv_nxt  += to_copy;
+
+                // If the stored OoO segment is now contiguous, drain it.
+                if (ooo_len[id] && ooo_seq[id] == t->rcv_nxt) {
+                    uint16_t fs = TCP_BUF_SIZE - rcv_len[id];
+                    uint16_t cp = ooo_len[id];
+                    if (cp > fs) cp = fs;
+                    for (uint16_t i = 0; i < cp; i++) rcv_buf[id][rcv_len[id] + i] = ooo_buf[id][i];
+                    rcv_len[id] += cp;
+                    t->rcv_nxt  += cp;
+                    ooo_len[id]  = 0;
+                }
+                build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
+            } else if ((int32_t)(seg_seq - t->rcv_nxt) > 0) {
+                // Future segment: store in single OoO slot (overwrite if newer or none)
+                if (payload <= TCP_MSS &&
+                    (ooo_len[id] == 0 || seg_seq < ooo_seq[id])) {
+                    for (uint16_t i = 0; i < payload; i++) ooo_buf[id][i] = pdata[i];
+                    ooo_len[id] = payload;
+                    ooo_seq[id] = seg_seq;
+                }
+                // Duplicate ACK to signal the gap
                 build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             } else {
-                // Out of order — duplicate ACK
+                // Old / already-acked data — re-ACK
                 build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             }
         }
@@ -566,7 +664,8 @@ void tcp_tick(void) {
                 t->active = 0;
             }
         } else if (t->state == TCP_ESTABLISHED && snd_len[i] > 0) {
-            if (snd_oldest_ms[i] && now - snd_oldest_ms[i] >= TCP_DATA_RTO_MS) {
+            uint32_t rto = t->rto_ms ? t->rto_ms : TCP_DATA_RTO_MS;
+            if (snd_oldest_ms[i] && now - snd_oldest_ms[i] >= rto) {
                 // Retransmit everything in the unacked window, MSS at a time.
                 uint32_t seq = t->snd_una;
                 uint16_t off = 0;
@@ -579,6 +678,12 @@ void tcp_tick(void) {
                     off += chunk;
                 }
                 snd_oldest_ms[i] = now;
+                // Karn: a retransmitted segment cannot be used for RTT sampling.
+                t->rtt_in_flight = 0;
+                // Exponential back-off, capped.
+                uint32_t back = t->rto_ms * 2;
+                if (back > TCP_RTO_MAX_MS) back = TCP_RTO_MAX_MS;
+                t->rto_ms = back;
             }
         }
     }

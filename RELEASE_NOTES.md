@@ -1,5 +1,29 @@
 # Release Notes
 
+## v3.5 — TCP Reassembly + RTT-driven RTO + Fast Retransmit
+
+Vyro OS's TCP stack adopts three of the classic Jacobson/Karn improvements at once: out-of-order segments are no longer dropped, the retransmit timer adapts to the connection's actual round-trip time, and duplicate ACKs trigger an immediate retransmit instead of waiting for the timer to fire.
+
+### What's new
+- **Out-of-order reassembly slot** (one per TCB). When an in-order arrival closes the gap, the stored segment drains automatically and the cumulative ACK reflects both.
+- **RFC 6298 RTT estimator**: per-TCB `SRTT` / `RTTVAR` updated on every fresh sample; `RTO = SRTT + 4*RTTVAR`, clamped [200 ms, 5 s].
+- **Karn's algorithm**: a retransmitted segment never updates RTT; on RTO timeout the in-flight probe is invalidated and RTO doubles up to the ceiling.
+- **Fast retransmit**: 3 consecutive duplicate ACKs immediately re-emit the `snd_una` segment.
+
+### Compatibility
+- Wire format: unchanged (no SACK option yet).
+- Kernel size: 141,574 bytes (was 140,550).
+- ~9 KB additional static buffer space (1 OoO slot × MSS × 16 TCBs).
+
+### Known limitations
+- Single OoO slot per connection — multiple simultaneous holes still drop segments.
+- No `cwnd` yet — the send path emits the whole snd_buf without pacing. Slow start + congestion avoidance land in v3.6.
+
+### Next
+**v3.6 — TCP congestion window.** `cwnd` / `ssthresh`, slow start, congestion avoidance, cwnd-throttled emit; pairs with the new RTT machinery from v3.5.
+
+---
+
 ## v3.4 — TCP Data Transfer
 
 Vyro OS now sends and receives bytes over established TCP connections. Each TCB carries a 1 KB send buffer (unacked bytes still in flight) and a 1 KB receive buffer (in-order bytes waiting for the application). Outbound writes go on the wire immediately as PSH+ACK segments at one MSS each; inbound data advances `rcv_nxt` and triggers a cumulative ACK.

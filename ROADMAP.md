@@ -28,6 +28,13 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.5 (shipped) — TCP reassembly + RTT-driven RTO + fast retransmit
+
+- Single-slot out-of-order reassembly per TCB
+- RFC 6298 SRTT/RTTVAR/RTO estimator (clamp 200 ms..5 s)
+- Karn's algorithm; exponential back-off on timeout
+- 3-dupACK fast retransmit
+
 ## ✅ v3.4 (shipped) — TCP data transfer
 
 - `tcp_send` / `tcp_recv` with 1 KB linear send/recv buffers per TCB

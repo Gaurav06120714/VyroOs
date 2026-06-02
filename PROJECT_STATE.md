@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.4
-**Last update:** Phase v3.4 (TCP Data Transfer)
+**Current release:** v3.5
+**Last update:** Phase v3.5 (TCP Reassembly + RTT-driven RTO + Fast Retransmit)
 
 ## Subsystem matrix
 
@@ -23,8 +23,9 @@
 | Networking — DNS resolver | shipped, refactored on UDP | real UDP/53 queries |
 | Networking — TCP active open | shipped (v3.2) | SYN/SYN-ACK/ACK, FIN close, RST, retransmit |
 | Networking — TCP listen/accept | shipped (v3.3) | passive open, SYN_RECEIVED, accept queue |
-| Networking — TCP data transfer | **shipped (v3.4)** | send/recv, 1024-byte buffers, 1 s RTO retransmit |
-| Networking — TCP reassembly / congestion | next | v3.5 |
+| Networking — TCP data transfer | shipped (v3.4) | send/recv, 1024-byte buffers |
+| Networking — TCP reassembly / RTT / fast retx | **shipped (v3.5)** | 1-slot OoO, RFC 6298 RTO, 3-dupack fast retx |
+| Networking — TCP congestion window | next | v3.6 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -50,4 +51,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.5 — TCP reassembly + basic congestion control** (out-of-order buffer, RTT-driven RTO, cwnd slow start).
+Next phase: **v3.6 — TCP congestion control** (cwnd / ssthresh, slow start, congestion avoidance, cwnd-throttled emit pacing).

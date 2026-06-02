@@ -31,6 +31,18 @@ typedef struct {
     uint8_t  active;
     uint8_t  is_listener;     // 1 = passive (listen) socket
     uint8_t  accepted;        // 1 = already returned by tcp_accept
+
+    // RTT estimation (RFC 6298)
+    uint32_t srtt_ms;         // smoothed RTT, 0 = uninitialized
+    uint32_t rttvar_ms;
+    uint32_t rto_ms;          // current retransmit timeout
+    uint32_t rtt_probe_seq;   // sequence number we're timing (snd_nxt at send)
+    uint64_t rtt_probe_sent_ms;
+    uint8_t  rtt_in_flight;   // 1 if currently timing a segment
+
+    // Fast retransmit
+    uint32_t last_ack_recv;
+    uint8_t  dup_acks;
 } tcp_tcb_t;
 
 void tcp_init(void);

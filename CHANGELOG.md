@@ -2,6 +2,25 @@
 
 All notable changes to Vyro OS.
 
+## [v3.5] — TCP Reassembly + RTT-driven RTO + Fast Retransmit
+
+### Added
+- **Out-of-order reassembly**: single-slot per TCB (1 × MSS = 536 B). When an arriving in-order segment makes the stored OoO segment contiguous, it drains automatically into the receive buffer.
+- **RFC 6298 RTT estimator**: per-TCB `srtt_ms`, `rttvar_ms`, dynamic `rto_ms` clamped [200 ms, 5 s]. First sample initializes SRTT = sample, RTTVAR = sample/2.
+- **Karn's algorithm**: a retransmitted segment cannot be used as an RTT sample; the probe is cleared on RTO timeout.
+- **Exponential RTO back-off**: timeouts double `rto_ms` up to `TCP_RTO_MAX_MS`.
+- **Fast retransmit**: 3 duplicate ACKs trigger immediate retransmit of the `snd_una` segment.
+
+### Changed
+- `tcp_tick` retransmit now uses the dynamic `t->rto_ms` instead of a fixed 1 s.
+- TCB struct gains 7 fields (RTT vars, dup-ACK counter, last-ACK).
+- Kernel size: 141,574 bytes (was 140,550) — 54 KB headroom remaining.
+
+### Limitations (deferred to v3.6)
+- Single out-of-order slot — multiple gaps still drop.
+- No congestion window: cwnd/slow-start/congestion-avoidance not yet wired into send pacing.
+- No SACK.
+
 ## [v3.4] — TCP Data Transfer
 
 ### Added
