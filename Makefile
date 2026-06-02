@@ -83,6 +83,10 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/app_control.o  \
        $(BUILD)/app_browser.o  \
        $(BUILD)/app_pkgstore.o \
+       $(BUILD)/app_notes.o    \
+       $(BUILD)/app_calendar.o \
+       $(BUILD)/app_network.o  \
+       $(BUILD)/app_disk.o     \
        $(BUILD)/apps_reg.o  \
        $(BUILD)/sockets.o   \
        $(BUILD)/dhcp.o      \
@@ -130,6 +134,14 @@ $(BUILD)/app_browser.o: kernel/apps/browser.c
 	$(CC) $(CFLAGS) kernel/apps/browser.c -o $(BUILD)/app_browser.o
 $(BUILD)/app_pkgstore.o: kernel/apps/pkgstore.c
 	$(CC) $(CFLAGS) kernel/apps/pkgstore.c -o $(BUILD)/app_pkgstore.o
+$(BUILD)/app_notes.o: kernel/apps/notes.c
+	$(CC) $(CFLAGS) kernel/apps/notes.c -o $(BUILD)/app_notes.o
+$(BUILD)/app_calendar.o: kernel/apps/calendar.c
+	$(CC) $(CFLAGS) kernel/apps/calendar.c -o $(BUILD)/app_calendar.o
+$(BUILD)/app_network.o: kernel/apps/network.c
+	$(CC) $(CFLAGS) kernel/apps/network.c -o $(BUILD)/app_network.o
+$(BUILD)/app_disk.o: kernel/apps/disk.c
+	$(CC) $(CFLAGS) kernel/apps/disk.c -o $(BUILD)/app_disk.o
 $(BUILD)/apps_reg.o: kernel/apps/apps.c
 	$(CC) $(CFLAGS) kernel/apps/apps.c -o $(BUILD)/apps_reg.o
 

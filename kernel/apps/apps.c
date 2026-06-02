@@ -15,4 +15,8 @@ void apps_register_all() {
     app_register(&APP_NOTECENTER);
     app_register(&APP_CONTROL);
     app_register(&APP_PKGSTORE);
+    app_register(&APP_NOTES);
+    app_register(&APP_CALENDAR);
+    app_register(&APP_NETWORK);
+    app_register(&APP_DISK);
 }

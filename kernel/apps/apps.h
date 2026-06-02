@@ -18,6 +18,10 @@ extern const app_def_t APP_NOTECENTER;
 extern const app_def_t APP_CONTROL;
 extern const app_def_t APP_BROWSER2;
 extern const app_def_t APP_PKGSTORE;
+extern const app_def_t APP_NOTES;
+extern const app_def_t APP_CALENDAR;
+extern const app_def_t APP_NETWORK;
+extern const app_def_t APP_DISK;
 
 void apps_register_all();
 
