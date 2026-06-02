@@ -55,6 +55,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/net.o       \
        $(BUILD)/arp.o       \
        $(BUILD)/udp.o       \
+       $(BUILD)/tcp.o       \
        $(BUILD)/net_pump.o  \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
@@ -112,6 +113,8 @@ $(BUILD)/arp.o: kernel/arp.c
 	$(CC) $(CFLAGS) kernel/arp.c -o $(BUILD)/arp.o
 $(BUILD)/udp.o: kernel/udp.c
 	$(CC) $(CFLAGS) kernel/udp.c -o $(BUILD)/udp.o
+$(BUILD)/tcp.o: kernel/tcp.c
+	$(CC) $(CFLAGS) kernel/tcp.c -o $(BUILD)/tcp.o
 $(BUILD)/net_pump.o: kernel/net_pump.c
 	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 

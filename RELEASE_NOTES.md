@@ -1,5 +1,32 @@
 # Release Notes
 
+## v3.2 — TCP Connection Establishment
+
+Vyro OS now speaks TCP. The active-open client path is complete: `tcp_connect()` performs the RFC 793 three-way handshake, transitions through the full client state machine, and tears down cleanly with a FIN exchange.
+
+### What's new
+- **`tcp.c`** — full active-open client (16 TCBs), all eight RFC 793 states (CLOSED through TIME_WAIT), TCP/IPv4 checksum with pseudo-header, SYN retransmit at 1s/2s/4s, RST on unknown-tuple inbound.
+- **`tcp` shell command** — lists every TCB with state + 4-tuple.
+- **`tcpconnect <ip> <port>`** — drives a full handshake-and-close. Useful for verifying connectivity to any LAN host.
+
+### What changed
+- `net_pump_run` now dispatches to TCP after ARP and UDP, and calls `tcp_tick()` every 100 ms for retransmits and TIME_WAIT expiry.
+
+### Compatibility
+- Wire format: standard RFC 793 (no options yet — no MSS advertised, no window scaling, no SACK).
+- Kernel size: 134,662 bytes (was 129,638) — 62 KB headroom remaining.
+
+### Known limitations
+- No data transfer yet — connect + close only. Data send/recv lands when paired with listen/accept.
+- No passive open — server side lands in v3.3.
+- ISN derived from `timer_uptime_ms()` (RFC 6528 random ISN deferred).
+- TIME_WAIT shortened to 2 s (vs RFC 2*MSL) so TCBs free quickly during testing.
+
+### Next
+**v3.3 — TCP listen/accept.** Server-side state machine, SYN backlog queue, multiple simultaneous connections per listening port.
+
+---
+
 ## v3.1 — UDP Transport Layer
 
 Vyro OS now has a real, port-dispatched UDP/IPv4 transport. DHCP and DNS were rewritten on top of it; their wire output is byte-identical to v3.0, but the in-kernel structure is now layered properly: every UDP-bearing protocol registers a port and receives a callback when a matching datagram arrives.

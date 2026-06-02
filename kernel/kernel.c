@@ -109,6 +109,10 @@ void kernel_main() {
     udp_init();
     ok("UDP transport layer (port dispatch)");
 
+    extern void tcp_init();
+    tcp_init();
+    ok("TCP transport layer (RFC 793 handshake)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

@@ -26,6 +26,8 @@
 #include "net_io.h"
 #include "arp.h"
 #include "udp.h"
+#include "tcp.h"
+#include "net_pump.h"
 #include "dhcp_real.h"
 #include "dns_real.h"
 #include "../include/types.h"
@@ -1272,6 +1274,94 @@ static void udp_print_listener(uint16_t port, void* user) {
     udp_listener_count++;
 }
 
+static const char* tcp_state_name(int s) {
+    switch (s) {
+    case TCP_CLOSED:      return "CLOSED";
+    case TCP_SYN_SENT:    return "SYN_SENT";
+    case TCP_ESTABLISHED: return "ESTABLISHED";
+    case TCP_FIN_WAIT_1:  return "FIN_WAIT_1";
+    case TCP_FIN_WAIT_2:  return "FIN_WAIT_2";
+    case TCP_CLOSE_WAIT:  return "CLOSE_WAIT";
+    case TCP_LAST_ACK:    return "LAST_ACK";
+    case TCP_TIME_WAIT:   return "TIME_WAIT";
+    default:              return "?";
+    }
+}
+
+static int tcp_dump_count;
+static void tcp_dump_one(int id, const tcp_tcb_t* t, void* user) {
+    (void)user;
+    print("  ["); print_int(id); print("] ");
+    print(tcp_state_name(t->state));
+    print("  local:"); print_int(t->local_port);
+    print("  remote:");
+    for (int i = 0; i < 4; i++) {
+        print_int(t->remote_ip[i]);
+        if (i < 3) print_char('.');
+    }
+    print_char(':'); print_int(t->remote_port);
+    print_char('\n');
+    tcp_dump_count++;
+}
+
+static void cmd_tcp() {
+    print_color("\n  TCP connections\n", YELLOW_ON_BLACK);
+    tcp_dump_count = 0;
+    tcp_for_each(tcp_dump_one, 0);
+    if (!tcp_dump_count) print("  (none)\n");
+    print_char('\n');
+}
+
+static int parse_int_safe(const char* s, int* out) {
+    int v = 0; int any = 0;
+    for (const char* p = s; *p; p++) {
+        if (*p < '0' || *p > '9') return 0;
+        v = v * 10 + (*p - '0');
+        any = 1;
+    }
+    if (!any) return 0;
+    *out = v; return 1;
+}
+
+static void cmd_tcpconnect() {
+    if (argc < 3) {
+        print_color("\n  Usage: tcpconnect <a.b.c.d> <port>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint8_t ip[4];
+    int port_int;
+    if (!parse_ipv4(argv[1], ip) || !parse_int_safe(argv[2], &port_int) ||
+        port_int <= 0 || port_int > 65535) {
+        print_color("\n  Bad ip or port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  TCP connect ", YELLOW_ON_BLACK);
+    print_ip(ip); print_char(':'); print_int(port_int); print_char('\n');
+    int id = tcp_connect(ip, (uint16_t)port_int);
+    if (id < 0) {
+        print_color("  tcp_connect failed (no free TCB)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    // Drive the pump until we leave SYN_SENT or time out.
+    for (int i = 0; i < 80; i++) {
+        net_pump_run(100);
+        int s = tcp_state(id);
+        if (s != TCP_SYN_SENT) break;
+    }
+    int s = tcp_state(id);
+    print("  Result: "); print(tcp_state_name(s));
+    if (s == TCP_ESTABLISHED) {
+        print_color("  (handshake OK)\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        tcp_close(id);
+        net_pump_run(500);
+    } else {
+        print_color("  (no connection)\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
+    print_char('\n');
+}
+
 static void cmd_udp() {
     print_color("\n  UDP listeners\n", YELLOW_ON_BLACK);
     udp_listener_count = 0;
@@ -1501,6 +1591,8 @@ static const command_t commands[] = {
     { "dhcp",      cmd_dhcp    },
     { "nslookup",  cmd_nslookup},
     { "udp",       cmd_udp     },
+    { "tcp",       cmd_tcp     },
+    { "tcpconnect",cmd_tcpconnect},
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

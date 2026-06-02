@@ -2,7 +2,29 @@
 
 All notable changes to Vyro OS.
 
-## [v3.1] — Networking Phase 8: UDP Layer
+## [v3.2] — Networking Phase 13: TCP Connection Establishment
+
+### Added
+- `kernel/tcp.{h,c}` — TCP (RFC 793) active-open client with up to 16 simultaneous TCBs.
+  - States: CLOSED, SYN_SENT, ESTABLISHED, FIN_WAIT_1/2, CLOSE_WAIT, LAST_ACK, TIME_WAIT
+  - `tcp_connect(ip, port)` returns conn id; `tcp_close(id)` triggers graceful FIN
+  - Real TCP/IPv4 checksum with pseudo-header
+  - SYN retransmit at 1s/2s/4s, give up after 3 retries
+  - RST handling: sent on unknown 4-tuple, processed inbound to teardown TCB
+  - TIME_WAIT expires after 2s (placeholder for 2*MSL)
+- `kernel/net_pump.c` — hooked `tcp_input()` after `udp_input()`, runs `tcp_tick()` every 100 ms
+- `tcp` shell command — lists TCBs with state + 4-tuple
+- `tcpconnect <ip> <port>` shell command — drives a full handshake + close
+
+### Changed
+- `kernel.c` boot order now ends with TCP layer ack
+- Kernel size: 134,662 bytes (was 129,638) — 62 KB headroom remaining
+
+### Limitations (deferred to later phases)
+- No data send/recv (handshake + close only)
+- No passive open (listen/accept) — that is v3.3
+- No window scaling, SACK, or congestion control
+- ISN derived from millisecond clock, not RFC 6528 hashed — Networking Phase 8: UDP Layer
 
 ### Added
 - `kernel/udp.{h,c}` — UDP transport (RFC 768) with a 16-entry port-dispatch table.

@@ -28,6 +28,15 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.2 (shipped) — TCP connection establishment
+
+- `tcp.c` / `tcp.h` — RFC 793 active-open client
+- 16-TCB table, full client state machine (CLOSED → SYN_SENT → ESTABLISHED → FIN_WAIT/CLOSE_WAIT → TIME_WAIT → CLOSED)
+- TCP/IPv4 checksum with pseudo-header
+- SYN retransmit (1s / 2s / 4s)
+- RST on unknown 4-tuple, RST-driven teardown inbound
+- `tcp` and `tcpconnect` shell commands
+
 ## ✅ v3.1 (shipped) — UDP transport layer
 
 - `udp.c` / `udp.h` — port-dispatch UDP/IPv4 (RFC 768) with checksum

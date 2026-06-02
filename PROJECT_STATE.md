@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.1
-**Last update:** Phase v3.1 (Networking Phase 8: UDP Layer)
+**Current release:** v3.2
+**Last update:** Phase v3.2 (Networking Phase 13: TCP Connection Establishment)
 
 ## Subsystem matrix
 
@@ -18,10 +18,12 @@
 | Networking — Ethernet/IPv4 | shipped | RFC 1071 checksum |
 | Networking — ARP | shipped (v3.0) | 8-entry cache, request/reply |
 | Networking — ICMP echo + live ping | shipped (v3.0) | RTT reported |
-| Networking — UDP transport | **shipped (v3.1)** | port-dispatch, RFC 768 checksum |
+| Networking — UDP transport | shipped (v3.1) | port-dispatch, RFC 768 checksum |
 | Networking — DHCP client | shipped, refactored on UDP | live DHCPDISCOVER/OFFER over RTL8139 |
 | Networking — DNS resolver | shipped, refactored on UDP | real UDP/53 queries |
-| Networking — TCP | next | Networking Phase 13 |
+| Networking — TCP active open | **shipped (v3.2)** | SYN/SYN-ACK/ACK, FIN close, RST, retransmit |
+| Networking — TCP listen/accept | next | v3.3 |
+| Networking — TCP data transfer | future | v3.4 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -47,4 +49,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.2 — Networking Phase 13: TCP Connection Establishment** (three-way handshake, SYN/SYN-ACK/ACK state machine).
+Next phase: **v3.3 — TCP listen/accept** (passive open, full server-side state machine, SYN backlog).
