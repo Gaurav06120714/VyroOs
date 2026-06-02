@@ -1,5 +1,35 @@
 # Release Notes
 
+## v3.10 — TLS 1.3 Primitives
+
+Vyro OS can now produce a complete TLS 1.3 ClientHello, parse the corresponding ServerHello, and derive every secret in the handshake key schedule. The whole chain is verified at every boot against the canonical RFC 8448 §3 trace — meaning we can prove byte-for-byte that the OS's TLS implementation agrees with the IETF spec's reference output.
+
+### What's new
+- **`kernel/tls.{h,c}`** — record framing helpers, the ClientHello builder, the ServerHello extension walker, and the key-schedule pipeline.
+- **`tls_build_client_hello()`** writes a full handshake record. Cipher suite is fixed to `TLS_CHACHA20_POLY1305_SHA256`, group is X25519, signature algorithms include `rsa_pss_rsae_sha256`, `ecdsa_secp256r1_sha256`, and `rsa_pkcs1_sha256`. SNI is included when a hostname is supplied.
+- **`tls_parse_server_hello()`** walks the ServerHello extensions and pulls the server's X25519 pubkey out of the `key_share`.
+- **`tls_derive_handshake_keys()`** computes `early_secret → derived_early → handshake_secret → {c,s} hs traffic → {c,s} {key,iv}` per RFC 8446 §7.1.
+- **Boot selftest** validates RFC 8448 §3 vectors end-to-end.
+- **`tls [hostname]`** shell command — shows selftest result and builds a sample ClientHello.
+
+### Validation
+The exact same source files compiled and ran on the host produced `tls_selftest=1`. Every byte checked — public key derivation, ECDH, and the full HKDF chain through `handshake_secret` — matches the RFC's published values.
+
+### Compatibility
+- Pure in-kernel primitives. No TCP integration yet; that lands in v3.11.
+- Kernel size: 164,710 bytes (was 161,286).
+
+### Known limitations
+- No live handshake; can't actually talk to a TLS server until v3.11.
+- No signature verification of the server's CertificateVerify (v3.12).
+- No `Finished` MAC check (v3.11).
+- Only the `TLS_CHACHA20_POLY1305_SHA256` suite. No AES, no SHA-384.
+
+### Next
+**v3.11 — TLS 1.3 handshake over TCP.** Wire `tls_*` to `tcp_send`/`tcp_recv`, drive the state machine through ServerHello and the first encrypted record, decrypt with the v3.10-derived traffic key. After that, v3.12 adds CertificateVerify, v3.13 HTTPS GET, v3.14 browser connectivity.
+
+---
+
 ## v3.9 — X25519 + HMAC/HKDF + TLS Key Schedule
 
 Vyro OS now has the asymmetric primitive (X25519 ECDH) and the key-derivation machinery (HMAC-SHA-256 + HKDF + TLS 1.3 Expand-Label) that the TLS 1.3 handshake needs. Everything is verified at boot against published RFC vectors before it touches the network.

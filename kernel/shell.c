@@ -1439,6 +1439,37 @@ static void cmd_tcprecv() {
 #include "x509.h"
 #include "hkdf.h"
 #include "x25519.h"
+#include "tls.h"
+
+static void cmd_tls() {
+    print_color("\n  TLS 1.3 primitives (RFC 8448 vectors)\n", YELLOW_ON_BLACK);
+    if (tls_selftest()) {
+        print_color("  X25519 client pubkey  : PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print_color("  ECDH shared secret    : PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print_color("  Handshake secret      : PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print_color("  ClientHello round-trip: PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+
+        // Demonstrate: build a ClientHello for a user-supplied hostname.
+        const char* host = (argc >= 2) ? argv[1] : "vyro.test";
+        uint8_t random[32], sid[32], cpriv[32], cpub[32];
+        for (int i = 0; i < 32; i++) random[i] = (uint8_t)(0xC0 + i);
+        for (int i = 0; i < 32; i++) sid[i]    = (uint8_t)(0xD0 ^ i);
+        for (int i = 0; i < 32; i++) cpriv[i]  = (uint8_t)(0xE0 + i);
+        x25519_base(cpub, cpriv);
+        static uint8_t buf[1024];
+        int n = tls_build_client_hello(buf, sizeof(buf), random, sid, cpub, host);
+        print("\n  Built ClientHello for '");
+        print(host); print("': ");
+        print_int(n); print(" bytes\n");
+        print("  Record type 0x"); print_hex2(buf[0]);
+        print(" handshake type 0x"); print_hex2(buf[5]);
+        print_char('\n');
+    } else {
+        print_color("  SELFTEST FAILED\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
+    print_char('\n');
+}
+
 
 static void cmd_tlskdf() {
     print_color("\n  TLS 1.3 crypto pipeline\n", YELLOW_ON_BLACK);
@@ -1800,6 +1831,7 @@ static const command_t commands[] = {
     { "crypto",    cmd_crypto    },
     { "x509",      cmd_x509      },
     { "tlskdf",    cmd_tlskdf    },
+    { "tls",       cmd_tls       },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

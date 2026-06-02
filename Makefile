@@ -64,6 +64,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/x509_testvec.o \
        $(BUILD)/hkdf.o      \
        $(BUILD)/x25519.o    \
+       $(BUILD)/tls.o       \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
@@ -136,6 +137,8 @@ $(BUILD)/hkdf.o: kernel/hkdf.c
 	$(CC) $(CFLAGS) kernel/hkdf.c -o $(BUILD)/hkdf.o
 $(BUILD)/x25519.o: kernel/x25519.c
 	$(CC) $(CFLAGS) kernel/x25519.c -o $(BUILD)/x25519.o
+$(BUILD)/tls.o: kernel/tls.c
+	$(CC) $(CFLAGS) kernel/tls.c -o $(BUILD)/tls.o
 $(BUILD)/net_pump.o: kernel/net_pump.c
 	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 

@@ -137,6 +137,12 @@ void kernel_main() {
     else
         ok("X25519 ECDH (SELFTEST FAILED)");
 
+    extern int tls_selftest();
+    if (tls_selftest())
+        ok("TLS 1.3 primitives (RFC 8448 key schedule matches)");
+    else
+        ok("TLS 1.3 primitives (SELFTEST FAILED)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

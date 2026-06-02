@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.9
-**Last update:** Phase v3.9 (X25519 + HMAC/HKDF + TLS Key Schedule)
+**Current release:** v3.10
+**Last update:** Phase v3.10 (TLS 1.3 Primitives — record framing + ClientHello + ServerHello + key schedule)
 
 ## Subsystem matrix
 
@@ -30,9 +30,10 @@
 | Networking — X.509 parsing | **shipped (v3.8)** | DER reader, CN/SAN/validity/alg extraction, no verification |
 | Crypto — HMAC/HKDF + TLS KDF | **shipped (v3.9)** | RFC 2104/5869, TLS 1.3 Expand-Label / Derive-Secret |
 | Crypto — X25519 ECDH | **shipped (v3.9)** | RFC 7748, 51-bit-limb field arithmetic, KAT-verified |
-| Networking — TLS 1.3 record layer + handshake | next | v3.10 |
-| Networking — server cert verification | future | v3.11 |
-| Networking — HTTPS client | future | v3.12 |
+| Networking — TLS 1.3 primitives (records + CH/SH + key schedule) | **shipped (v3.10)** | RFC 8448 §3 vectors verified |
+| Networking — TLS 1.3 wire (handshake over TCP) | next | v3.11 |
+| Networking — server cert signature verification | future | v3.12 |
+| Networking — HTTPS client | future | v3.13 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -58,4 +59,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.10 — TLS 1.3 record layer + ClientHello/ServerHello + key derivation (trust-on-first-use, no signature verification yet — that's v3.11).**
+Next phase: **v3.11 — TLS 1.3 handshake over TCP** (wire the v3.10 primitives to `tcp_send`/`tcp_recv`, receive ServerHello, decrypt the first encrypted record; no cert signature verification yet — that's v3.12).

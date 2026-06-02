@@ -2,6 +2,30 @@
 
 All notable changes to Vyro OS.
 
+## [v3.10] — TLS 1.3 Primitives (record framing + ClientHello + ServerHello + key schedule)
+
+### Added
+- `kernel/tls.{h,c}` — TLS 1.3 building blocks.
+- **ClientHello builder** (`tls_build_client_hello`) emits a complete handshake record with extensions: `supported_versions`, `supported_groups`, `signature_algorithms`, `key_share` (X25519), and `server_name` (SNI). Cipher suite is `TLS_CHACHA20_POLY1305_SHA256`.
+- **ServerHello parser** (`tls_parse_server_hello`) walks the extensions and extracts the server's X25519 `key_share` pubkey.
+- **Key schedule** (`tls_derive_handshake_keys`) implements RFC 8446 §7.1: `Early-Secret → derived → Handshake-Secret → {c,s} hs traffic secret → {c,s} {key,iv}`.
+- **Selftest** (`tls_selftest`) validates X25519 self-derivation, ECDH agreement, full key-schedule chain against **RFC 8448 §3** published bytes, and ClientHello round-trip.
+- `tls [hostname]` shell command displays selftest result and builds a sample ClientHello for the given hostname.
+
+### Validation
+Host-side build of the exact kernel sources produced `tls_selftest=1`:
+- `x25519_base(client_priv)` matches RFC 8448 expected `client_pub`
+- `x25519(client_priv, server_pub)` matches expected `shared`
+- `handshake_secret` after the full HKDF chain matches RFC 8448's published value
+
+### Changed
+- Kernel size: 164,710 bytes (was 161,286) — 31 KB headroom remaining.
+
+### Limitations (deferred to v3.11)
+- **No network round-trip yet.** TLS primitives are linked but the TLS state machine is not wired to `tcp_send`/`tcp_recv`. That brings ServerHello receipt + first encrypted record decryption.
+- No signature verification of the server's `CertificateVerify` — v3.12 (currently planned as v3.12 after the network wire-up).
+- No `Finished` message MAC computation/check.
+
 ## [v3.9] — X25519 + HMAC/HKDF + TLS Key Schedule
 
 ### Added

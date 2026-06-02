@@ -28,6 +28,13 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.10 (shipped) — TLS 1.3 primitives
+
+- `kernel/tls.c` — record framing, ClientHello builder, ServerHello parser, key schedule
+- RFC 8446 §7.1 key derivation chain
+- Boot selftest verified against RFC 8448 §3 published bytes
+- `tls` shell command (selftest + ClientHello demo)
+
 ## ✅ v3.9 (shipped) — X25519 + HMAC/HKDF + TLS key schedule
 
 - `kernel/hkdf.c` — HMAC-SHA-256, HKDF-Extract/Expand, TLS 1.3 Expand-Label, Derive-Secret
