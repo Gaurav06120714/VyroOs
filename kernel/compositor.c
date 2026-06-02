@@ -120,6 +120,137 @@ void comp_gradient_v(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 }
 
 // ─────────────────────────────────────────────────
+// Glassmorphism primitives (v3.15)
+// ─────────────────────────────────────────────────
+
+static inline void get_bgr(uint32_t x, uint32_t y, uint8_t out[3]) {
+    if (x >= BB_W || y >= BB_H || !backbuf) { out[0]=out[1]=out[2]=0; return; }
+    uint32_t off = y * BB_PITCH + x * 3;
+    out[0] = backbuf[off + 0];
+    out[1] = backbuf[off + 1];
+    out[2] = backbuf[off + 2];
+}
+static inline void put_bgr(uint32_t x, uint32_t y, uint8_t b, uint8_t g, uint8_t r) {
+    if (x >= BB_W || y >= BB_H || !backbuf) return;
+    uint32_t off = y * BB_PITCH + x * 3;
+    backbuf[off + 0] = b;
+    backbuf[off + 1] = g;
+    backbuf[off + 2] = r;
+}
+
+void comp_blur_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint8_t passes) {
+    if (!backbuf || passes == 0) return;
+    if (x >= BB_W || y >= BB_H) return;
+    if (x + w > BB_W) w = BB_W - x;
+    if (y + h > BB_H) h = BB_H - y;
+
+    for (uint8_t pass = 0; pass < passes; pass++) {
+        // 3-tap horizontal then vertical box blur.
+        for (uint32_t yy = y; yy < y + h; yy++) {
+            for (uint32_t xx = x + 1; xx + 1 < x + w; xx++) {
+                uint8_t a[3], b[3], c[3];
+                get_bgr(xx - 1, yy, a);
+                get_bgr(xx,     yy, b);
+                get_bgr(xx + 1, yy, c);
+                put_bgr(xx, yy,
+                        (a[0] + b[0] + c[0]) / 3,
+                        (a[1] + b[1] + c[1]) / 3,
+                        (a[2] + b[2] + c[2]) / 3);
+            }
+        }
+        for (uint32_t xx = x; xx < x + w; xx++) {
+            for (uint32_t yy = y + 1; yy + 1 < y + h; yy++) {
+                uint8_t a[3], b[3], c[3];
+                get_bgr(xx, yy - 1, a);
+                get_bgr(xx, yy,     b);
+                get_bgr(xx, yy + 1, c);
+                put_bgr(xx, yy,
+                        (a[0] + b[0] + c[0]) / 3,
+                        (a[1] + b[1] + c[1]) / 3,
+                        (a[2] + b[2] + c[2]) / 3);
+            }
+        }
+    }
+}
+
+void comp_tint_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                    uint32_t tint, uint8_t opacity) {
+    if (!backbuf) return;
+    if (x + w > BB_W) w = BB_W - x;
+    if (y + h > BB_H) h = BB_H - y;
+    uint8_t tb = tint & 0xFF, tg = (tint >> 8) & 0xFF, tr = (tint >> 16) & 0xFF;
+    uint32_t inv = 255 - opacity;
+    for (uint32_t yy = y; yy < y + h; yy++) {
+        for (uint32_t xx = x; xx < x + w; xx++) {
+            uint8_t cur[3];
+            get_bgr(xx, yy, cur);
+            put_bgr(xx, yy,
+                    (uint8_t)((cur[0] * inv + tb * opacity) / 255),
+                    (uint8_t)((cur[1] * inv + tg * opacity) / 255),
+                    (uint8_t)((cur[2] * inv + tr * opacity) / 255));
+        }
+    }
+}
+
+static int inside_rounded(int32_t lx, int32_t ly, uint32_t w, uint32_t h, uint32_t r) {
+    if (r == 0) return 1;
+    int32_t W = (int32_t)w, H = (int32_t)h, R = (int32_t)r;
+    int32_t cx, cy;
+    if (lx < R && ly < R)             { cx = R - 1;     cy = R - 1; }
+    else if (lx >= W - R && ly < R)   { cx = W - R;     cy = R - 1; }
+    else if (lx < R && ly >= H - R)   { cx = R - 1;     cy = H - R; }
+    else if (lx >= W - R && ly >= H - R) { cx = W - R; cy = H - R; }
+    else return 1;
+    int32_t dx = lx - cx, dy = ly - cy;
+    return (dx * dx + dy * dy) < (R * R);
+}
+
+void comp_rounded_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                       uint32_t radius, uint32_t color) {
+    uint8_t b = color & 0xFF, g = (color >> 8) & 0xFF, r = (color >> 16) & 0xFF;
+    for (uint32_t yy = 0; yy < h; yy++) {
+        for (uint32_t xx = 0; xx < w; xx++) {
+            if (inside_rounded((int32_t)xx, (int32_t)yy, w, h, radius)) {
+                put_bgr(x + xx, y + yy, b, g, r);
+            }
+        }
+    }
+}
+
+void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                      uint32_t tint, uint8_t opacity, uint32_t border_radius,
+                      uint32_t border_color) {
+    // 1. Blur the area underneath
+    comp_blur_rect(x, y, w, h, 2);
+    // 2. Tint with a semi-transparent color over the blur
+    uint8_t tb = tint & 0xFF, tg = (tint >> 8) & 0xFF, tr = (tint >> 16) & 0xFF;
+    uint32_t inv = 255 - opacity;
+    for (uint32_t yy = 0; yy < h; yy++) {
+        for (uint32_t xx = 0; xx < w; xx++) {
+            if (!inside_rounded((int32_t)xx, (int32_t)yy, w, h, border_radius)) continue;
+            uint8_t cur[3];
+            get_bgr(x + xx, y + yy, cur);
+            put_bgr(x + xx, y + yy,
+                    (uint8_t)((cur[0] * inv + tb * opacity) / 255),
+                    (uint8_t)((cur[1] * inv + tg * opacity) / 255),
+                    (uint8_t)((cur[2] * inv + tr * opacity) / 255));
+        }
+    }
+    // 3. Subtle border highlight along the rounded edge
+    uint8_t bb = border_color & 0xFF;
+    uint8_t bg = (border_color >> 8) & 0xFF;
+    uint8_t br = (border_color >> 16) & 0xFF;
+    for (uint32_t yy = 0; yy < h; yy++) {
+        for (uint32_t xx = 0; xx < w; xx++) {
+            int in_curr = inside_rounded((int32_t)xx, (int32_t)yy, w, h, border_radius);
+            int in_inner = inside_rounded((int32_t)xx - 1, (int32_t)yy - 1, w - 2, h - 2,
+                                          border_radius > 1 ? border_radius - 1 : 0);
+            if (in_curr && !in_inner) put_bgr(x + xx, y + yy, bb, bg, br);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────
 // comp_present: blit the back buffer to the actual framebuffer.
 // One pass; the framebuffer is also BGR 24bpp so memcpy-equivalent.
 // ─────────────────────────────────────────────────

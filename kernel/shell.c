@@ -1442,6 +1442,36 @@ static void cmd_tcprecv() {
 #include "tls.h"
 #include "fat32.h"
 #include "lapic.h"
+#include "compositor.h"
+
+static void cmd_glass() {
+    if (!comp_init()) {
+        print_color("\n  compositor unavailable\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    // Colourful gradient background so the blur is visible
+    comp_gradient_v(0, 0, comp_width(), comp_height(),
+                    0x4C1D95,  // deep purple (top)
+                    0x0EA5E9); // sky blue (bottom)
+    // Scatter a few solid rectangles to give the blur something to chew
+    comp_rect(80,  120, 220, 220, 0xF59E0B);
+    comp_rect(380, 90,  260, 180, 0xEC4899);
+    comp_rect(120, 380, 180, 280, 0x10B981);
+    comp_rect(600, 320, 240, 220, 0xEF4444);
+    // Glass panels — different opacities to show range
+    comp_glass_panel(200, 180, 600, 200, 0xFFFFFF, 60,  22, 0xFFFFFF);
+    comp_glass_panel(260, 420, 480, 180, 0x000000, 90,  22, 0xFFFFFF);
+    comp_text(240, 240, "Vyro OS Glassmorphism", 0xFFFFFF, 0x000000);
+    comp_text(240, 280, "blur + translucent tint + rounded edges",
+              0xE5E7EB, 0x000000);
+    comp_text(300, 470, "Demo runs for 5 seconds",
+              0xFFFFFF, 0x000000);
+    comp_present();
+    // Wait for any key
+    // Hold the demo for ~5 seconds then return to shell.
+    sleep_ms(5000);
+}
+
 
 static void cmd_lapic() {
     print_color("\n  Local APIC\n", YELLOW_ON_BLACK);
@@ -1940,6 +1970,7 @@ static const command_t commands[] = {
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "lapic",     cmd_lapic     },
+    { "glass",     cmd_glass     },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

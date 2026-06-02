@@ -26,4 +26,14 @@ void comp_present();                 // blit back buffer to framebuffer
 uint32_t comp_width();
 uint32_t comp_height();
 
+// ─── Glassmorphism (v3.15) ───
+void comp_blur_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint8_t passes);
+void comp_tint_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                    uint32_t tint, uint8_t opacity);
+void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                      uint32_t tint, uint8_t opacity, uint32_t border_radius,
+                      uint32_t border_color);
+void comp_rounded_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                       uint32_t radius, uint32_t color);
+
 #endif
