@@ -159,6 +159,15 @@ void kernel_main() {
     csprng_init();
     ok("CSPRNG (ChaCha20 keystream, RDRAND+RDTSC seeded)");
 
+    extern void smp_start_aps();
+    extern uint32_t smp_ap_count();
+    smp_start_aps();
+    {
+        uint32_t aps = smp_ap_count();
+        if (aps > 0) ok("SMP AP bring-up (APs responded to SIPI)");
+        else         ok("SMP AP bring-up (trampoline armed, no APs detected)");
+    }
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

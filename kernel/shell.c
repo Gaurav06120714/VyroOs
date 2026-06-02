@@ -1443,6 +1443,18 @@ static void cmd_tcprecv() {
 #include "fat32.h"
 #include "lapic.h"
 #include "compositor.h"
+#include "smp_boot.h"
+
+static void cmd_smp() {
+    print_color("\n  SMP / AP bring-up\n", YELLOW_ON_BLACK);
+    print("  APs that responded to SIPI: ");
+    print_int(smp_ap_count());
+    print_char('\n');
+    print("  Trampoline at 0x"); print_hex(SMP_TRAMP_PHYS); print_char('\n');
+    print("  Flag byte at 0x"); print_hex(SMP_FLAG_PHYS); print_char('\n');
+    print_char('\n');
+}
+
 
 static void cmd_glass() {
     if (!comp_init()) {
@@ -2020,6 +2032,7 @@ static const command_t commands[] = {
     { "fatpath",   cmd_fatpath   },
     { "lapic",     cmd_lapic     },
     { "glass",     cmd_glass     },
+    { "smp",       cmd_smp       },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },
