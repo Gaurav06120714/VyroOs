@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.5
-**Last update:** Phase v3.5 (TCP Reassembly + RTT-driven RTO + Fast Retransmit)
+**Current release:** v3.6
+**Last update:** Phase v3.6 (TCP Congestion Window)
 
 ## Subsystem matrix
 
@@ -24,8 +24,9 @@
 | Networking — TCP active open | shipped (v3.2) | SYN/SYN-ACK/ACK, FIN close, RST, retransmit |
 | Networking — TCP listen/accept | shipped (v3.3) | passive open, SYN_RECEIVED, accept queue |
 | Networking — TCP data transfer | shipped (v3.4) | send/recv, 1024-byte buffers |
-| Networking — TCP reassembly / RTT / fast retx | **shipped (v3.5)** | 1-slot OoO, RFC 6298 RTO, 3-dupack fast retx |
-| Networking — TCP congestion window | next | v3.6 |
+| Networking — TCP reassembly / RTT / fast retx | shipped (v3.5) | 1-slot OoO, RFC 6298 RTO, 3-dupack fast retx |
+| Networking — TCP congestion window | **shipped (v3.6)** | cwnd/ssthresh, slow start, CA, cwnd-throttled emit |
+| Networking — TLS (X.509 + ChaCha20-Poly1305) | next | v3.7+ (multi-phase) |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -51,4 +52,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.6 — TCP congestion control** (cwnd / ssthresh, slow start, congestion avoidance, cwnd-throttled emit pacing).
+Next phase: **v3.7 — Networking Phase 17 (TLS Cryptography foundations)**: ChaCha20 stream cipher + Poly1305 MAC. X.509 validation and full TLS handshake follow in v3.8–v3.10.

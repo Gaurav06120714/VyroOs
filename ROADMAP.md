@@ -28,6 +28,14 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.6 (shipped) — TCP congestion window
+
+- Per-TCB `cwnd` and `ssthresh`
+- Slow start + congestion avoidance
+- RTO collapse (cwnd → MSS, ssthresh halved)
+- Fast-recovery collapse on 3 dup-ACKs
+- Throttled emit via `try_emit(id)`; RTO retransmit limited to in-flight bytes
+
 ## ✅ v3.5 (shipped) — TCP reassembly + RTT-driven RTO + fast retransmit
 
 - Single-slot out-of-order reassembly per TCB

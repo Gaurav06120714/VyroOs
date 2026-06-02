@@ -1,5 +1,31 @@
 # Release Notes
 
+## v3.6 — TCP Congestion Window
+
+Vyro OS's TCP stack now paces its sends. Each connection starts with `cwnd = 1 MSS` and ramps up exponentially through slow start until `ssthresh`, then switches to linear growth (congestion avoidance). Any loss signal — RTO or 3 duplicate ACKs — halves `ssthresh` and either collapses `cwnd` to one MSS (RTO) or to the new `ssthresh` (fast recovery).
+
+### What's new
+- **`try_emit(id)`** — central emit helper that gates outbound bytes by `cwnd - in_flight`. Called from `tcp_send` after append, and from the ACK path after the send window slides.
+- **Slow start**: `cwnd += MSS` per fresh ACK while `cwnd < ssthresh`.
+- **Congestion avoidance**: `cwnd += MSS²/cwnd` (minimum 1) per fresh ACK once `cwnd >= ssthresh`.
+- **RTO collapse**: `ssthresh = max(cwnd/2, 2*MSS)`, `cwnd = MSS`; retransmit only in-flight bytes.
+- **Fast-recovery collapse**: 3 dup-ACK retransmit halves `ssthresh`, sets `cwnd = ssthresh`.
+
+### Compatibility
+- Wire format: unchanged; only the timing/pacing of segments changes.
+- `tcp_send` semantics unchanged from the caller's perspective: returns bytes accepted into the send buffer (not bytes on the wire).
+- Kernel size: 141,862 bytes (was 141,574).
+
+### Known limitations
+- No NewReno cwnd inflation during fast recovery.
+- No appropriate-byte-counting; fixed 1-MSS increase per ACK regardless of `newly_acked`.
+- No PRR, no CUBIC, no BBR.
+
+### Next
+**v3.7 — TLS cryptography (ChaCha20-Poly1305).** Lands the symmetric building blocks for TLS 1.3. X.509 parsing and the handshake follow in v3.8/v3.9, then HTTPS in v3.10.
+
+---
+
 ## v3.5 — TCP Reassembly + RTT-driven RTO + Fast Retransmit
 
 Vyro OS's TCP stack adopts three of the classic Jacobson/Karn improvements at once: out-of-order segments are no longer dropped, the retransmit timer adapts to the connection's actual round-trip time, and duplicate ACKs trigger an immediate retransmit instead of waiting for the timer to fire.

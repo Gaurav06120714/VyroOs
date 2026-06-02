@@ -43,6 +43,10 @@ typedef struct {
     // Fast retransmit
     uint32_t last_ack_recv;
     uint8_t  dup_acks;
+
+    // Congestion control (bytes)
+    uint32_t cwnd;
+    uint32_t ssthresh;
 } tcp_tcb_t;
 
 void tcp_init(void);

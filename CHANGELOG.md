@@ -2,6 +2,27 @@
 
 All notable changes to Vyro OS.
 
+## [v3.6] — TCP Congestion Window (slow start + congestion avoidance)
+
+### Added
+- Per-TCB `cwnd` and `ssthresh` (bytes).
+- `try_emit(id)` helper — emits queued bytes from `snd_buf` throttled by `min(queued, cwnd - in_flight)`.
+- Slow start: `cwnd += MSS` on each ACK that advances `snd_una` while `cwnd < ssthresh`.
+- Congestion avoidance: `cwnd += max(1, MSS²/cwnd)` per such ACK once `cwnd >= ssthresh`.
+- RTO collapse (RFC 5681): `ssthresh = max(cwnd/2, 2*MSS)`, `cwnd = MSS`, plus existing exponential RTO back-off.
+- Fast-recovery collapse on 3-dup-ACK: `ssthresh = max(cwnd/2, 2*MSS)`, `cwnd = ssthresh` (no inflation).
+- RTO retransmit now re-sends **only in-flight bytes** (`snd_nxt - snd_una`), not the entire `snd_buf`.
+
+### Changed
+- `tcp_send` no longer transmits inline; appends to `snd_buf` and calls `try_emit`.
+- ACK path calls `try_emit` after sliding the send window, so cwnd-released bytes go out immediately.
+- Initial `cwnd = MSS (536)`, initial `ssthresh = 65535`.
+- Kernel size: 141,862 bytes (was 141,574) — 54 KB headroom remaining.
+
+### Notes
+- Bulk transfers > MSS now ramp up exponentially (slow start) and back off on loss.
+- For single-MSS shells like `tcpsend`, behaviour is indistinguishable from v3.5.
+
 ## [v3.5] — TCP Reassembly + RTT-driven RTO + Fast Retransmit
 
 ### Added

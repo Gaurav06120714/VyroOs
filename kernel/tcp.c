@@ -13,6 +13,7 @@
 #define TCP_RTO_MIN_MS       200
 #define TCP_RTO_MAX_MS      5000
 #define TCP_DUP_ACK_THRESH     3
+#define TCP_INIT_SSTHRESH  65535     // initial ssthresh per RFC 5681
 
 #define TCP_FIN  0x01
 #define TCP_SYN  0x02
@@ -92,6 +93,7 @@ int tcp_listen(uint16_t local_port) {
     snd_oldest_ms[id] = 0;
     t->srtt_ms = 0; t->rttvar_ms = 0; t->rto_ms = TCP_DATA_RTO_MS;
     t->rtt_in_flight = 0; t->last_ack_recv = 0; t->dup_acks = 0;
+    t->cwnd = TCP_MSS; t->ssthresh = TCP_INIT_SSTHRESH;
     return id;
 }
 
@@ -112,6 +114,7 @@ static int build_and_send_data(const tcp_tcb_t* t, uint8_t flags,
                                uint32_t seq, uint32_t ack,
                                const uint8_t* data, uint16_t dlen);
 static void arm_rtt_probe(tcp_tcb_t* t, uint32_t seq_being_sent);
+static void try_emit(int id);
 
 int tcp_send(int id, const uint8_t* data, uint16_t len) {
     if (id < 0 || id >= TCB_COUNT) return -1;
@@ -123,23 +126,36 @@ int tcp_send(int id, const uint8_t* data, uint16_t len) {
 
     // Append to snd_buf.
     for (uint16_t i = 0; i < len; i++) snd_buf[id][snd_len[id] + i] = data[i];
-    uint16_t off_in_buf = snd_len[id];      // where the new bytes start
     snd_len[id] += len;
     if (snd_oldest_ms[id] == 0) snd_oldest_ms[id] = timer_uptime_ms();
 
-    // Transmit the new bytes immediately, MSS at a time.
-    uint16_t emitted = 0;
-    while (emitted < len) {
-        uint16_t chunk = len - emitted;
-        if (chunk > TCP_MSS) chunk = TCP_MSS;
+    try_emit(id);
+    return len;
+}
+
+// Emit queued bytes from snd_buf, throttled by cwnd. Called from tcp_send
+// (post-append) and from ACK processing (post-window-slide).
+static void try_emit(int id) {
+    tcp_tcb_t* t = &tcbs[id];
+    if (t->state != TCP_ESTABLISHED) return;
+    uint32_t in_flight = t->snd_nxt - t->snd_una;
+    if (in_flight >= snd_len[id]) return;                  // everything is on the wire
+    uint32_t queued = snd_len[id] - in_flight;
+    uint32_t avail  = (t->cwnd > in_flight) ? (t->cwnd - in_flight) : 0;
+    if (avail == 0) return;
+    uint32_t to_send = queued < avail ? queued : avail;
+
+    uint32_t off = in_flight;                              // first queued byte in snd_buf
+    while (to_send > 0) {
+        uint32_t chunk = to_send < TCP_MSS ? to_send : TCP_MSS;
         arm_rtt_probe(t, t->snd_nxt);
         build_and_send_data(t, TCP_ACK | TCP_PSH,
                             t->snd_nxt, t->rcv_nxt,
-                            &snd_buf[id][off_in_buf + emitted], chunk);
+                            &snd_buf[id][off], (uint16_t)chunk);
         t->snd_nxt += chunk;
-        emitted    += chunk;
+        off        += chunk;
+        to_send    -= chunk;
     }
-    return len;
 }
 
 int tcp_recv(int id, uint8_t* out, uint16_t max) {
@@ -357,6 +373,7 @@ int tcp_connect(const uint8_t dst_ip[4], uint16_t dst_port) {
     snd_oldest_ms[slot] = 0;
     t->srtt_ms = 0; t->rttvar_ms = 0; t->rto_ms = TCP_DATA_RTO_MS;
     t->rtt_in_flight = 0; t->last_ack_recv = 0; t->dup_acks = 0;
+    t->cwnd = TCP_MSS; t->ssthresh = TCP_INIT_SSTHRESH;
 
     int sent = build_and_send(t, TCP_SYN, t->snd_nxt, 0);
     t->snd_nxt += 1;
@@ -477,6 +494,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
             snd_oldest_ms[child] = 0;
             c->srtt_ms = 0; c->rttvar_ms = 0; c->rto_ms = TCP_DATA_RTO_MS;
             c->rtt_in_flight = 0; c->last_ack_recv = 0; c->dup_acks = 0;
+            c->cwnd = TCP_MSS; c->ssthresh = TCP_INIT_SSTHRESH;
             build_and_send(c, TCP_SYN | TCP_ACK, c->snd_nxt, c->rcv_nxt);
             c->snd_nxt += 1;
             return 1;
@@ -539,6 +557,15 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                 t->snd_una     = seg_ack;
                 t->dup_acks    = 0;
                 t->last_ack_recv = seg_ack;
+                // Congestion window update
+                if (t->cwnd < t->ssthresh) {
+                    t->cwnd += TCP_MSS;                    // slow start
+                } else {
+                    uint32_t inc = (TCP_MSS * TCP_MSS) / t->cwnd;
+                    if (inc == 0) inc = 1;
+                    t->cwnd += inc;                        // congestion avoidance
+                }
+                try_emit(id);
             } else if (newly_acked == 0 && snd_len[id] > 0 && payload == 0 &&
                        !(flags & (TCP_SYN | TCP_FIN))) {
                 // Duplicate ACK
@@ -553,11 +580,12 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                     uint16_t chunk = snd_len[id] < TCP_MSS ? snd_len[id] : TCP_MSS;
                     build_and_send_data(t, TCP_ACK | TCP_PSH,
                                         t->snd_una, t->rcv_nxt, &snd_buf[id][0], chunk);
-                    // Halve RTO floor as a crude congestion signal
-                    if (t->rto_ms > TCP_RTO_MIN_MS) {
-                        t->rto_ms = t->rto_ms / 2;
-                        if (t->rto_ms < TCP_RTO_MIN_MS) t->rto_ms = TCP_RTO_MIN_MS;
-                    }
+                    // RFC 5681 fast recovery (without inflation): halve ssthresh,
+                    // collapse cwnd to ssthresh, never below 2*MSS.
+                    uint32_t half = t->cwnd / 2;
+                    uint32_t floor_v = 2 * TCP_MSS;
+                    t->ssthresh = half > floor_v ? half : floor_v;
+                    t->cwnd     = t->ssthresh;
                 }
             }
         }
@@ -666,20 +694,25 @@ void tcp_tick(void) {
         } else if (t->state == TCP_ESTABLISHED && snd_len[i] > 0) {
             uint32_t rto = t->rto_ms ? t->rto_ms : TCP_DATA_RTO_MS;
             if (snd_oldest_ms[i] && now - snd_oldest_ms[i] >= rto) {
-                // Retransmit everything in the unacked window, MSS at a time.
+                // Retransmit only in-flight bytes (snd_nxt - snd_una), MSS at a time.
+                uint32_t in_flight = t->snd_nxt - t->snd_una;
                 uint32_t seq = t->snd_una;
-                uint16_t off = 0;
-                while (off < snd_len[i]) {
-                    uint16_t chunk = snd_len[i] - off;
+                uint32_t off = 0;
+                while (off < in_flight) {
+                    uint32_t chunk = in_flight - off;
                     if (chunk > TCP_MSS) chunk = TCP_MSS;
                     build_and_send_data(t, TCP_ACK | TCP_PSH, seq, t->rcv_nxt,
-                                        &snd_buf[i][off], chunk);
+                                        &snd_buf[i][off], (uint16_t)chunk);
                     seq += chunk;
                     off += chunk;
                 }
                 snd_oldest_ms[i] = now;
-                // Karn: a retransmitted segment cannot be used for RTT sampling.
                 t->rtt_in_flight = 0;
+                // Collapse congestion window per RFC 5681.
+                uint32_t half = t->cwnd / 2;
+                uint32_t floor_v = 2 * TCP_MSS;
+                t->ssthresh = half > floor_v ? half : floor_v;
+                t->cwnd     = TCP_MSS;
                 // Exponential back-off, capped.
                 uint32_t back = t->rto_ms * 2;
                 if (back > TCP_RTO_MAX_MS) back = TCP_RTO_MAX_MS;
