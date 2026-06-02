@@ -5,6 +5,7 @@
 #include "notify.h"
 #include "app.h"
 #include "apps/apps.h"
+#include "widgets_panel.h"
 #include "../drivers/framebuffer.h"
 #include "../drivers/mouse.h"
 #include "../drivers/keyboard.h"
@@ -251,6 +252,8 @@ static void render(int mx, int my, int clicked) {
     for (int i = 0; i < win_count; i++)
         draw_window(&wins[i], i == win_count - 1, mx, my, clicked);
     draw_topbar();
+    // Right-side widgets panel (320px wide, like macOS Sequoia)
+    widgets_panel_draw(comp_width() - 320, TOPBAR_H + 8, 320);
     draw_dock(mx, my);
     draw_notifications();
     draw_cursor(mx, my);
