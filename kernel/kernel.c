@@ -155,6 +155,10 @@ void kernel_main() {
     if (lapic_init()) ok("Local APIC (enabled, MMIO mapped)");
     else              ok("Local APIC (not available)");
 
+    extern void csprng_init();
+    csprng_init();
+    ok("CSPRNG (ChaCha20 keystream, RDRAND+RDTSC seeded)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

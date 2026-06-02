@@ -290,23 +290,7 @@ static inline uint64_t rdtsc(void) {
 }
 
 static void rand_bytes(uint8_t* out, uint32_t n) {
-    static uint32_t ctr = 0;
-    while (n > 0) {
-        uint8_t in[24];
-        uint64_t a = timer_ticks();
-        uint64_t b = rdtsc();
-        uint64_t c = ((uint64_t)(ctr++) << 32) | timer_uptime_ms();
-        for (int i = 0; i < 8; i++) {
-            in[i]      = (uint8_t)(a >> (8 * i));
-            in[i + 8]  = (uint8_t)(b >> (8 * i));
-            in[i + 16] = (uint8_t)(c >> (8 * i));
-        }
-        uint8_t h[32];
-        sha256(in, 24, h);
-        uint32_t take = n < 32 ? n : 32;
-        for (uint32_t i = 0; i < take; i++) out[i] = h[i];
-        out += take; n -= take;
-    }
+    csprng_bytes(out, n);
 }
 
 const char* tls_state_name(uint8_t s) {

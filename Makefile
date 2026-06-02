@@ -68,6 +68,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/sched.o     \
        $(BUILD)/fat32.o     \
        $(BUILD)/lapic.o     \
+       $(BUILD)/csprng.o    \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
@@ -148,6 +149,8 @@ $(BUILD)/fat32.o: kernel/fat32.c
 	$(CC) $(CFLAGS) kernel/fat32.c -o $(BUILD)/fat32.o
 $(BUILD)/lapic.o: kernel/lapic.c
 	$(CC) $(CFLAGS) kernel/lapic.c -o $(BUILD)/lapic.o
+$(BUILD)/csprng.o: kernel/csprng.c
+	$(CC) $(CFLAGS) kernel/csprng.c -o $(BUILD)/csprng.o
 $(BUILD)/net_pump.o: kernel/net_pump.c
 	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 
