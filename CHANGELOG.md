@@ -2,6 +2,26 @@
 
 All notable changes to Vyro OS.
 
+## [v3.7] — ChaCha20-Poly1305 AEAD (RFC 8439)
+
+### Added
+- `kernel/chacha20.{h,c}` — ChaCha20 stream cipher per RFC 8439 §2.4. `chacha20_block()` and `chacha20_xor()`.
+- `kernel/poly1305.{h,c}` — Poly1305 one-shot MAC per RFC 8439 §2.5. 26-bit-limb arithmetic, fully reduced output, constant-time-friendly final masking.
+- `kernel/aead.{h,c}` — `aead_seal` / `aead_open` combine per RFC 8439 §2.8 with constant-time tag compare.
+- `aead_selftest()` runs the three official RFC 8439 published test vectors (ChaCha20 §2.4.2, Poly1305 §2.5.2, AEAD §2.8.2).
+- Boot banner prints AEAD selftest result; failure is surfaced explicitly.
+- `crypto` shell command re-runs selftest on demand.
+
+### Validation
+- Selftest verified against RFC 8439 vectors on a host-side build (separate translation units, same source files). All three vectors match.
+
+### Changed
+- Kernel size: 147,270 bytes (was 141,862) — 48 KB headroom remaining.
+
+### Limitations (deferred)
+- HChaCha20 / XChaCha20-Poly1305 extended-nonce variant not implemented.
+- AEAD `seal`/`open` buffer the MAC input in a fixed 16 KB static array — enough for TLS records (max 16 KB) but not arbitrarily large payloads.
+
 ## [v3.6] — TCP Congestion Window (slow start + congestion avoidance)
 
 ### Added

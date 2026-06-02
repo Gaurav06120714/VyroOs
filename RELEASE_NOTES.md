@@ -1,5 +1,32 @@
 # Release Notes
 
+## v3.7 — ChaCha20-Poly1305 AEAD
+
+Vyro OS now has the symmetric cryptography building block for TLS 1.3. The implementation follows RFC 8439 line by line: ChaCha20 (RFC 8439 §2.4), Poly1305 (§2.5, 26-bit-limb arithmetic), and the AEAD composition (§2.8). All three published RFC test vectors are validated at every boot.
+
+### What's new
+- **ChaCha20** — `chacha20_block()` produces 64-byte keystream blocks, `chacha20_xor()` encrypts or decrypts.
+- **Poly1305** — `poly1305_mac()` produces a 16-byte authentication tag. The implementation is the classic 26-bit-limb donna-32 layout, fully reduced and constant-time-masked at the final step.
+- **AEAD seal/open** — `aead_seal()` and `aead_open()` combine them per RFC 8439 §2.8. Tag compare is constant-time (XOR-accumulate-then-test).
+- **Boot selftest** — `aead_selftest()` runs at boot. On failure the boot banner shouts "SELFTEST FAILED" rather than silently exposing broken crypto.
+- **`crypto` shell command** — re-runs the selftest on demand.
+
+### Validation
+The RFC 8439 published vectors were re-validated on the host using the exact same source files (separate translation units, regular `cc -O2`). All three pass.
+
+### Compatibility
+- Pure in-kernel module. No syscall surface yet — caller is the kernel itself (TLS will be).
+- Kernel size: 147,270 bytes (was 141,862) — 48 KB headroom remaining.
+
+### Known limitations
+- No XChaCha20-Poly1305 (24-byte nonce variant) yet.
+- `aead_seal`/`open` use a 16 KB static buffer for the MAC input — enough for one max-sized TLS record, not for arbitrarily large messages.
+
+### Next
+**v3.8 — X.509 certificate parser.** Minimal DER reader covering Subject, Issuer, NotBefore/NotAfter, SubjectAltName, and SignatureAlgorithm — enough to extract the host's identity. Chain validation and signature verification follow in v3.9 alongside the handshake.
+
+---
+
 ## v3.6 — TCP Congestion Window
 
 Vyro OS's TCP stack now paces its sends. Each connection starts with `cwnd = 1 MSS` and ramps up exponentially through slow start until `ssthresh`, then switches to linear growth (congestion avoidance). Any loss signal — RTO or 3 duplicate ACKs — halves `ssthresh` and either collapses `cwnd` to one MSS (RTO) or to the new `ssthresh` (fast recovery).

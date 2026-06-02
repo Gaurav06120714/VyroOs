@@ -57,6 +57,9 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/udp.o       \
        $(BUILD)/tcp.o       \
        $(BUILD)/net_pump.o  \
+       $(BUILD)/chacha20.o  \
+       $(BUILD)/poly1305.o  \
+       $(BUILD)/aead.o      \
        $(BUILD)/ata.o       \
        $(BUILD)/usb.o       \
        $(BUILD)/speaker.o   \
@@ -115,6 +118,12 @@ $(BUILD)/udp.o: kernel/udp.c
 	$(CC) $(CFLAGS) kernel/udp.c -o $(BUILD)/udp.o
 $(BUILD)/tcp.o: kernel/tcp.c
 	$(CC) $(CFLAGS) kernel/tcp.c -o $(BUILD)/tcp.o
+$(BUILD)/chacha20.o: kernel/chacha20.c
+	$(CC) $(CFLAGS) kernel/chacha20.c -o $(BUILD)/chacha20.o
+$(BUILD)/poly1305.o: kernel/poly1305.c
+	$(CC) $(CFLAGS) kernel/poly1305.c -o $(BUILD)/poly1305.o
+$(BUILD)/aead.o: kernel/aead.c
+	$(CC) $(CFLAGS) kernel/aead.c -o $(BUILD)/aead.o
 $(BUILD)/net_pump.o: kernel/net_pump.c
 	$(CC) $(CFLAGS) kernel/net_pump.c -o $(BUILD)/net_pump.o
 

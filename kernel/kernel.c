@@ -113,6 +113,12 @@ void kernel_main() {
     tcp_init();
     ok("TCP transport layer (RFC 793 handshake)");
 
+    extern int aead_selftest();
+    if (aead_selftest())
+        ok("ChaCha20-Poly1305 AEAD (RFC 8439 vectors pass)");
+    else
+        ok("ChaCha20-Poly1305 AEAD (SELFTEST FAILED)");
+
     if (ata_init())
         ok("ATA disk driver (PIO, persistent)");
     else

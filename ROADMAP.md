@@ -28,6 +28,14 @@ Modern desktop OS layer:
 
 Real DMA TX/RX on the NIC, ICMP echo with RTT, ARP request/reply with 8-entry cache, DHCP/DNS over actual wire packets.
 
+## ✅ v3.7 (shipped) — ChaCha20-Poly1305 AEAD
+
+- `chacha20.c` — RFC 8439 §2.4 stream cipher
+- `poly1305.c` — RFC 8439 §2.5 MAC with 26-bit limbs
+- `aead.c` — §2.8 combined seal/open + constant-time tag compare
+- Boot selftest against RFC 8439 §2.4.2 / §2.5.2 / §2.8.2 vectors
+- `crypto` shell command
+
 ## ✅ v3.6 (shipped) — TCP congestion window
 
 - Per-TCB `cwnd` and `ssthresh`

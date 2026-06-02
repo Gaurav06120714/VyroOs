@@ -1436,6 +1436,21 @@ static void cmd_tcprecv() {
                       print_int(total); print(" bytes received --\n\n"); }
 }
 
+extern int aead_selftest(void);
+static void cmd_crypto() {
+    print_color("\n  Running ChaCha20-Poly1305 RFC 8439 vectors...\n", YELLOW_ON_BLACK);
+    if (aead_selftest()) {
+        print_color("  ChaCha20 §2.4.2  : PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print_color("  Poly1305 §2.5.2  : PASS\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        print_color("  AEAD §2.8.2      : PASS (seal tag + open round-trip)\n",
+                    MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    } else {
+        print_color("  FAILED — crypto unsafe, do not use\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
+    print_char('\n');
+}
+
 static void cmd_tcplisten() {
     if (argc < 2) {
         print_color("\n  Usage: tcplisten <port>\n\n",
@@ -1725,6 +1740,7 @@ static const command_t commands[] = {
     { "tcpaccept", cmd_tcpaccept },
     { "tcpsend",   cmd_tcpsend   },
     { "tcprecv",   cmd_tcprecv   },
+    { "crypto",    cmd_crypto    },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

@@ -37,6 +37,7 @@ boot.asm → kernel_entry.asm → kernel.c → {
 | L3 IPv4 | `kernel/net.c` | identity (MAC/IP), RFC 1071 checksum |
 | L4 UDP | `kernel/udp.c` | 16-port dispatch, RFC 768 checksum |
 | L4 TCP | `kernel/tcp.c` | RFC 793 active-open client, 16 TCBs, RFC 1071 checksum w/ pseudo-header |
+| Crypto | `kernel/chacha20.c`, `kernel/poly1305.c`, `kernel/aead.c` | RFC 8439 ChaCha20-Poly1305 AEAD, boot selftest |
 | Pump | `kernel/net_pump.c` | main-loop RX dispatcher (ARP → UDP → TCP), `tcp_tick()` every 100 ms |
 | L7 DHCP | `kernel/dhcp_real.c` | `udp_listen(68)`, OFFER parsing, applies IP |
 | L7 DNS | `kernel/dns_real.c` | ephemeral-port query/response |

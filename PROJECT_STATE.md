@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.6
-**Last update:** Phase v3.6 (TCP Congestion Window)
+**Current release:** v3.7
+**Last update:** Phase v3.7 (ChaCha20-Poly1305 AEAD, RFC 8439)
 
 ## Subsystem matrix
 
@@ -25,8 +25,11 @@
 | Networking — TCP listen/accept | shipped (v3.3) | passive open, SYN_RECEIVED, accept queue |
 | Networking — TCP data transfer | shipped (v3.4) | send/recv, 1024-byte buffers |
 | Networking — TCP reassembly / RTT / fast retx | shipped (v3.5) | 1-slot OoO, RFC 6298 RTO, 3-dupack fast retx |
-| Networking — TCP congestion window | **shipped (v3.6)** | cwnd/ssthresh, slow start, CA, cwnd-throttled emit |
-| Networking — TLS (X.509 + ChaCha20-Poly1305) | next | v3.7+ (multi-phase) |
+| Networking — TCP congestion window | shipped (v3.6) | cwnd/ssthresh, slow start, CA, cwnd-throttled emit |
+| Networking — ChaCha20-Poly1305 AEAD | **shipped (v3.7)** | RFC 8439, host-verified selftest at boot |
+| Networking — X.509 parsing | next | v3.8 |
+| Networking — TLS 1.3 handshake | future | v3.9 |
+| Networking — HTTPS client | future | v3.10 |
 | SMP | detection only | bring-up in SMP Phase 3 |
 | Desktop / compositor | shipped | dark/light theme, 12+ native apps |
 | Browser | scaffolded | HTTP client lands in Browser Phase 1 |
@@ -52,4 +55,4 @@
 ```
 
 ## Active roadmap pointer
-Next phase: **v3.7 — Networking Phase 17 (TLS Cryptography foundations)**: ChaCha20 stream cipher + Poly1305 MAC. X.509 validation and full TLS handshake follow in v3.8–v3.10.
+Next phase: **v3.8 — X.509 certificate parser** (DER reader, RDN/Subject/Issuer extraction, SignatureAlgorithm and SAN extension parsing — no chain validation yet).
