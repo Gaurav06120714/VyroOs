@@ -77,9 +77,14 @@ static void open_app(const char* name) {
     if (win_count >= MAX_WINS) win_count = MAX_WINS - 1;
     window_t* w = &wins[win_count++];
     w->app = a;
-    w->w = a->default_w; w->h = a->default_h + TITLE_H;
-    w->x = 80 + (win_count * 30) % 200;
-    w->y = TOPBAR_H + 30 + (win_count * 20) % 100;
+    // Cap app size so it doesn't overlap the widgets panel (320px on right)
+    int max_w = comp_width() - 320 - 80;
+    int max_h = comp_height() - TOPBAR_H - DOCK_H - 60;
+    int dw_ = a->default_w; if (dw_ > max_w) dw_ = max_w;
+    int dh_ = a->default_h + TITLE_H; if (dh_ > max_h) dh_ = max_h;
+    w->w = dw_; w->h = dh_;
+    w->x = 60 + (win_count * 30) % 80;
+    w->y = TOPBAR_H + 40 + (win_count * 20) % 80;
     w->visible = 1; w->minimized = 0; w->maximized = 0;
     w->opened_at = timer_ticks();
     w->last_key = 0;
@@ -168,7 +173,9 @@ static void draw_dock(int mx, int my) {
     const theme_t* t = theme();
     int icon_size = 48, gap = 14, pad = 16;
     int dock_w = DOCK_ITEMS * icon_size + (DOCK_ITEMS - 1) * gap + pad * 2;
-    int dock_x = (comp_width() - dock_w) / 2;
+    // Center dock under the desktop area (excluding right-side widgets panel)
+    int usable_w = comp_width() - 320;
+    int dock_x = (usable_w - dock_w) / 2;
     int dock_y = comp_height() - DOCK_H - 8;
 
     comp_shadow(dock_x, dock_y, dock_w, DOCK_H, t->win_shadow);
