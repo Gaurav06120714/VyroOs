@@ -22,6 +22,7 @@
 #include "power.h"
 #include "klog.h"
 #include "html.h"
+#include "../drivers/rtl8139.h"
 #include "../include/types.h"
 
 static const char* HOME_PAGE =
@@ -1069,6 +1070,47 @@ static void cmd_usb() {
                 MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
 }
 
+// realping: build a real ICMP echo request and actually transmit it
+static void cmd_realping() {
+    print_color("\n  Sending real ICMP echo via RTL8139...\n", YELLOW_ON_BLACK);
+
+    static uint8_t frame[64];
+    for (int i = 0; i < 64; i++) frame[i] = 0;
+
+    // Ethernet: dst=broadcast, src=my MAC, type=IPv4
+    eth_header_t* eh = (eth_header_t*) frame;
+    for (int i = 0; i < 6; i++) { eh->dst[i] = 0xFF; eh->src[i] = net_mac()[i]; }
+    eh->ethertype = htons(ETHERTYPE_IPV4);
+
+    // IPv4
+    ipv4_header_t* ip = (ipv4_header_t*)(frame + sizeof(eth_header_t));
+    ip->ver_ihl = 0x45;
+    ip->total_len = htons(sizeof(ipv4_header_t) + sizeof(icmp_header_t));
+    ip->ttl = 64; ip->protocol = IP_PROTO_ICMP;
+    for (int i = 0; i < 4; i++) ip->src[i] = net_ip()[i];
+    ip->dst[0] = 10; ip->dst[1] = 0; ip->dst[2] = 2; ip->dst[3] = 2;   // gateway
+    ip->checksum = 0;
+    ip->checksum = htons(net_checksum(ip, sizeof(ipv4_header_t)));
+
+    // ICMP echo
+    icmp_header_t* icmp = (icmp_header_t*)((uint8_t*)ip + sizeof(ipv4_header_t));
+    icmp->type = ICMP_ECHO_REQUEST; icmp->code = 0;
+    icmp->id = htons(1); icmp->seq = htons(1);
+    icmp->checksum = 0;
+    icmp->checksum = htons(net_checksum(icmp, sizeof(icmp_header_t)));
+
+    int sent = rtl8139_send(frame, sizeof(eth_header_t) + sizeof(ipv4_header_t) + sizeof(icmp_header_t));
+    if (sent < 0) {
+        print_color("  ERROR: NIC not initialised (no RTL8139 found)\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print("  Transmitted ");  print_int(sent);  print(" bytes\n");
+    sleep_ms(100);
+    print("  NIC TX count: "); print_int(rtl8139_tx_count()); print("\n");
+    print("  NIC RX count: "); print_int(rtl8139_rx_count());
+    print_color(" (replies received)\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+}
+
 static void cmd_pci() {
     print_color("\n  PCI Devices\n", YELLOW_ON_BLACK);
     print_color("  BUS:SLOT  VENDOR:DEVICE  CLASS  DESC\n",
@@ -1310,6 +1352,7 @@ static const command_t commands[] = {
     { "pci",       cmd_pci     },
     { "net",       cmd_net     },
     { "ping",      cmd_ping    },
+    { "realping",  cmd_realping},
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

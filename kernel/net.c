@@ -1,11 +1,17 @@
 #include "net.h"
+#include "../drivers/rtl8139.h"
 
-// Vyro OS network identity (static config for now)
+// Vyro OS network identity. We try to inherit the NIC's real MAC at init time.
 static uint8_t my_mac[ETH_ALEN] = { 0x52, 0x54, 0x00, 0x12, 0x34, 0x56 };
 static uint8_t my_ip[4]         = { 10, 0, 2, 15 };   // QEMU default guest IP
 
 void net_init() {
-    // Static config — a DHCP client would set these dynamically
+    const uint8_t* nic_mac = rtl8139_mac();
+    if (nic_mac) {
+        int nonzero = 0;
+        for (int i = 0; i < 6; i++) if (nic_mac[i]) nonzero = 1;
+        if (nonzero) for (int i = 0; i < 6; i++) my_mac[i] = nic_mac[i];
+    }
 }
 
 const uint8_t* net_mac() { return my_mac; }

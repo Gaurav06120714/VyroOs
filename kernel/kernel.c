@@ -16,6 +16,7 @@
 #include "pci.h"
 #include "net.h"
 #include "ata.h"
+#include "../drivers/rtl8139.h"
 #include "usb.h"
 #include "../drivers/mouse.h"
 #include "security.h"
@@ -91,6 +92,11 @@ void kernel_main() {
 
     pci_scan();
     ok("PCI bus scan");
+
+    if (rtl8139_init())
+        ok("RTL8139 NIC driver (real TX/RX)");
+    else
+        ok("RTL8139 NIC driver (no NIC found)");
 
     net_init();
     ok("Network stack (Eth/ARP/IPv4/ICMP)");

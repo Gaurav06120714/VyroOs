@@ -93,10 +93,14 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/dns.o       \
        $(BUILD)/ipc.o       \
        $(BUILD)/widgets_panel.o \
-       $(BUILD)/ctxmenu.o
+       $(BUILD)/ctxmenu.o   \
+       $(BUILD)/rtl8139.o
 
 $(BUILD)/ctxmenu.o: kernel/ctxmenu.c
 	$(CC) $(CFLAGS) kernel/ctxmenu.c -o $(BUILD)/ctxmenu.o
+
+$(BUILD)/rtl8139.o: drivers/rtl8139.c
+	$(CC) $(CFLAGS) drivers/rtl8139.c -o $(BUILD)/rtl8139.o
 
 $(BUILD)/sockets.o: kernel/sockets.c
 	$(CC) $(CFLAGS) kernel/sockets.c -o $(BUILD)/sockets.o
@@ -155,7 +159,7 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-m 256M \
 		-smp 4 \
 		-name "Vyro OS" \
-		-display cocoa \
+		-display cocoa,show-cursor=on,full-screen=on \
 		-vga std \
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
