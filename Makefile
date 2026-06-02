@@ -144,7 +144,6 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
 		-device qemu-xhci,id=xhci \
-		-device usb-kbd,bus=xhci.0 \
 		-audiodev coreaudio,id=snd0 \
 		-machine pcspk-audiodev=snd0
 
