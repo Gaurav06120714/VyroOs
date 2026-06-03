@@ -19,7 +19,16 @@ typedef struct vfs_node {
     struct vfs_node*  next_sibling;  // Next entry in parent dir
     char*             content;       // File data (NULL for dirs)
     uint32_t          size;          // File size in bytes
+    uint16_t          mode;          // Unix-style permissions (e.g. 0755 / 0644)
+    uint16_t          uid;           // owning user id (0 = root)
+    char*             symlink_target; // non-NULL = symbolic link to this path
 } vfs_node_t;
+
+// Symlink type. Treated transparently by vfs_find when symlink_target is set.
+#define VFS_SYMLINK    2
+
+void vfs_chmod(vfs_node_t* node, uint16_t mode);
+vfs_node_t* vfs_symlink(vfs_node_t* parent, const char* name, const char* target);
 
 void        vfs_init();
 vfs_node_t* vfs_root();

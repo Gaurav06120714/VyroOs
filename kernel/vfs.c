@@ -61,6 +61,9 @@ vfs_node_t* vfs_create(vfs_node_t* parent, const char* name, uint8_t type) {
     vstrcpy(node->name, name, VFS_NAME_MAX);
     node->type   = type;
     node->parent = parent;
+    node->mode   = (type == VFS_DIRECTORY) ? 0755 : 0644;
+    node->uid    = 0;
+    node->symlink_target = 0;
 
     // Append to parent's child list
     if (!parent->first_child) {
@@ -172,4 +175,22 @@ void vfs_full_path(vfs_node_t* node, char* buf, int buf_size) {
     temp[pos] = '\0';
 
     vstrcpy(buf, temp, buf_size);
+}
+
+void vfs_chmod(vfs_node_t* node, uint16_t mode) {
+    if (node) node->mode = mode & 07777;
+}
+
+vfs_node_t* vfs_symlink(vfs_node_t* parent, const char* name, const char* target) {
+    vfs_node_t* n = vfs_create(parent, name, VFS_SYMLINK);
+    if (!n || !target) return n;
+    // Allocate + copy target path
+    uint32_t len = 0; while (target[len]) len++;
+    char* buf = (char*)kmalloc_zero(len + 1);
+    if (!buf) return n;
+    for (uint32_t i = 0; i < len; i++) buf[i] = target[i];
+    buf[len] = 0;
+    n->symlink_target = buf;
+    n->size = len;
+    return n;
 }

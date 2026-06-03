@@ -1457,6 +1457,40 @@ static void cmd_tcprecv() {
 #include "csprng.h"
 #include "sched.h"
 
+static int parse_octal(const char* s) {
+    int v = 0;
+    for (; *s; s++) {
+        if (*s < '0' || *s > '7') return -1;
+        v = (v << 3) | (*s - '0');
+    }
+    return v;
+}
+
+static void cmd_chmod() {
+    if (argc < 3) {
+        print_color("\n  Usage: chmod <octal-mode> <file>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int m = parse_octal(argv[1]);
+    if (m < 0) { print_color("\n  bad mode\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    vfs_node_t* n = vfs_find(cwd, argv[2]);
+    if (!n) { print_color("\n  not found\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    vfs_chmod(n, (uint16_t)m);
+    print("\n  mode set to 0"); print_int(m); print("\n\n");
+}
+
+static void cmd_ln() {
+    if (argc < 4 || kstrcmp(argv[1], "-s") != 0) {
+        print_color("\n  Usage: ln -s <target> <linkname>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    vfs_node_t* n = vfs_symlink(cwd, argv[3], argv[2]);
+    if (!n) { print_color("\n  symlink create failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    print("\n  symlink "); print(argv[3]); print(" -> "); print(argv[2]); print("\n\n");
+}
+
 static void cmd_sched() {
     print_color("\n  Scheduler instrumentation\n", YELLOW_ON_BLACK);
     print("  Mode             : cooperative + timer-tickle (v3.12, v3.37)\n");
@@ -2587,6 +2621,8 @@ static const command_t commands[] = {
     { "tune",      cmd_tune      },
     { "bench",     cmd_bench     },
     { "sched",     cmd_sched     },
+    { "chmod",     cmd_chmod     },
+    { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
