@@ -38,6 +38,9 @@ jobs:
             base_note: Ubuntu 24.04 LTS, kernel 6.8, GNOME 46
             target_note: x86_64 PCs (BIOS or UEFI), pre-T2 Intel Macs via CSM
           # Path A2 secondary track — Apple Silicon / Asahi-style
+          # arm64 runners are gated on plan availability; if the label is
+          # unavailable the job simply queues — see workflow_dispatch
+          # input `skip_arm64` to bypass.
           - arch: arm64
             runner: ubuntu-24.04-arm
             grub_pkg: grub-efi-arm64-bin
@@ -45,6 +48,7 @@ jobs:
             track: Path A2 (Asahi-style)
             base_note: Ubuntu 24.04 LTS arm64, kernel 6.8, GNOME 46
             target_note: ARM64 PCs (Ampere, Snapdragon X) and Apple Silicon via Asahi shim (BYO m1n1)
+    continue-on-error: ${{ matrix.arch == 'arm64' }}
 
     steps:
       - name: Checkout
