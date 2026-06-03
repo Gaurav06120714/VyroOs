@@ -1756,6 +1756,36 @@ static void cmd_tlskdf() {
 
 extern const uint8_t x509_testvec_der[406];
 
+static void cmd_x509verify() {
+    // The embedded ECDSA test cert is self-signed but uses ECDSA, which we don't
+    // verify yet. Report what we do know and exercise the RSA path with the
+    // test cert's pubkey if it were RSA.
+    x509_cert_t c;
+    if (!x509_parse(x509_testvec_der, 406, &c)) {
+        print_color("\n  parse failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  X.509 signature verification\n", YELLOW_ON_BLACK);
+    print("  Subject CN : "); print(c.subject_cn);  print_char('\n');
+    print("  Sig alg    : "); print(x509_sig_alg_name(c.sig_alg)); print_char('\n');
+    print("  PKey alg   : "); print(x509_pkey_alg_name(c.pkey_alg)); print_char('\n');
+    print("  pubkey n   : "); print_int(c.pubkey_n_len); print(" bytes\n");
+    print("  pubkey e   : "); print_int(c.pubkey_e_len); print(" bytes\n");
+    print("  tbs offset : "); print_int(c.tbs_off); print(" len "); print_int(c.tbs_len); print_char('\n');
+    print("  sig offset : "); print_int(c.sig_off); print(" len "); print_int(c.sig_len); print_char('\n');
+    if (c.sig_alg == X509_SIG_SHA256_RSA && c.pkey_alg == X509_PKEY_RSA) {
+        int v = x509_verify_signature(x509_testvec_der, 406, &c, &c);
+        if (v) print_color("  Self-signed RSA verify: PASS\n",
+                           MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else   print_color("  Self-signed RSA verify: FAIL\n",
+                           MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    } else {
+        print_color("  Cert is ECDSA — RSA path not exercised\n  (ECDSA verify is a future phase)\n",
+                    MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    }
+    print_char('\n');
+}
+
 static void cmd_x509() {
     x509_cert_t c;
     if (!x509_parse(x509_testvec_der, 406, &c)) {
@@ -2095,6 +2125,7 @@ static const command_t commands[] = {
     { "httpget",   cmd_httpget   },
     { "httpsget",  cmd_httpsget  },
     { "xhci",      cmd_xhci      },
+    { "x509verify",cmd_x509verify},
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },

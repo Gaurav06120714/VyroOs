@@ -116,15 +116,26 @@ static void bn2_mul(bn2_t r, const bn_t a, const bn_t b) {
 }
 
 static void bn2_mod(bn_t r, const bn2_t prod, const bn_t m) {
-    // Shift-subtract long division. Walk shift positions from high to low.
-    bn2_t work;
-    for (int i = 0; i < BN_LIMBS * 2; i++) work[i] = prod[i];
-    for (int s = BN_LIMBS; s >= 0; s--) {
-        while (bn2_geq_shifted(work, m, s)) {
-            bn2_sub_shifted(work, m, s);
+    // Binary long division. For each bit of `prod` from MSB down to LSB:
+    //   remainder = (remainder << 1) | bit;  if (remainder >= m) remainder -= m;
+    // Bounded at 4096 iterations × O(N) — no runaway loops.
+    bn_t rem;
+    bn_zero(rem);
+    for (int bit = BN_LIMBS * 2 * 32 - 1; bit >= 0; bit--) {
+        // shift rem left by 1 (track the bit shifted past limb 63 — that
+        // represents an implicit bit-2048 of rem that bn_cmp can't see).
+        uint32_t carry = 0;
+        for (int i = 0; i < BN_LIMBS; i++) {
+            uint32_t hi = rem[i] >> 31;
+            rem[i] = (rem[i] << 1) | carry;
+            carry = hi;
         }
+        uint32_t overflow = carry;
+        rem[0] |= (prod[bit >> 5] >> (bit & 31)) & 1u;
+        if (overflow || bn_cmp(rem, m) >= 0) sub_in_place(rem, m);
     }
-    for (int i = 0; i < BN_LIMBS; i++) r[i] = work[i];
+    bn_copy(r, rem);
+    (void)bn2_geq_shifted; (void)bn2_sub_shifted; (void)bn2_shl1;
 }
 
 void bn_mulmod(bn_t r, const bn_t a, const bn_t b, const bn_t m) {

@@ -24,6 +24,8 @@ enum {
 #define X509_TIME_MAX    32
 #define X509_SAN_MAX      8
 #define X509_SAN_LEN_MAX 128
+#define X509_PUBKEY_N_MAX 256          // RSA-2048 modulus
+#define X509_PUBKEY_E_MAX   8
 
 typedef struct {
     char    subject_cn[X509_CN_MAX];
@@ -34,7 +36,24 @@ typedef struct {
     char    san[X509_SAN_MAX][X509_SAN_LEN_MAX];
     uint8_t sig_alg;
     uint8_t pkey_alg;
+
+    // RSA public key (big-endian, as in DER).
+    uint8_t  pubkey_n[X509_PUBKEY_N_MAX];
+    uint32_t pubkey_n_len;
+    uint8_t  pubkey_e[X509_PUBKEY_E_MAX];
+    uint32_t pubkey_e_len;
+
+    // Offsets within the original DER buffer.
+    uint32_t tbs_off, tbs_len;
+    uint32_t sig_off, sig_len;
 } x509_cert_t;
+
+// Verify `child`'s signature using `parent`'s public key.
+// Both must have been parsed from a known-good DER buffer; the caller
+// passes the child's original DER buffer so we can hash tbsCertificate.
+// Returns 1 if signature verifies.
+int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
+                          const x509_cert_t* child, const x509_cert_t* parent);
 
 // Parse a DER-encoded X.509 v3 certificate. Returns 1 on success.
 int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out);

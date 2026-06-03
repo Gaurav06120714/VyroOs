@@ -1,4 +1,5 @@
 #include "x509.h"
+#include "rsa.h"
 
 // Minimal DER reader + X.509 v3 parser. Extracts the identity-relevant fields
 // only: Subject CN, Issuer CN, validity period, SubjectAltName DNS entries,
@@ -177,9 +178,13 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
     if (!der_expect(&d, TAG_SEQUENCE, &cert, &cert_len)) return 0;
     der_t c = { cert, cert + cert_len };
 
-    // tbsCertificate SEQUENCE
+    // tbsCertificate SEQUENCE — remember the start (including its tag+length
+    // header) so signature verification can hash the exact bytes.
+    const uint8_t* tbs_after_header_p = c.p;
     const uint8_t* tbs; uint32_t tbs_len;
     if (!der_expect(&c, TAG_SEQUENCE, &tbs, &tbs_len)) return 0;
+    out->tbs_off = (uint32_t)(tbs_after_header_p - der);
+    out->tbs_len = (uint32_t)((tbs + tbs_len) - tbs_after_header_p);
     der_t t = { tbs, tbs + tbs_len };
 
     // optional [0] version
@@ -228,6 +233,33 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       const uint8_t* oid; uint32_t oid_len;
       if (!der_expect(&a, TAG_OID, &oid, &oid_len)) return 0;
       out->pkey_alg = map_pkey_alg(oid, oid_len);
+
+      // Public key BIT STRING. First byte is "unused bits" (always 0 here).
+      const uint8_t* bs; uint32_t bs_len;
+      if (der_expect(&s, TAG_BITSTRING, &bs, &bs_len) && bs_len > 1 && bs[0] == 0
+          && out->pkey_alg == X509_PKEY_RSA) {
+          // bs+1 .. bs+bs_len-1 contains DER-encoded RSAPublicKey:
+          //   SEQUENCE { INTEGER n, INTEGER e }
+          der_t k = { bs + 1, bs + bs_len };
+          const uint8_t* rsa; uint32_t rsa_len;
+          if (der_expect(&k, TAG_SEQUENCE, &rsa, &rsa_len)) {
+              der_t r = { rsa, rsa + rsa_len };
+              const uint8_t* nv; uint32_t nl;
+              const uint8_t* ev; uint32_t el;
+              if (der_expect(&r, TAG_INTEGER, &nv, &nl) &&
+                  der_expect(&r, TAG_INTEGER, &ev, &el)) {
+                  // Skip any leading zero used to keep INTEGER positive.
+                  if (nl > 0 && nv[0] == 0x00) { nv++; nl--; }
+                  if (el > 0 && ev[0] == 0x00) { ev++; el--; }
+                  if (nl > X509_PUBKEY_N_MAX) nl = X509_PUBKEY_N_MAX;
+                  if (el > X509_PUBKEY_E_MAX) el = X509_PUBKEY_E_MAX;
+                  for (uint32_t i = 0; i < nl; i++) out->pubkey_n[i] = nv[i];
+                  out->pubkey_n_len = nl;
+                  for (uint32_t i = 0; i < el; i++) out->pubkey_e[i] = ev[i];
+                  out->pubkey_e_len = el;
+              }
+          }
+      }
     }
 
     // optional [1] issuerUniqueID, [2] subjectUniqueID, [3] extensions
@@ -256,8 +288,28 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       out->sig_alg = map_sig_alg(oid, oid_len);
     }
 
-    // outer signatureValue BIT STRING — we skip the bytes; no verification yet.
+    // outer signatureValue BIT STRING
+    { const uint8_t* bs; uint32_t bs_len;
+      if (der_expect(&c, TAG_BITSTRING, &bs, &bs_len) && bs_len > 1 && bs[0] == 0) {
+          out->sig_off = (uint32_t)((bs + 1) - der);
+          out->sig_len = bs_len - 1;
+      }
+    }
     return 1;
+}
+
+int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
+                          const x509_cert_t* child, const x509_cert_t* parent) {
+    if (!child_der || !child || !parent) return 0;
+    if (child->tbs_off + child->tbs_len > child_der_len) return 0;
+    if (child->sig_off + child->sig_len > child_der_len) return 0;
+    if (parent->pkey_alg != X509_PKEY_RSA || parent->pubkey_n_len == 0) return 0;
+    if (child->sig_alg != X509_SIG_SHA256_RSA) return 0;  // SHA-384/512 not yet
+    return rsa_pkcs1_v15_sha256_verify(
+        parent->pubkey_n, parent->pubkey_n_len,
+        parent->pubkey_e, parent->pubkey_e_len,
+        child_der + child->sig_off, child->sig_len,
+        child_der + child->tbs_off, child->tbs_len);
 }
 
 extern const uint8_t x509_testvec_der[406];
