@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Vyro Compositor (experimental)
+Comment=Vyro from-scratch compositor (Path B), DRM/KMS direct, no X/Wayland
+Exec=/usr/bin/vyro-compositor
+TryExec=/usr/bin/vyro-compositor
+Type=Application
+DesktopNames=Vyro
+Keywords=vyro;compositor;
+X-Ubuntu-Gettext-Domain=gnome-session
