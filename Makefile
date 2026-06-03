@@ -547,4 +547,30 @@ clean:
 	rm -rf $(BUILD)/
 	@echo "  [CLEAN] done"
 
-.PHONY: all build debug clean
+# ───────────────────────────────────────────────
+# USB image — bootable on legacy-BIOS x86_64 PCs.
+# Produces a 32 MB raw image with our boot sector + kernel at LBA 1+.
+# `dd if=build/vyro-usb.img of=/dev/diskN bs=1m` to write to a USB stick.
+# WILL NOT BOOT on: Apple Silicon Macs (ARM64, signed firmware), T2-equipped
+# Macs by default, or any UEFI-only machine without CSM. Old Intel Macs +
+# legacy PCs only.
+# ───────────────────────────────────────────────
+$(BUILD)/vyro-usb.img: $(BUILD)/boot.bin $(BUILD)/kernel.bin
+	@mkdir -p $(BUILD)
+	@echo "  [USB]   making 32 MB image"
+	dd if=/dev/zero of=$(BUILD)/vyro-usb.img bs=1m count=32 2>/dev/null
+	dd if=$(BUILD)/boot.bin   of=$(BUILD)/vyro-usb.img bs=512 count=1                    conv=notrunc 2>/dev/null
+	dd if=$(BUILD)/kernel.bin of=$(BUILD)/vyro-usb.img bs=512 seek=1                     conv=notrunc 2>/dev/null
+	@echo "  [USB]   vyro-usb.img is 32 MB, ready to dd"
+	@echo ""
+	@echo "  To write to a USB stick on macOS:"
+	@echo "    diskutil list                       # find your USB disk number"
+	@echo "    diskutil unmountDisk /dev/diskN     # replace N"
+	@echo "    sudo dd if=build/vyro-usb.img of=/dev/rdiskN bs=1m"
+	@echo "    diskutil eject /dev/diskN"
+	@echo ""
+	@echo "  Then boot a legacy-BIOS x86_64 PC from that USB stick."
+
+usb: $(BUILD)/vyro-usb.img
+
+.PHONY: all build debug clean usb
