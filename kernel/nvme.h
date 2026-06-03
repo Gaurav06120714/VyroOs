@@ -30,4 +30,11 @@ const nvme_info_t* nvme_info(void);
 // vC.6.2: bring up admin queues + identify. Returns 1 on success.
 int  nvme_admin_init(void);
 
+// vC.6.3: create I/O Submission Queue 1 + Completion Queue 1, then issue
+// NVMe READ (0x02) / WRITE (0x01) commands on namespace 1.
+// Buffer must be physically contiguous and aligned to ns1_lba_bytes.
+int  nvme_io_init(void);
+int  nvme_read (uint64_t lba, uint32_t count, void *buf);
+int  nvme_write(uint64_t lba, uint32_t count, const void *buf);
+
 #endif

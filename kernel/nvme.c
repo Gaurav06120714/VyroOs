@@ -207,3 +207,94 @@ int nvme_admin_init(void) {
     info.admin_ready = 1;
     return 1;
 }
+
+// =================================================================
+// vC.6.3 — I/O Queue 1 + READ/WRITE
+// =================================================================
+
+#define IOQ_DEPTH 8
+
+static __attribute__((aligned(4096))) nvme_sqe_t g_iosq[IOQ_DEPTH];
+static __attribute__((aligned(4096))) nvme_cqe_t g_iocq[IOQ_DEPTH];
+
+static uint16_t g_iosq_tail = 0;
+static uint16_t g_iocq_head = 0;
+static uint8_t  g_iocq_phase = 1;
+
+// I/O queue doorbells live at SQ0TDBL + (2*qid) * (4 << DSTRD) for SQs,
+// and the matching CQ head doorbell at +1 from the SQ doorbell.
+static inline uint64_t iosq_tail_dbl(void) {
+    return info.mmio_base + NVME_SQ0TDBL + (2u * 1u) * (4u << info.doorbell_stride);
+}
+static inline uint64_t iocq_head_dbl(void) {
+    return info.mmio_base + NVME_SQ0TDBL + (2u * 1u + 1u) * (4u << info.doorbell_stride);
+}
+
+static int io_submit(nvme_sqe_t *sqe) {
+    sqe->cid = (uint16_t)g_iosq_tail;
+    g_iosq[g_iosq_tail] = *sqe;
+    g_iosq_tail = (uint16_t)((g_iosq_tail + 1) % IOQ_DEPTH);
+    mmio_w32(iosq_tail_dbl(), g_iosq_tail);
+
+    for (int t = 0; t < 50000000; t++) {
+        volatile nvme_cqe_t *c = &g_iocq[g_iocq_head];
+        if ((c->status & 1) == g_iocq_phase) {
+            uint16_t sf = (c->status >> 1) & 0x7FFF;
+            g_iocq_head = (uint16_t)((g_iocq_head + 1) % IOQ_DEPTH);
+            if (g_iocq_head == 0) g_iocq_phase ^= 1;
+            mmio_w32(iocq_head_dbl(), g_iocq_head);
+            return sf == 0 ? 1 : 0;
+        }
+    }
+    return 0;
+}
+
+int nvme_io_init(void) {
+    if (!info.admin_ready) return 0;
+
+    for (uint32_t i = 0; i < sizeof(g_iosq); i++) ((uint8_t*)g_iosq)[i] = 0;
+    for (uint32_t i = 0; i < sizeof(g_iocq); i++) ((uint8_t*)g_iocq)[i] = 0;
+    g_iosq_tail = 0; g_iocq_head = 0; g_iocq_phase = 1;
+
+    // 1. Create I/O Completion Queue 1 — admin opcode 0x05
+    nvme_sqe_t sqe = {0};
+    sqe.opcode = 0x05;
+    sqe.prp1   = (uint64_t)(uintptr_t)g_iocq;
+    // cdw10: QSIZE (upper 16, depth-1) | QID (lower 16)
+    sqe.cdw10  = ((IOQ_DEPTH - 1u) << 16) | 1u;
+    // cdw11: bit 0 = Physically Contiguous, bit 1 = Interrupts Enabled (off here)
+    sqe.cdw11  = 1u;
+    if (!admin_submit(&sqe)) return 0;
+
+    // 2. Create I/O Submission Queue 1 — admin opcode 0x01, bound to CQ 1
+    for (uint32_t i = 0; i < sizeof(sqe); i++) ((uint8_t*)&sqe)[i] = 0;
+    sqe.opcode = 0x01;
+    sqe.prp1   = (uint64_t)(uintptr_t)g_iosq;
+    sqe.cdw10  = ((IOQ_DEPTH - 1u) << 16) | 1u;
+    // cdw11: bit 0 = PC, bits 31:16 = CQID
+    sqe.cdw11  = 1u | (1u << 16);
+    if (!admin_submit(&sqe)) return 0;
+    return 1;
+}
+
+static int nvme_rw(uint8_t opcode, uint64_t lba, uint32_t count, void *buf) {
+    if (!info.admin_ready) return 0;
+    if (!buf || count == 0) return 0;
+    // Single-PRP path: total bytes must fit in one page (4 KiB after the
+    // page-aligned buffer); larger transfers land in vC.6.4 alongside PRP lists.
+    uint32_t bytes = count * info.ns1_lba_bytes;
+    if (bytes > 4096) return 0;
+
+    nvme_sqe_t sqe = {0};
+    sqe.opcode = opcode;
+    sqe.nsid   = 1;
+    sqe.prp1   = (uint64_t)(uintptr_t)buf;
+    sqe.cdw10  = (uint32_t)(lba & 0xFFFFFFFFu);
+    sqe.cdw11  = (uint32_t)(lba >> 32);
+    // cdw12: NLB (number of LBAs minus 1) in low 16 bits
+    sqe.cdw12  = (count - 1u) & 0xFFFFu;
+    return io_submit(&sqe);
+}
+
+int nvme_read (uint64_t lba, uint32_t count, void       *buf) { return nvme_rw(0x02, lba, count, buf); }
+int nvme_write(uint64_t lba, uint32_t count, const void *buf) { return nvme_rw(0x01, lba, count, (void *)buf); }
