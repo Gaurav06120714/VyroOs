@@ -417,6 +417,142 @@ done:
     return consumed_ok ? 1 : -1;
 }
 
+// Encrypt and send one application-data record using the provided key/iv/seq.
+static int send_encrypted_record(int tcp_id,
+                                 const uint8_t key[32], const uint8_t iv[12],
+                                 uint64_t seq,
+                                 uint8_t inner_type,
+                                 const uint8_t* inner, uint32_t inner_len) {
+    static uint8_t rec[2048];
+    if (inner_len + 1 + 16 + 5 > sizeof(rec)) return -1;
+    uint32_t ct_len = inner_len + 1;        // payload || inner_type
+    uint32_t body_len = ct_len + 16;
+    rec[0] = TLS_RECORD_APP_DATA;
+    rec[1] = 0x03; rec[2] = 0x03;
+    rec[3] = (uint8_t)(body_len >> 8);
+    rec[4] = (uint8_t)(body_len & 0xFF);
+    static uint8_t plain[2048];
+    for (uint32_t i = 0; i < inner_len; i++) plain[i] = inner[i];
+    plain[inner_len] = inner_type;
+    uint8_t nonce[12];
+    for (int i = 0; i < 12; i++) nonce[i] = iv[i];
+    for (int i = 0; i < 8;  i++) nonce[11 - i] ^= (uint8_t)(seq >> (8 * i));
+    uint8_t tag[16];
+    aead_seal(key, nonce, rec, 5, plain, ct_len, rec + 5, tag);
+    for (int i = 0; i < 16; i++) rec[5 + ct_len + i] = tag[i];
+    return tcp_send(tcp_id, rec, (uint16_t)(5 + body_len));
+}
+
+// After the handshake completes (server Finished verified):
+//   1. Send client Finished (encrypted with c_hs_traffic key)
+//   2. Derive master secret + application traffic secrets/keys/IVs
+static void finalize_handshake(tls_ctx_t* ctx) {
+    // Client Finished MAC. transcript currently covers up to and including
+    // server Finished, which is what RFC 8446 §4.4.4 specifies.
+    uint8_t th[32];
+    sha256(ctx->transcript, ctx->transcript_len, th);
+    uint8_t cfk[32];
+    tls13_hkdf_expand_label(ctx->keys.client_hs_traffic_secret, "finished",
+                            (const uint8_t*)"", 0, cfk, 32);
+    uint8_t cfin_body[32];
+    hmac_sha256(cfk, 32, th, 32, cfin_body);
+    // Build the handshake message: type=20, len=32, body
+    uint8_t cfin_msg[4 + 32];
+    cfin_msg[0] = 20; cfin_msg[1] = 0; cfin_msg[2] = 0; cfin_msg[3] = 32;
+    for (int i = 0; i < 32; i++) cfin_msg[4 + i] = cfin_body[i];
+
+    send_encrypted_record(ctx->tcp_id,
+                          ctx->keys.client_key, ctx->keys.client_iv,
+                          ctx->client_seq++,
+                          TLS_RECORD_HANDSHAKE, cfin_msg, sizeof(cfin_msg));
+
+    // Now derive master secret and app traffic secrets.
+    // derived_handshake = Derive-Secret(handshake_secret, "derived", "")
+    uint8_t derived_hs[32];
+    tls13_derive_secret(ctx->keys.handshake_secret, "derived",
+                        (const uint8_t*)"", 0, derived_hs);
+    // master_secret = HKDF-Extract(derived_hs, 0^32)
+    uint8_t zero32[32]; for (int i = 0; i < 32; i++) zero32[i] = 0;
+    uint8_t master[32];
+    hkdf_extract(derived_hs, 32, zero32, 32, master);
+
+    // Transcript hash AT server Finished is the context for application keys.
+    // (RFC 8446 §7.1: c_ap_traffic = Derive-Secret(Master, "c ap traffic", CH..server_Finished))
+    uint8_t ap_hash[32];
+    sha256(ctx->transcript, ctx->transcript_len, ap_hash);
+
+    uint8_t c_ap[32], s_ap[32];
+    tls13_hkdf_expand_label(master, "c ap traffic", ap_hash, 32, c_ap, 32);
+    tls13_hkdf_expand_label(master, "s ap traffic", ap_hash, 32, s_ap, 32);
+    tls13_hkdf_expand_label(c_ap, "key", (const uint8_t*)"", 0, ctx->client_ap_key, 32);
+    tls13_hkdf_expand_label(c_ap, "iv",  (const uint8_t*)"", 0, ctx->client_ap_iv,  12);
+    tls13_hkdf_expand_label(s_ap, "key", (const uint8_t*)"", 0, ctx->server_ap_key, 32);
+    tls13_hkdf_expand_label(s_ap, "iv",  (const uint8_t*)"", 0, ctx->server_ap_iv,  12);
+    ctx->client_ap_seq = 0;
+    ctx->server_ap_seq = 0;
+}
+
+int tls_send(tls_ctx_t* ctx, const uint8_t* data, uint32_t len) {
+    if (ctx->state != TLS_CS_FINISHED_OK) return -1;
+    return send_encrypted_record(ctx->tcp_id,
+                                 ctx->client_ap_key, ctx->client_ap_iv,
+                                 ctx->client_ap_seq++,
+                                 TLS_RECORD_APP_DATA, data, len);
+}
+
+int tls_recv(tls_ctx_t* ctx, uint8_t* out, uint32_t max, uint32_t timeout_ms) {
+    if (ctx->state != TLS_CS_FINISHED_OK) return -1;
+    uint64_t deadline = timer_uptime_ms() + timeout_ms;
+    uint32_t got = 0;
+    while (timer_uptime_ms() < deadline && got < max) {
+        net_pump_run(50);
+        uint32_t free_space = TLS_RX_BUF_MAX - ctx->rx_len;
+        if (free_space > 0) {
+            int n = tcp_recv(ctx->tcp_id, ctx->rx_buf + ctx->rx_len, (uint16_t)free_space);
+            if (n > 0) ctx->rx_len += (uint32_t)n;
+        }
+        // Drain complete records.
+        while (ctx->rx_len >= 5) {
+            uint16_t body_len = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
+            uint32_t total = 5u + body_len;
+            if (ctx->rx_len < total) break;
+            uint8_t type = ctx->rx_buf[0];
+            uint8_t header[5];
+            for (int i = 0; i < 5; i++) header[i] = ctx->rx_buf[i];
+            uint8_t* body = ctx->rx_buf + 5;
+            if (type == TLS_RECORD_APP_DATA) {
+                int plen = decrypt_record(header, body, body_len,
+                                          ctx->server_ap_key, ctx->server_ap_iv,
+                                          ctx->server_ap_seq);
+                if (plen >= 0) {
+                    ctx->server_ap_seq++;
+                    int last = plen - 1;
+                    while (last >= 0 && body[last] == 0) last--;
+                    if (last >= 0) {
+                        uint8_t inner_t = body[last];
+                        uint32_t inner_len = (uint32_t)last;
+                        if (inner_t == TLS_RECORD_APP_DATA) {
+                            uint32_t take = inner_len < (max - got) ? inner_len : (max - got);
+                            for (uint32_t i = 0; i < take; i++) out[got + i] = body[i];
+                            got += take;
+                        } else if (inner_t == TLS_RECORD_ALERT) {
+                            // Close-notify or fatal — stop reading.
+                            uint32_t remain = ctx->rx_len - total;
+                            for (uint32_t i = 0; i < remain; i++) ctx->rx_buf[i] = ctx->rx_buf[total + i];
+                            ctx->rx_len = remain;
+                            return (int)got;
+                        }
+                    }
+                }
+            }
+            uint32_t remain = ctx->rx_len - total;
+            for (uint32_t i = 0; i < remain; i++) ctx->rx_buf[i] = ctx->rx_buf[total + i];
+            ctx->rx_len = remain;
+        }
+    }
+    return (int)got;
+}
+
 int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
                 uint32_t timeout_ms) {
     for (uint32_t i = 0; i < sizeof(*ctx); i++) ((uint8_t*)ctx)[i] = 0;
@@ -460,5 +596,9 @@ int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
             progress = process_one_record(ctx);
         }
     }
-    return ctx->state == TLS_CS_FINISHED_OK ? 1 : 0;
+    if (ctx->state == TLS_CS_FINISHED_OK) {
+        finalize_handshake(ctx);
+        return 1;
+    }
+    return 0;
 }

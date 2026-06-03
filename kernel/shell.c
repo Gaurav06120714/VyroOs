@@ -1495,12 +1495,66 @@ static void cmd_httpget() {
 }
 
 static void cmd_httpsget() {
-    print_color("\n  HTTPS GET: TLS application-data send/recv is wired in a future\n"
-                "  phase. The TLS handshake (v3.11) completes through server\n"
-                "  Finished MAC verification, but client Finished + application\n"
-                "  traffic key derivation are not yet implemented. Use httpget\n"
-                "  for plaintext HTTP, or tlshandshake to exercise the partial TLS path.\n\n",
-                MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    if (argc < 4) {
+        print_color("\n  Usage: httpsget <ip> <port> <host> [path]\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    uint8_t ip[4]; int port_int;
+    if (!parse_ipv4(argv[1], ip) || !parse_int_safe(argv[2], &port_int)) {
+        print_color("\n  Bad ip or port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const char* host = argv[3];
+    const char* path = (argc >= 5) ? argv[4] : "/";
+
+    // 1. TCP connect
+    int tid = tcp_connect(ip, (uint16_t)port_int);
+    for (int i = 0; i < 50 && tcp_state(tid) == TCP_SYN_SENT; i++) net_pump_run(100);
+    if (tcp_state(tid) != TCP_ESTABLISHED) {
+        print_color("\n  TCP connect failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    // 2. TLS handshake
+    static tls_ctx_t tctx;
+    print_color("\n  TLS 1.3 handshake to ", YELLOW_ON_BLACK); print(host); print("...\n");
+    int ok = tls_connect(&tctx, tid, host, 5000);
+    if (!ok) {
+        print_color("  Handshake failed (state="
+                    , MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print(tls_state_name(tctx.state)); print(")\n\n");
+        tcp_close(tid); return;
+    }
+    print_color("  Finished MAC verified, app keys derived\n",
+                MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+
+    // 3. Send HTTP GET
+    static uint8_t req[1024];
+    uint32_t p = 0;
+    const char* g = "GET ";          for (uint32_t i = 0; g[i]; i++) req[p++] = (uint8_t)g[i];
+    for (uint32_t i = 0; path[i]; i++) req[p++] = (uint8_t)path[i];
+    const char* h = " HTTP/1.1\r\nHost: "; for (uint32_t i = 0; h[i]; i++) req[p++] = (uint8_t)h[i];
+    for (uint32_t i = 0; host[i]; i++) req[p++] = (uint8_t)host[i];
+    const char* tail = "\r\nConnection: close\r\nUser-Agent: VyroOS/3.24\r\n\r\n";
+    for (uint32_t i = 0; tail[i]; i++) req[p++] = (uint8_t)tail[i];
+    int s = tls_send(&tctx, req, p);
+    if (s < 0) { print_color("  tls_send failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); tcp_close(tid); return; }
+    print("  Sent "); print_int(p); print(" bytes; awaiting response...\n");
+
+    // 4. Receive and print
+    static uint8_t resp[4096];
+    int n = tls_recv(&tctx, resp, sizeof(resp) - 1, 8000);
+    if (n <= 0) {
+        print_color("  no response\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        tcp_close(tid); return;
+    }
+    resp[n] = 0;
+    int show = n < 800 ? n : 800;
+    for (int i = 0; i < show; i++) print_char((char)resp[i]);
+    if (n > show) { print("\n... ("); print_int(n - show); print(" more bytes)\n"); }
+    print_color("\n  -- ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    print_int(n); print(" bytes (decrypted)\n\n");
+    tcp_close(tid);
 }
 
 

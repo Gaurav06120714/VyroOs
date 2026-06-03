@@ -87,13 +87,27 @@ typedef struct {
     // Derived after ServerHello.
     tls_handshake_keys_t keys;
     uint64_t server_seq;
+    uint64_t client_seq;             // for sending encrypted handshake (client Finished)
     uint8_t  saw_server_finished;
 
     // Result of server-Finished MAC check.
     uint8_t  finished_mac_ok;
 
+    // Application traffic keys/IVs (derived after handshake completes).
+    uint8_t  client_ap_key[32], client_ap_iv[12];
+    uint8_t  server_ap_key[32], server_ap_iv[12];
+    uint64_t client_ap_seq;
+    uint64_t server_ap_seq;
+
     uint8_t  state;
 } tls_ctx_t;
+
+// Send application data over the established TLS connection (encrypted record).
+// Returns bytes sent, or < 0 on error.
+int tls_send(tls_ctx_t* ctx, const uint8_t* data, uint32_t len);
+
+// Receive application data. Drains TCP, decrypts records, returns bytes.
+int tls_recv(tls_ctx_t* ctx, uint8_t* out, uint32_t max, uint32_t timeout_ms);
 
 // Run a full TLS 1.3 handshake on an already-ESTABLISHED TCP conn.
 // Returns 1 if we reached TLS_CS_FINISHED_OK with a valid server Finished MAC.
