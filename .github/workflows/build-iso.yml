@@ -49,6 +49,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # release-notes.sh needs the full tag history
 
       - name: Install live-build toolchain
         run: |
@@ -90,6 +92,16 @@ jobs:
           cd path-a-ubuntu-remix
           sudo -E ARCH=${{ matrix.arch }} ./build.sh
 
+      - name: Generate release notes (on tag)
+        if: startsWith(github.ref, 'refs/tags/vA.')
+        id: notes
+        run: |
+          NOTES_FILE="path-a-ubuntu-remix/build/RELEASE_NOTES-${{ github.ref_name }}.md"
+          bash path-a-ubuntu-remix/scripts/release-notes.sh \
+              "${{ github.ref_name }}" \
+              "${NOTES_FILE}"
+          echo "file=${NOTES_FILE}" >> "${GITHUB_OUTPUT}"
+
       - name: Compute checksum
         id: sum
         run: |
@@ -115,15 +127,7 @@ jobs:
           draft: true
           name: Vyro OS ${{ steps.ver.outputs.version }} (${{ matrix.track }})
           tag_name: ${{ github.ref_name }}
-          body: |
-            **Vyro OS ${{ steps.ver.outputs.version }} — ${{ matrix.track }}**
-
-            - ISO: `${{ steps.ver.outputs.iso }}`
-            - Architecture: `${{ matrix.arch }}`
-            - SHA-256: `${{ steps.sum.outputs.sha256 }}`
-            - Base: ${{ matrix.base_note }}
-            - Targets: ${{ matrix.target_note }}
-            - Build commit: ${{ github.sha }}
+          body_path: ${{ steps.notes.outputs.file }}
           files: |
             path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}
             path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}.sha256
