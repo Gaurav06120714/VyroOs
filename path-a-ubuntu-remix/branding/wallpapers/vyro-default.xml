@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+<wallpapers>
+  <wallpaper deleted="false">
+    <name>Vyro Aurora</name>
+    <filename>/usr/share/backgrounds/vyro/vyro-aurora.png</filename>
+    <options>zoom</options>
+    <pcolor>#0B0B12</pcolor>
+    <scolor>#16182A</scolor>
+    <shade_type>solid</shade_type>
+  </wallpaper>
+  <wallpaper deleted="false">
+    <name>Vyro Glass</name>
+    <filename>/usr/share/backgrounds/vyro/vyro-glass.png</filename>
+    <options>zoom</options>
+    <pcolor>#0B0B12</pcolor>
+    <scolor>#1A1830</scolor>
+    <shade_type>solid</shade_type>
+  </wallpaper>
+</wallpapers>

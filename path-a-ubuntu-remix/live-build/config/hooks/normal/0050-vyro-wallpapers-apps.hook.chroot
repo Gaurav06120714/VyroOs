@@ -1,0 +1,68 @@
+#!/bin/sh
+# Vyro wallpapers + default-apps + Firefox-as-VyroBrowser rebrand.
+
+set -e
+
+BRAND_SRC="/vyro-branding-src"
+
+# --- Wallpapers ---
+WP_DST="/usr/share/backgrounds/vyro"
+install -d "$WP_DST"
+if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-aurora.svg" -o "$WP_DST/vyro-aurora.png"
+    rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-glass.svg"  -o "$WP_DST/vyro-glass.png"
+    cp "$WP_DST/vyro-aurora.png" "$WP_DST/vyro-default.jpg" 2>/dev/null || \
+        rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-aurora.svg" -o "$WP_DST/vyro-default.jpg"
+fi
+install -d /usr/share/gnome-background-properties
+cp "$BRAND_SRC/wallpapers/vyro-default.xml" /usr/share/gnome-background-properties/vyro.xml
+
+# --- dconf defaults (wallpaper + favorite apps) ---
+install -d /etc/dconf/db/local.d
+cat > /etc/dconf/db/local.d/10-vyro-desktop <<'EOF'
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/vyro/vyro-aurora.png'
+picture-uri-dark='file:///usr/share/backgrounds/vyro/vyro-aurora.png'
+primary-color='#0B0B12'
+secondary-color='#16182A'
+
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/share/backgrounds/vyro/vyro-glass.png'
+
+[org/gnome/shell]
+favorite-apps=['firefox.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Terminal.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Calculator.desktop', 'org.gnome.Settings.desktop']
+
+[org/gnome/desktop/interface]
+clock-show-seconds=false
+clock-show-weekday=true
+enable-hot-corners=false
+EOF
+dconf update || true
+
+# --- Firefox as VyroBrowser (light rebrand) ---
+# Set default home + new-tab page to a Vyro welcome page; rename .desktop
+FF_PREFS_DIR="/usr/lib/firefox/distribution"
+install -d "$FF_PREFS_DIR"
+cat > "$FF_PREFS_DIR/policies.json" <<'EOF'
+{
+  "policies": {
+    "Homepage": {
+      "URL": "https://github.com/Gaurav06120714/VyroOs",
+      "Locked": false,
+      "StartPage": "homepage"
+    },
+    "NewTabPage": true,
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DontCheckDefaultBrowser": true
+  }
+}
+EOF
+
+# Rename Activities label without breaking the underlying app
+if [ -f /usr/share/applications/firefox.desktop ]; then
+    sed -i 's/^Name=Firefox.*$/Name=VyroBrowser/' /usr/share/applications/firefox.desktop || true
+    sed -i 's/^GenericName=.*$/GenericName=Web Browser/' /usr/share/applications/firefox.desktop || true
+fi
+
+echo "vyro-wallpapers-apps hook: wallpapers + favorites + VyroBrowser rebrand installed"

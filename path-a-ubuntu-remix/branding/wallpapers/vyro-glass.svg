@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" width="3840" height="2160" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0B12"/>
+      <stop offset="1" stop-color="#1A1830"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#B388FF" stop-opacity="0.85"/>
+      <stop offset="0.6" stop-color="#6A48CC" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#6A48CC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF8FD8" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#FF8FD8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb3" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#5E9BFF" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#5E9BFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#bg)"/>
+  <circle cx="1100" cy="900"  r="900" fill="url(#orb1)"/>
+  <circle cx="2900" cy="1500" r="700" fill="url(#orb2)"/>
+  <circle cx="2400" cy="500"  r="600" fill="url(#orb3)"/>
+</svg>
