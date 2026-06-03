@@ -55,8 +55,14 @@ main() {
     echo "==> lb build (this can take 30-90 minutes)"
     lb build
 
-    if [[ -f live-image-${ARCH}.hybrid.iso ]]; then
-        mv "live-image-${ARCH}.hybrid.iso" "${OUT_ISO}"
+    # live-build uses suite-arch in the output name sometimes; tolerate both.
+    SRC_ISO=""
+    for cand in "live-image-${ARCH}.hybrid.iso" "live-image-${ARCH}.iso"; do
+        if [[ -f "${cand}" ]]; then SRC_ISO="${cand}"; break; fi
+    done
+
+    if [[ -n "${SRC_ISO}" ]]; then
+        mv "${SRC_ISO}" "${OUT_ISO}"
         sha256sum "${OUT_ISO}" > "${OUT_ISO}.sha256"
         echo
         echo "==> OK: ${OUT_ISO}"

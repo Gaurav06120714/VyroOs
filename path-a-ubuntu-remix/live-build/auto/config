@@ -4,18 +4,27 @@
 
 set -e
 
+# Architecture defaults to amd64; override with: ARCH=arm64 lb config
+ARCH="${ARCH:-amd64}"
+
+case "${ARCH}" in
+    amd64)  BOOTLOADERS="grub-efi grub-pc" ;;
+    arm64)  BOOTLOADERS="grub-efi"          ;;
+    *)      BOOTLOADERS="grub-efi"          ;;
+esac
+
 lb config noauto \
     --mode ubuntu \
     --distribution noble \
-    --architectures amd64 \
+    --architectures "${ARCH}" \
     --linux-flavours generic \
     --archive-areas "main restricted universe multiverse" \
     --debian-installer live \
     --debian-installer-gui true \
-    --bootloaders "grub-efi grub-pc" \
+    --bootloaders "${BOOTLOADERS}" \
     --binary-images iso-hybrid \
     --iso-application "Vyro OS" \
     --iso-publisher "Vyro Project" \
-    --iso-volume "Vyro OS 7.0" \
+    --iso-volume "Vyro OS 7.0 ${ARCH}" \
     --bootappend-live "boot=live components quiet splash" \
     "${@}"

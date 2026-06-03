@@ -21,9 +21,30 @@ permissions:
 
 jobs:
   build:
-    name: Build Vyro OS ISO
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    name: Build Vyro OS ISO (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Path A primary track — x86_64 PCs / Intel Macs
+          - arch: amd64
+            runner: ubuntu-24.04
+            grub_pkg: grub-efi-amd64-bin
+            extra_pkgs: grub-pc-bin
+            track: Path A
+            base_note: Ubuntu 24.04 LTS, kernel 6.8, GNOME 46
+            target_note: x86_64 PCs (BIOS or UEFI), pre-T2 Intel Macs via CSM
+          # Path A2 secondary track — Apple Silicon / Asahi-style
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            grub_pkg: grub-efi-arm64-bin
+            extra_pkgs: ""
+            track: Path A2 (Asahi-style)
+            base_note: Ubuntu 24.04 LTS arm64, kernel 6.8, GNOME 46
+            target_note: ARM64 PCs (Ampere, Snapdragon X) and Apple Silicon via Asahi shim (BYO m1n1)
 
     steps:
       - name: Checkout
@@ -37,16 +58,18 @@ jobs:
             debootstrap \
             squashfs-tools \
             xorriso \
-            isolinux \
-            syslinux-common \
-            grub-pc-bin \
-            grub-efi-amd64-bin \
             mtools \
             librsvg2-bin \
             devscripts \
             debhelper \
             meson \
-            libgtk-4-dev
+            libgtk-4-dev \
+            ${{ matrix.grub_pkg }} \
+            ${{ matrix.extra_pkgs }}
+          # isolinux/syslinux are amd64-only; install conditionally
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            sudo apt-get install -y isolinux syslinux-common
+          fi
 
       - name: Compute version
         id: ver
@@ -57,14 +80,15 @@ jobs:
             VER="7.0-dev+${GITHUB_SHA::7}"
           fi
           echo "version=${VER}" >> "${GITHUB_OUTPUT}"
-          echo "iso=vyro-os-${VER}-amd64.iso" >> "${GITHUB_OUTPUT}"
+          echo "iso=vyro-os-${VER}-${{ matrix.arch }}.iso" >> "${GITHUB_OUTPUT}"
 
       - name: Build ISO
         env:
           VYRO_VERSION: ${{ steps.ver.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           cd path-a-ubuntu-remix
-          sudo -E ./build.sh
+          sudo -E ARCH=${{ matrix.arch }} ./build.sh
 
       - name: Compute checksum
         id: sum
@@ -89,18 +113,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          name: Vyro OS ${{ steps.ver.outputs.version }} (Path A)
+          name: Vyro OS ${{ steps.ver.outputs.version }} (${{ matrix.track }})
           tag_name: ${{ github.ref_name }}
           body: |
-            **Vyro OS ${{ steps.ver.outputs.version }} — Path A (Ubuntu 24.04 LTS remix)**
+            **Vyro OS ${{ steps.ver.outputs.version }} — ${{ matrix.track }}**
 
             - ISO: `${{ steps.ver.outputs.iso }}`
+            - Architecture: `${{ matrix.arch }}`
             - SHA-256: `${{ steps.sum.outputs.sha256 }}`
-            - Base: Ubuntu 24.04 LTS (kernel 6.8, GNOME 46)
+            - Base: ${{ matrix.base_note }}
+            - Targets: ${{ matrix.target_note }}
             - Build commit: ${{ github.sha }}
-
-            Boot on any x86_64 PC (BIOS or UEFI). Install via the Calamares
-            installer included on the live session.
           files: |
             path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}
             path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}.sha256
