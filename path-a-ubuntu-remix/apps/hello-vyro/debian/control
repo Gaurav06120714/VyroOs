@@ -1,0 +1,18 @@
+Source: hello-vyro
+Section: x11
+Priority: optional
+Maintainer: Gaurav <gauravganeshteegulla@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               meson,
+               libgtk-4-dev (>= 4.10)
+Standards-Version: 4.6.2
+Homepage: https://github.com/Gaurav06120714/VyroOs
+
+Package: hello-vyro
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Sample GTK4 application using the Vyro design tokens
+ hello-vyro is a small reference app that demonstrates the Vyro
+ glassmorphism design system on a stock GTK4 widget tree. It is bundled
+ with the Vyro OS Path A ISO as a starting point for developers building
+ native Vyro apps.

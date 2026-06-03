@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Hello, Vyro
+Comment=A sample app using Vyro design tokens
+Exec=hello-vyro
+Icon=os.vyro.HelloVyro
+Categories=GTK;Utility;
+Keywords=vyro;hello;sample;
+StartupNotify=true
