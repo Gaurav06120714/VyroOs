@@ -70,6 +70,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/lapic.o     \
        $(BUILD)/csprng.o    \
        $(BUILD)/smp_boot.o  \
+       $(BUILD)/smp_trampoline_blob.o \
        $(BUILD)/bignum.o    \
        $(BUILD)/rsa.o       \
        $(BUILD)/http.o      \
@@ -158,6 +159,10 @@ $(BUILD)/csprng.o: kernel/csprng.c
 	$(CC) $(CFLAGS) kernel/csprng.c -o $(BUILD)/csprng.o
 $(BUILD)/smp_boot.o: kernel/smp_boot.c
 	$(CC) $(CFLAGS) kernel/smp_boot.c -o $(BUILD)/smp_boot.o
+$(BUILD)/smp_trampoline.bin: kernel/smp_trampoline.asm
+	$(ASM) -f bin kernel/smp_trampoline.asm -o $(BUILD)/smp_trampoline.bin
+$(BUILD)/smp_trampoline_blob.o: kernel/smp_trampoline_blob.c $(BUILD)/smp_trampoline.bin
+	$(CC) $(CFLAGS) kernel/smp_trampoline_blob.c -o $(BUILD)/smp_trampoline_blob.o
 $(BUILD)/bignum.o: kernel/bignum.c
 	$(CC) $(CFLAGS) kernel/bignum.c -o $(BUILD)/bignum.o
 $(BUILD)/rsa.o: kernel/rsa.c
