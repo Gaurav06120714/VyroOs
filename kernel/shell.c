@@ -1472,6 +1472,41 @@ static void cmd_xhci() {
     print_char('\n');
 }
 
+static void cmd_xhci_bringup() {
+    if (!xhci_info()->present) {
+        print_color("\n  No xHCI controller (re-launch QEMU with -device qemu-xhci)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if (!xhci_reset()) {
+        print_color("\n  Reset failed; bring-up aborted\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int ok = xhci_bring_up();
+    print_color("\n  xHCI bring-up\n", YELLOW_ON_BLACK);
+    print("  Result          : "); print(ok ? "OK\n" : "FAILED\n");
+    print("  DCBAA phys      : 0x");
+    {
+        uint64_t a = xhci_dcbaa_phys();
+        for (int i = 60; i >= 0; i -= 4) {
+            int nib = (int)((a >> i) & 0xF);
+            print_char(nib < 10 ? ('0' + nib) : ('A' + nib - 10));
+        }
+    }
+    print_char('\n');
+    print("  Cmd ring phys   : 0x");
+    {
+        uint64_t a = xhci_cmd_ring_phys();
+        for (int i = 60; i >= 0; i -= 4) {
+            int nib = (int)((a >> i) & 0xF);
+            print_char(nib < 10 ? ('0' + nib) : ('A' + nib - 10));
+        }
+    }
+    print_char('\n');
+    print("  USBSTS          : 0x"); print_hex(xhci_status()); print_char('\n');
+    print_char('\n');
+}
+
 static void cmd_xhci_reset() {
     if (!xhci_info()->present) {
         print_color("\n  No xHCI controller. Boot QEMU with -device qemu-xhci to test.\n\n",
@@ -2283,6 +2318,7 @@ static const command_t commands[] = {
     { "httpsget",  cmd_httpsget  },
     { "xhci",      cmd_xhci      },
     { "xhcireset", cmd_xhci_reset},
+    { "xhcibringup", cmd_xhci_bringup },
     { "x509verify",cmd_x509verify},
     { "trust",     cmd_trust     },
     { "disk",      cmd_disk    },

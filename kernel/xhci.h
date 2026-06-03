@@ -34,4 +34,11 @@ int  xhci_reset(void);
 // Read the operational USBSTS register.
 uint32_t xhci_status(void);
 
+// Allocate DCBAA + Command Ring, program DCBAAP and CRCR, set CONFIG.MaxSlotsEn,
+// and start the controller (USBCMD.RS=1). Caller must have called xhci_reset() first.
+int  xhci_bring_up(void);
+
+uint64_t xhci_dcbaa_phys(void);
+uint64_t xhci_cmd_ring_phys(void);
+
 #endif
