@@ -1452,6 +1452,48 @@ static void cmd_tcprecv() {
 #include "wallpaper.h"
 #include "widgets_desktop.h"
 #include "tunes.h"
+#include "chacha20.h"
+#include "ecdsa.h"
+
+static void cmd_bench() {
+    print_color("\n  Vyro OS micro-benchmarks\n", YELLOW_ON_BLACK);
+    uint64_t t0, t1;
+
+    // SHA-256: hash 16 KB
+    static uint8_t buf[16384];
+    for (int i = 0; i < 16384; i++) buf[i] = (uint8_t)i;
+    t0 = timer_uptime_ms();
+    uint8_t h[32];
+    for (int i = 0; i < 10; i++) sha256(buf, 16384, h);
+    t1 = timer_uptime_ms();
+    print("  SHA-256  10x 16 KB : "); print_int((int)(t1 - t0)); print(" ms\n");
+
+    // ChaCha20: encrypt 16 KB
+    uint8_t key[32], nonce[12];
+    for (int i = 0; i < 32; i++) key[i]   = (uint8_t)i;
+    for (int i = 0; i < 12; i++) nonce[i] = (uint8_t)(i + 1);
+    t0 = timer_uptime_ms();
+    for (int i = 0; i < 10; i++) chacha20_xor(key, 1, nonce, buf, buf, 16384);
+    t1 = timer_uptime_ms();
+    print("  ChaCha20 10x 16 KB : "); print_int((int)(t1 - t0)); print(" ms\n");
+
+    // ECDSA P-256 verify (1 run)
+    t0 = timer_uptime_ms();
+    int ok = ecdsa_selftest();
+    t1 = timer_uptime_ms();
+    print("  ECDSA P-256 verify : "); print_int((int)(t1 - t0));
+    print(" ms ("); print(ok ? "PASS" : "FAIL"); print(")\n");
+
+    // RSA-2048 selftest (small modexp)
+    t0 = timer_uptime_ms();
+    extern int rsa_selftest();
+    int rok = rsa_selftest();
+    t1 = timer_uptime_ms();
+    print("  RSA selftest       : "); print_int((int)(t1 - t0));
+    print(" ms ("); print(rok ? "PASS" : "FAIL"); print(")\n");
+
+    print_char('\n');
+}
 
 static void cmd_tune() {
     if (argc < 2) {
@@ -2427,6 +2469,7 @@ static const command_t commands[] = {
     { "glassmode", cmd_glassmode },
     { "wallpaper", cmd_wallpaper },
     { "tune",      cmd_tune      },
+    { "bench",     cmd_bench     },
     { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
