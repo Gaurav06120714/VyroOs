@@ -1,0 +1,5 @@
+menu "Vyro OS Core packages"
+    source "$BR2_EXTERNAL_VYRO_PATH/package/libvyro-linux/Config.in"
+    source "$BR2_EXTERNAL_VYRO_PATH/package/vyro-compositor/Config.in"
+    source "$BR2_EXTERNAL_VYRO_PATH/package/vyro-init/Config.in"
+endmenu
