@@ -28,4 +28,9 @@ void sched_request_yield(void);
 uint64_t sched_total_preempts(void);
 uint64_t sched_total_ticks(void);
 
+// Per-task quantum policy. Setting quantum_ms = 0 disables timer-driven
+// preempt checking entirely (tasks run until explicit yield).
+uint32_t sched_quantum_ticks(void);
+uint32_t sched_used_ticks(void);
+
 #endif

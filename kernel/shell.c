@@ -1456,6 +1456,22 @@ static void cmd_tcprecv() {
 #include "ecdsa.h"
 #include "csprng.h"
 
+static void cmd_sched() {
+    print_color("\n  Scheduler instrumentation\n", YELLOW_ON_BLACK);
+    print("  Mode             : cooperative + timer-tickle (v3.12, v3.37)\n");
+    print("  Quantum (ticks)  : "); print_int((int)sched_quantum_ticks()); print_char('\n');
+    print("  Used since yield : "); print_int((int)sched_used_ticks()); print_char('\n');
+    print("  Total ticks      : "); print_int((int)sched_total_ticks()); print_char('\n');
+    print("  Total preempts   : "); print_int((int)sched_total_preempts()); print_char('\n');
+    print_color("\n  True IRQ-driven preemption (timer ISR saves full GPR + IRQ\n"
+                "  frame, schedule(), IRET to next task) is deferred to a phase\n"
+                "  with a dedicated runtime test harness. The cooperative-\n"
+                "  preempt path is wired into net_pump and exits at safe\n"
+                "  boundaries; in practice the kernel feels responsive enough\n"
+                "  without the full IRQ-switch trampoline.\n\n",
+                MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+}
+
 static void cmd_bench() {
     print_color("\n  Vyro OS micro-benchmarks\n", YELLOW_ON_BLACK);
     uint64_t t0, t1;
@@ -2505,6 +2521,7 @@ static const command_t commands[] = {
     { "wallpaper", cmd_wallpaper },
     { "tune",      cmd_tune      },
     { "bench",     cmd_bench     },
+    { "sched",     cmd_sched     },
     { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
