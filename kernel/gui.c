@@ -301,9 +301,11 @@ static void draw_notifications() {
     }
 }
 
+extern void wallpaper_render(void);
+extern void widgets_desktop_render(void);
 static void draw_desktop_bg() {
-    comp_gradient_v(0, 0, comp_width(), comp_height(),
-                    wallpapers[current_wall][0], wallpapers[current_wall][1]);
+    wallpaper_render();                          // unified wallpaper engine (v3.36)
+    widgets_desktop_render();                    // clock + calendar + weather widgets
     // Workspace pager dots
     int cx = (comp_width() - 320) / 2;
     int cy = comp_height() - DOCK_H - 32;
