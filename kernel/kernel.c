@@ -182,11 +182,20 @@ void kernel_main() {
 
     extern int  trust_add(const uint8_t*, uint32_t);
     extern const uint8_t x509_testvec_der[406];
-    extern const uint8_t vyro_root_ca_rsa_der[];
+    extern const uint8_t  vyro_root_ca_rsa_der[];
     extern const uint32_t vyro_root_ca_rsa_der_len;
+    extern const uint8_t  isrg_root_x1_mock_der[];
+    extern const uint32_t isrg_root_x1_mock_der_len;
+    extern const uint8_t  digicert_mock_der[];
+    extern const uint32_t digicert_mock_der_len;
+    extern const uint8_t  globalsign_mock_der[];
+    extern const uint32_t globalsign_mock_der_len;
     trust_add(x509_testvec_der, 406);
     trust_add(vyro_root_ca_rsa_der, vyro_root_ca_rsa_der_len);
-    ok("Trust anchor store (2 built-in: vyro.test ECDSA + Vyro Root CA RSA)");
+    trust_add(isrg_root_x1_mock_der, isrg_root_x1_mock_der_len);
+    trust_add(digicert_mock_der,     digicert_mock_der_len);
+    trust_add(globalsign_mock_der,   globalsign_mock_der_len);
+    ok("Trust anchor store (5 built-in: ECDSA test + Vyro Root + 3 mock CAs)");
 
     extern void tunes_play_boot();
     tunes_play_boot();

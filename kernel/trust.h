@@ -10,7 +10,7 @@
 // substantial source dump (~250 certs × ~1 KB) that doesn't belong in this
 // minimal kernel. We expose the API so a future userspace can populate it.
 
-#define TRUST_MAX 4
+#define TRUST_MAX 8
 #define TRUST_DER_MAX 2048
 
 int  trust_add(const uint8_t* der, uint32_t len);
