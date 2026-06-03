@@ -1,0 +1,64 @@
+/*
+ * Vyro GDM theme override
+ * Drop-in extension to /usr/share/gnome-shell/theme/gnome-shell.css for GDM.
+ */
+
+#lockDialogGroup {
+    background-image: url("file:///usr/share/backgrounds/vyro/vyro-default.jpg");
+    background-position: center;
+    background-size: cover;
+}
+
+.login-dialog {
+    background-color: rgba(20, 22, 32, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 16px 60px rgba(0, 0, 0, 0.55);
+    padding: 32px 28px;
+    -st-blur-effect: 32px;
+}
+
+.login-dialog-banner {
+    color: #E8E9F1;
+    font-weight: 600;
+    font-size: 14pt;
+    padding-bottom: 12px;
+}
+
+.login-dialog-user-list .user-widget {
+    background-color: rgba(20, 22, 32, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin: 4px 0;
+    transition-duration: 150ms;
+}
+
+.login-dialog-user-list .user-widget:hover,
+.login-dialog-user-list .user-widget:focus {
+    background-color: rgba(179, 136, 255, 0.18);
+    border-color: rgba(179, 136, 255, 0.40);
+}
+
+.login-dialog-prompt-entry {
+    background-color: rgba(20, 22, 32, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #E8E9F1;
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+
+.login-dialog-prompt-entry:focus {
+    border-color: #B388FF;
+}
+
+.login-dialog-button {
+    background-color: #B388FF;
+    color: #0B0B12;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.login-dialog-button:hover {
+    background-color: #C7A6FF;
+}

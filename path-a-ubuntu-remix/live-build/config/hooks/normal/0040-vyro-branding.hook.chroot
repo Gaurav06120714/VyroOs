@@ -1,0 +1,45 @@
+#!/bin/sh
+# Install Vyro branding (Plymouth, GDM, Calamares) into the chroot.
+
+set -e
+
+BRAND_SRC="/vyro-branding-src"   # bind-mounted by live-build
+
+if [ ! -d "$BRAND_SRC" ]; then
+    echo "vyro-branding hook: $BRAND_SRC missing" >&2
+    exit 0
+fi
+
+# --- Plymouth ---
+PLY_DST="/usr/share/plymouth/themes/vyro"
+install -d "$PLY_DST"
+cp "$BRAND_SRC/plymouth/vyro.plymouth" "$PLY_DST/"
+cp "$BRAND_SRC/plymouth/vyro.script"   "$PLY_DST/"
+if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 256 "$BRAND_SRC/logos/vyro-mark.svg" -o "$PLY_DST/vyro-mark.png"
+fi
+plymouth-set-default-theme -R vyro || true
+
+# --- GDM ---
+if [ -f /usr/share/gnome-shell/theme/gnome-shell.css ]; then
+    cat "$BRAND_SRC/gdm/vyro-gdm.css" >> /usr/share/gnome-shell/theme/gnome-shell.css
+fi
+install -d /usr/share/backgrounds/vyro
+# (wallpapers are dropped in by a later phase)
+
+# --- Calamares ---
+CAL_DST="/etc/calamares/branding/vyro"
+install -d "$CAL_DST"
+cp "$BRAND_SRC/installer/branding.desc" "$CAL_DST/branding.desc"
+cp "$BRAND_SRC/installer/show.qml"      "$CAL_DST/show.qml"
+if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 96 "$BRAND_SRC/logos/vyro-mark.svg" -o "$CAL_DST/logo.png"
+    rsvg-convert -w 360 "$BRAND_SRC/logos/vyro-wordmark.svg" -o "$CAL_DST/welcome.png"
+fi
+
+# Point Calamares at the Vyro branding by default
+if [ -f /etc/calamares/settings.conf ]; then
+    sed -i 's/^branding:.*/branding: vyro/' /etc/calamares/settings.conf
+fi
+
+echo "vyro-branding hook: Plymouth + GDM + Calamares branded as Vyro"

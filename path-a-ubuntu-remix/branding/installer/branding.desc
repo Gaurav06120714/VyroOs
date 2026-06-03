@@ -1,0 +1,37 @@
+# Vyro OS — Calamares branding descriptor
+# Installed to /etc/calamares/branding/vyro/branding.desc
+
+---
+componentName:  vyro
+
+welcomeStyleCalamares:   true
+welcomeExpandingLogo:    true
+
+windowExpanding:    normal
+windowSize:         900px,560px
+windowPlacement:    center
+
+strings:
+    productName:         Vyro OS
+    shortProductName:    Vyro
+    version:             7.0
+    shortVersion:        7.0
+    versionedName:       Vyro OS 7.0
+    shortVersionedName:  Vyro 7.0
+    bootloaderEntryName: Vyro
+    productUrl:          https://github.com/Gaurav06120714/VyroOs
+    supportUrl:          https://github.com/Gaurav06120714/VyroOs/issues
+    releaseNotesUrl:     https://github.com/Gaurav06120714/VyroOs/releases
+
+images:
+    productLogo:         logo.png
+    productIcon:         logo.png
+    productWelcome:      welcome.png
+
+slideshow:               show.qml
+
+style:
+    sidebarBackground:    "#0B0B12"
+    sidebarText:          "#E8E9F1"
+    sidebarTextSelect:    "#B388FF"
+    sidebarTextHighlight: "#C7A6FF"
