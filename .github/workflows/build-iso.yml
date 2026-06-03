@@ -1,0 +1,102 @@
+name: Vyro OS — Path A ISO build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'path-a-ubuntu-remix/**'
+      - '.github/workflows/build-iso.yml'
+    tags:
+      - 'vA.*'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Draft a GitHub Release with the ISO attached?'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Vyro OS ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install live-build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            live-build \
+            debootstrap \
+            squashfs-tools \
+            xorriso \
+            isolinux \
+            syslinux-common \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            librsvg2-bin
+
+      - name: Compute version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VER="${GITHUB_REF#refs/tags/vA.}"
+          else
+            VER="7.0-dev+${GITHUB_SHA::7}"
+          fi
+          echo "version=${VER}" >> "${GITHUB_OUTPUT}"
+          echo "iso=vyro-os-${VER}-amd64.iso" >> "${GITHUB_OUTPUT}"
+
+      - name: Build ISO
+        env:
+          VYRO_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          cd path-a-ubuntu-remix
+          sudo -E ./build.sh
+
+      - name: Compute checksum
+        id: sum
+        run: |
+          ISO="path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}"
+          SHA=$(cut -d' ' -f1 < "${ISO}.sha256")
+          echo "sha256=${SHA}" >> "${GITHUB_OUTPUT}"
+          ls -lh "${ISO}"
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.ver.outputs.iso }}
+          path: |
+            path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}
+            path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Draft GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/vA.')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: Vyro OS ${{ steps.ver.outputs.version }} (Path A)
+          tag_name: ${{ github.ref_name }}
+          body: |
+            **Vyro OS ${{ steps.ver.outputs.version }} — Path A (Ubuntu 24.04 LTS remix)**
+
+            - ISO: `${{ steps.ver.outputs.iso }}`
+            - SHA-256: `${{ steps.sum.outputs.sha256 }}`
+            - Base: Ubuntu 24.04 LTS (kernel 6.8, GNOME 46)
+            - Build commit: ${{ github.sha }}
+
+            Boot on any x86_64 PC (BIOS or UEFI). Install via the Calamares
+            installer included on the live session.
+          files: |
+            path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}
+            path-a-ubuntu-remix/build/${{ steps.ver.outputs.iso }}.sha256
