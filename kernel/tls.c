@@ -6,6 +6,7 @@
 #include "tcp.h"
 #include "net_pump.h"
 #include "csprng.h"
+#include "x509.h"
 #include "../drivers/timer.h"
 
 static uint32_t mini_strlen(const char* s) {
@@ -318,6 +319,77 @@ static int decrypt_record(const uint8_t* record5, uint8_t* body, uint32_t body_l
     return (int)ct_len;
 }
 
+// Case-insensitive label match with optional leftmost wildcard ("*.example.com").
+static int hostname_eq(const char* pat, const char* host) {
+    if (!pat || !host) return 0;
+    // Wildcard: "*.foo" matches "any.foo" but not "a.b.foo" or "foo".
+    if (pat[0] == '*' && pat[1] == '.') {
+        const char* dot = host;
+        while (*dot && *dot != '.') dot++;
+        if (*dot != '.' || dot == host) return 0;
+        pat += 2;
+        host = dot + 1;
+    }
+    while (*pat && *host) {
+        char a = *pat++, b = *host++;
+        if (a >= 'A' && a <= 'Z') a += 32;
+        if (b >= 'A' && b <= 'Z') b += 32;
+        if (a != b) return 0;
+    }
+    return *pat == 0 && *host == 0;
+}
+
+static int hostname_matches_cert(const x509_cert_t* c, const char* host) {
+    for (int i = 0; i < c->san_count; i++) {
+        if (hostname_eq(c->san[i], host)) return 1;
+    }
+    if (c->subject_cn[0]) return hostname_eq(c->subject_cn, host);
+    return 0;
+}
+
+// TLS 1.3 Certificate message body (RFC 8446 §4.4.2):
+//   opaque certificate_request_context<0..2^8-1>
+//   CertificateList certificate_list<0..2^24-1>
+// Each CertificateEntry:
+//   opaque cert_data<1..2^24-1>
+//   Extension extensions<0..2^16-1>
+static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_t n) {
+    if (n < 4) return;
+    uint32_t p = 0;
+    uint8_t ctx_len = body[p++];
+    if (p + ctx_len > n) return;
+    p += ctx_len;
+    if (p + 3 > n) return;
+    uint32_t list_len = ((uint32_t)body[p] << 16) | ((uint32_t)body[p+1] << 8) | body[p+2];
+    p += 3;
+    if (p + list_len > n) return;
+    if (list_len < 3) return;
+    // Leaf cert is first entry.
+    uint32_t cert_len = ((uint32_t)body[p] << 16) | ((uint32_t)body[p+1] << 8) | body[p+2];
+    p += 3;
+    if (p + cert_len > n) return;
+    const uint8_t* der = body + p;
+
+    static x509_cert_t leaf;
+    ctx->saw_certificate = 1;
+    if (!x509_parse(der, cert_len, &leaf)) {
+        ctx->cert_parse_ok = 0;
+        return;
+    }
+    ctx->cert_parse_ok = 1;
+    for (int i = 0; i < 128 && leaf.subject_cn[i]; i++) ctx->cert_subject_cn[i] = leaf.subject_cn[i];
+    for (int i = 0; i < 128 && leaf.issuer_cn[i];  i++) ctx->cert_issuer_cn[i]  = leaf.issuer_cn[i];
+    ctx->cert_sig_alg  = leaf.sig_alg;
+    ctx->cert_pkey_alg = leaf.pkey_alg;
+
+    // Self-signed verification: works for openssl s_server's default self-signed
+    // cert. Chain-with-trust-anchor lands in a later phase.
+    if (leaf.sig_alg == X509_SIG_SHA256_RSA && leaf.pkey_alg == X509_PKEY_RSA) {
+        ctx->cert_self_sign_ok = (uint8_t)x509_verify_signature(der, cert_len, &leaf, &leaf);
+    }
+    ctx->hostname_match_ok = (uint8_t)hostname_matches_cert(&leaf, ctx->hostname);
+}
+
 static int process_handshake_payload(tls_ctx_t* ctx, const uint8_t* inner, uint32_t n) {
     uint32_t p = 0;
     while (p + 4 <= n) {
@@ -349,6 +421,10 @@ static int process_handshake_payload(tls_ctx_t* ctx, const uint8_t* inner, uint3
                 ctx->transcript_len += msg_total;
             }
             return 1;
+        }
+        // Inspect Certificate (handshake type 11).
+        if (ht == 11) {
+            process_certificate_msg(ctx, msg + 4, hl);
         }
         if (ctx->transcript_len + msg_total > TLS_TRANSCRIPT_MAX) return 0;
         for (uint32_t i = 0; i < msg_total; i++)

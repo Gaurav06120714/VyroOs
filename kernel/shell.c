@@ -1527,6 +1527,16 @@ static void cmd_httpsget() {
     }
     print_color("  Finished MAC verified, app keys derived\n",
                 MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    if (tctx.saw_certificate) {
+        print("  Cert subject : "); print(tctx.cert_subject_cn); print_char('\n');
+        print("  Self-sign RSA: ");
+        if (tctx.cert_self_sign_ok) print_color("VERIFIED\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                         print("(not RSA or chain not implemented)\n");
+        print("  Hostname     : ");
+        if (tctx.hostname_match_ok) print_color("MATCH\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                         print_color("MISMATCH (proceeding INSECURELY)\n",
+                                                  MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
 
     // 3. Send HTTP GET
     static uint8_t req[1024];
@@ -1741,6 +1751,18 @@ static void cmd_tlshandshake() {
         else                       print_color("MISMATCH\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
     } else { print("(not received)\n"); }
     print("  Transcript     : "); print_int(tctx.transcript_len); print(" bytes\n");
+    if (tctx.saw_certificate) {
+        print("  Cert subject CN: "); print(tctx.cert_subject_cn); print_char('\n');
+        print("  Cert issuer  CN: "); print(tctx.cert_issuer_cn);  print_char('\n');
+        print("  Cert sig alg   : "); print(x509_sig_alg_name(tctx.cert_sig_alg)); print_char('\n');
+        print("  Cert pkey alg  : "); print(x509_pkey_alg_name(tctx.cert_pkey_alg)); print_char('\n');
+        print("  Self-sign RSA  : ");
+        if (tctx.cert_self_sign_ok) print_color("VERIFIED\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                         print("(not RSA, or failed)\n");
+        print("  Hostname match : ");
+        if (tctx.hostname_match_ok) print_color("YES\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                         print_color("NO\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
     print("  Result         : ");
     if (ok) print_color("HANDSHAKE COMPLETE\n\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
     else    print_color("FAILED\n\n",             MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
