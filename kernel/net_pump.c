@@ -3,6 +3,7 @@
 #include "arp.h"
 #include "udp.h"
 #include "tcp.h"
+#include "sched.h"
 #include "../drivers/timer.h"
 
 void net_pump_run(uint32_t ms) {
@@ -19,6 +20,7 @@ void net_pump_run(uint32_t ms) {
             tcp_tick();
             next_tcp_tick = timer_uptime_ms() + 100;
         }
+        sched_check_preempt();
         __asm__ volatile("hlt");
     }
 }

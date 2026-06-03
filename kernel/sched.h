@@ -22,6 +22,9 @@ int  sched_should_yield(void);
 // If a yield is pending and a task is currently running, call task_yield().
 void sched_check_preempt(void);
 
+// One-shot yield hook (sets the should_yield flag for the next check).
+void sched_request_yield(void);
+
 uint64_t sched_total_preempts(void);
 uint64_t sched_total_ticks(void);
 

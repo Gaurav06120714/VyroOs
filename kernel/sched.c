@@ -35,5 +35,7 @@ void sched_check_preempt(void) {
     }
 }
 
+void sched_request_yield(void) { used_ticks = quantum_ticks; }
+
 uint64_t sched_total_preempts(void) { return total_preempts; }
 uint64_t sched_total_ticks(void)    { return total_ticks; }
