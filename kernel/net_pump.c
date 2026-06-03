@@ -3,6 +3,7 @@
 #include "arp.h"
 #include "udp.h"
 #include "tcp.h"
+#include "ipv6.h"
 #include "sched.h"
 #include "../drivers/timer.h"
 
@@ -15,6 +16,7 @@ void net_pump_run(uint32_t ms) {
             if (arp_input(in.data, in.len)) continue;
             if (udp_input(in.data, in.len)) continue;
             if (tcp_input(in.data, in.len)) continue;
+            if (ipv6_input(in.data, in.len)) continue;
         }
         if (timer_uptime_ms() >= next_tcp_tick) {
             tcp_tick();

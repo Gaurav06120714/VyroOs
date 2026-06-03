@@ -109,6 +109,10 @@ void kernel_main() {
     udp_init();
     ok("UDP transport layer (port dispatch)");
 
+    extern void ipv6_init();
+    ipv6_init();
+    ok("IPv6 (link-local from EUI-64, ICMPv6 echo reply)");
+
     extern void tcp_init();
     tcp_init();
     ok("TCP transport layer (RFC 793 handshake)");
