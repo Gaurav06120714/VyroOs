@@ -59,6 +59,52 @@ typedef struct {
 
 static client_t g_clients[MAX_CLIENTS];
 static window_t g_windows[MAX_WINDOWS];
+
+extern int  vyro_chrome_titlebar_h(void);
+
+/* --- vB.0.5: helpers used by input.c --- */
+
+int vyro_server_window_hit(int cx, int cy, int *in_chrome, int *dx, int *dy) {
+    int chrome_h = vyro_chrome_titlebar_h();
+    for (int i = MAX_WINDOWS - 1; i >= 0; i--) {
+        if (!g_windows[i].in_use) continue;
+        int wx = g_windows[i].x;
+        int wy = g_windows[i].y;
+        int ww = (int)g_windows[i].width;
+        int wh = (int)g_windows[i].height;
+        /* Chrome box (title bar + content) */
+        int box_x = wx;
+        int box_y = wy - chrome_h;
+        int box_w = ww;
+        int box_h = wh + chrome_h;
+        if (cx < box_x || cx >= box_x + box_w) continue;
+        if (cy < box_y || cy >= box_y + box_h) continue;
+        if (in_chrome) *in_chrome = (cy < wy);
+        if (dx)        *dx = cx - wx;
+        if (dy)        *dy = cy - wy;
+        return i;
+    }
+    if (in_chrome) *in_chrome = 0;
+    if (dx)        *dx = 0;
+    if (dy)        *dy = 0;
+    return -1;
+}
+
+void vyro_server_window_move(int idx, int dx, int dy) {
+    if (idx < 0 || idx >= MAX_WINDOWS) return;
+    if (!g_windows[idx].in_use) return;
+    g_windows[idx].x += dx;
+    g_windows[idx].y += dy;
+}
+
+void vyro_server_send_event_to(int idx, const vyro_event_t *ev) {
+    if (idx < 0 || idx >= MAX_WINDOWS || !ev) return;
+    if (!g_windows[idx].in_use) return;
+    int owner = g_windows[idx].owner;
+    if (owner < 0 || owner >= MAX_CLIENTS) return;
+    if (g_clients[owner].fd < 0) return;
+    send_msg(g_clients[owner].fd, VYRO_OP_EVENT, ev, sizeof(*ev), 0);
+}
 static uint32_t g_next_session = 1;
 static uint32_t g_next_window  = 1;
 static int      g_listen_fd    = -1;

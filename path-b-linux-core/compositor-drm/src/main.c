@@ -193,14 +193,20 @@ int main(void) {
     /* vB.0.3: expose the dumb buffer to the IPC server and run its loop. */
     g_screen_fb = &fb;
 
-    extern int vyro_server_init(void);
-    extern int vyro_server_tick(int timeout_ms);
+    extern int  vyro_server_init(void);
+    extern int  vyro_server_tick(int timeout_ms);
+    extern int  vyro_input_init(void);
+    extern void vyro_input_tick(void);
     if (vyro_server_init() < 0) return 1;
+    if (vyro_input_init() < 0) {
+        fprintf(stderr, "vyro-compositor: input init failed, continuing without input\n");
+    }
 
-    fprintf(stderr, "vyro-compositor: %ux%u — entering server loop\n",
+    fprintf(stderr, "vyro-compositor: %ux%u — entering main loop\n",
             mode.hdisplay, mode.vdisplay);
     while (1) {
-        if (vyro_server_tick(16) < 0) break;   /* ~60 Hz tick */
+        if (vyro_server_tick(16) < 0) break;   /* ~60 Hz IPC + display tick */
+        vyro_input_tick();                      /* drain libinput each frame */
     }
 
     if (saved) {
