@@ -77,6 +77,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/trust.o     \
        $(BUILD)/wallpaper.o \
        $(BUILD)/widgets_desktop.o \
+       $(BUILD)/bignum_4k.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -179,6 +180,8 @@ $(BUILD)/wallpaper.o: kernel/wallpaper.c
 	$(CC) $(CFLAGS) kernel/wallpaper.c -o $(BUILD)/wallpaper.o
 $(BUILD)/widgets_desktop.o: kernel/widgets_desktop.c
 	$(CC) $(CFLAGS) kernel/widgets_desktop.c -o $(BUILD)/widgets_desktop.o
+$(BUILD)/bignum_4k.o: kernel/bignum_4k.c
+	$(CC) $(CFLAGS) kernel/bignum_4k.c -o $(BUILD)/bignum_4k.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c
