@@ -1705,7 +1705,20 @@ static void cmd_httpget() {
     int show = n < 800 ? n : 800;
     for (int i = 0; i < show; i++) print_char((char)resp[i]);
     if (n > show) { print("\n... ("); print_int(n - show); print(" more bytes)\n"); }
-    print_color("\n  -- ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    // Parse status + headers
+    int status = 0;
+    const uint8_t* body = 0; uint32_t body_len = 0;
+    int32_t cl = -1;
+    if (http_parse_response(resp, (uint32_t)n, &status, &body, &body_len, &cl)) {
+        print_color("\n  HTTP ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+        print_int(status);
+        print("  Content-Length: ");
+        if (cl >= 0) print_int(cl); else print("(unset)");
+        print("  body: "); print_int(body_len); print(" bytes\n");
+    } else {
+        print_color("\n  ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+        print("(unparseable response)\n");
+    }
     print_int(n); print(" bytes received --\n\n");
 }
 
