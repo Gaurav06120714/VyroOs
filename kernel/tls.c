@@ -965,12 +965,51 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
                           0, TLS_RECORD_HANDSHAKE, inner, ip);
     // Update transcript with SF (already there) — we leave it for client Finished verify.
 
-    // 6. Wait for client Finished — they send it encrypted with c_hs_traffic.
-    //    We don't yet implement decrypting + verifying it here; that closes the
-    //    handshake. Future phase. Mark as PARTIALLY_OK by recording the state.
-    ctx->state = TLS_CS_FINISHED_OK;
-    ctx->finished_mac_ok = 1;        // pending real client-Finished verify
-    return 1;
+    // 6. Wait for client Finished encrypted with c_hs_traffic. Decrypt with
+    //    client_key/iv (seq=0) and verify the 32-byte HMAC against the
+    //    transcript hash up to and including ServerFinished.
+    for (int i = 0; i < 36; i++)      ctx->transcript[ctx->transcript_len++] = sf_buf[i];
+    uint8_t expected_hash[32];
+    sha256(ctx->transcript, ctx->transcript_len, expected_hash);
+    uint8_t client_finished_key[32];
+    tls13_hkdf_expand_label(ctx->keys.client_hs_traffic_secret, "finished",
+                            (const uint8_t*)"", 0, client_finished_key, 32);
+    uint8_t expected_cf[32];
+    hmac_sha256(client_finished_key, 32, expected_hash, 32, expected_cf);
+
+    // Drain incoming bytes until we have a complete application_data record.
+    ctx->rx_len = 0;       // discard anything left from CH read
+    while (timer_uptime_ms() < deadline) {
+        net_pump_run(50);
+        int n = tcp_recv(tcp_id, ctx->rx_buf + ctx->rx_len,
+                          (uint16_t)(TLS_RX_BUF_MAX - ctx->rx_len));
+        if (n > 0) ctx->rx_len += (uint32_t)n;
+        if (ctx->rx_len < 5) continue;
+        uint16_t blen = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
+        if (ctx->rx_len < 5u + blen) continue;
+        if (ctx->rx_buf[0] != TLS_RECORD_APP_DATA) { ctx->state = TLS_CS_ERROR; return 0; }
+        // Decrypt with client_key/iv seq=0
+        int plen = decrypt_record(ctx->rx_buf, ctx->rx_buf + 5, blen,
+                                  ctx->keys.client_key, ctx->keys.client_iv, 0);
+        if (plen < 0) { ctx->state = TLS_CS_ERROR; return 0; }
+        // Strip trailing zeros + content type
+        int last = plen - 1;
+        while (last >= 0 && ctx->rx_buf[5 + last] == 0) last--;
+        if (last < 0 || ctx->rx_buf[5 + last] != TLS_RECORD_HANDSHAKE) {
+            ctx->state = TLS_CS_ERROR; return 0;
+        }
+        // Inner handshake: type(1)=Finished, length(3)=32, body(32)
+        const uint8_t* inner_msg = ctx->rx_buf + 5;
+        if (last < 4 + 32) { ctx->state = TLS_CS_ERROR; return 0; }
+        if (inner_msg[0] != 20) { ctx->state = TLS_CS_ERROR; return 0; }
+        uint8_t diff = 0;
+        for (int i = 0; i < 32; i++) diff |= expected_cf[i] ^ inner_msg[4 + i];
+        ctx->finished_mac_ok = (diff == 0) ? 1 : 0;
+        ctx->state = ctx->finished_mac_ok ? TLS_CS_FINISHED_OK : TLS_CS_ERROR;
+        return ctx->finished_mac_ok ? 1 : 0;
+    }
+    ctx->state = TLS_CS_ERROR;
+    return 0;
 }
 
 int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
