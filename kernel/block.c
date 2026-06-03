@@ -1,0 +1,120 @@
+#include "block.h"
+#include "ahci.h"
+#include "nvme.h"
+
+static block_device_t g_devs[BLOCK_MAX_DEVICES];
+static int g_count = 0;
+
+/* ---- AHCI backend ---- */
+
+static int ahci_read_thunk(block_device_t *bd, uint64_t lba, uint32_t count, void *buf) {
+    uint32_t port = (uint32_t)(uintptr_t)bd->transport;
+    return ahci_port_read(port, lba, count, buf);
+}
+
+static int ahci_write_thunk(block_device_t *bd, uint64_t lba, uint32_t count, const void *buf) {
+    /* AHCI write lands in vC.6.7 alongside ATA WRITE_DMA_EX (0x35);
+     * for now report unsupported so the FS layer doesn't corrupt anything. */
+    (void)bd; (void)lba; (void)count; (void)buf;
+    return 0;
+}
+
+/* ---- NVMe backend ---- */
+
+static int nvme_read_thunk(block_device_t *bd, uint64_t lba, uint32_t count, void *buf) {
+    (void)bd;
+    return nvme_read(lba, count, buf);
+}
+
+static int nvme_write_thunk(block_device_t *bd, uint64_t lba, uint32_t count, const void *buf) {
+    (void)bd;
+    return nvme_write(lba, count, buf);
+}
+
+/* ---- registration helpers ---- */
+
+static void copy_str(char *dst, size_t cap, const char *src) {
+    size_t i = 0;
+    if (!src || cap == 0) { if (cap) dst[0] = '\0'; return; }
+    while (src[i] && i + 1 < cap) { dst[i] = src[i]; i++; }
+    dst[i] = '\0';
+}
+
+static int register_ahci_port(uint32_t port) {
+    if (g_count >= BLOCK_MAX_DEVICES) return 0;
+    if (!ahci_port_init(port)) return 0;
+
+    block_device_t *bd = &g_devs[g_count];
+    bd->in_use             = 1;
+    bd->kind               = BLOCK_KIND_AHCI;
+    bd->index              = port;
+    bd->logical_block_size = 512;             // SATA default; ID DMA would refine
+    bd->total_blocks       = 0;               // unknown until IDENTIFY (vC.6.7)
+    bd->transport          = (void *)(uintptr_t)port;
+    bd->read               = ahci_read_thunk;
+    bd->write              = ahci_write_thunk;
+    copy_str(bd->model, sizeof(bd->model), "SATA disk");
+    g_count++;
+    return 1;
+}
+
+static int register_nvme_ns1(void) {
+    if (g_count >= BLOCK_MAX_DEVICES) return 0;
+    if (!nvme_admin_init()) return 0;
+    if (!nvme_io_init())    return 0;
+
+    const nvme_info_t *ni = nvme_info();
+    block_device_t *bd = &g_devs[g_count];
+    bd->in_use             = 1;
+    bd->kind               = BLOCK_KIND_NVME;
+    bd->index              = 1;                          // NSID 1
+    bd->logical_block_size = ni->ns1_lba_bytes;
+    bd->total_blocks       = ni->ns1_size_blocks;
+    bd->transport          = NULL;
+    bd->read               = nvme_read_thunk;
+    bd->write              = nvme_write_thunk;
+    copy_str(bd->model, sizeof(bd->model), ni->model);
+    g_count++;
+    return 1;
+}
+
+/* ---- public API ---- */
+
+int block_probe(void) {
+    g_count = 0;
+    for (int i = 0; i < BLOCK_MAX_DEVICES; i++) g_devs[i].in_use = 0;
+
+    /* AHCI: walk every active port */
+    if (ahci_init()) {
+        uint32_t mask = ahci_active_ports();
+        for (uint32_t p = 0; p < 32 && g_count < BLOCK_MAX_DEVICES; p++) {
+            if (mask & (1u << p)) register_ahci_port(p);
+        }
+    }
+
+    /* NVMe: ns1 only for now (multi-namespace lands with vC.6.8) */
+    if (g_count < BLOCK_MAX_DEVICES && nvme_init()) {
+        register_nvme_ns1();
+    }
+
+    return g_count;
+}
+
+block_device_t* block_get(uint32_t idx) {
+    if ((int)idx >= g_count || !g_devs[idx].in_use) return 0;
+    return &g_devs[idx];
+}
+
+int block_count(void) { return g_count; }
+
+int block_read(uint32_t idx, uint64_t lba, uint32_t count, void *buf) {
+    block_device_t *bd = block_get(idx);
+    if (!bd || !bd->read) return 0;
+    return bd->read(bd, lba, count, buf);
+}
+
+int block_write(uint32_t idx, uint64_t lba, uint32_t count, const void *buf) {
+    block_device_t *bd = block_get(idx);
+    if (!bd || !bd->write) return 0;
+    return bd->write(bd, lba, count, buf);
+}
