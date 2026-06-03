@@ -207,9 +207,16 @@ static void handle_window_present(client_t *c, const vyro_hdr_t *hdr,
         send_error(c->fd, hdr->serial, errno, "mmap memfd failed"); return;
     }
 
+    /* vB.0.4: decorate first (shadow underneath, title bar above),
+     * then blit client content into the body region. */
+    extern void vyro_chrome_decorate(int x, int y, int w, int h, const char *title);
+    extern int  vyro_chrome_titlebar_h(void);
+    vyro_chrome_decorate(g_windows[idx].x, g_windows[idx].y,
+                         m->width, m->height, g_windows[idx].title);
     vyro_screen_blit(g_windows[idx].x, g_windows[idx].y,
                      src, m->width, m->height, m->stride);
     vyro_screen_flush();
+    (void)vyro_chrome_titlebar_h;
 
     munmap(src, map_len);
     close(memfd);

@@ -72,6 +72,46 @@ void vyro_screen_flush(void) {
     /* dumb buffer is mmap'd write-back; no explicit flush needed on x86 */
 }
 
+/* --- vB.0.4: simple fill primitives used by chrome.c --- */
+
+void vyro_screen_fill_rect(int x, int y, int w, int h, uint32_t bgrx) {
+    if (!g_screen_fb || !g_screen_fb->map) return;
+    int sw = (int)g_screen_fb->width;
+    int sh = (int)g_screen_fb->height;
+    int dpitch = (int)g_screen_fb->pitch;
+
+    int x0 = x < 0 ? 0 : x;
+    int y0 = y < 0 ? 0 : y;
+    int x1 = (x + w) > sw ? sw : (x + w);
+    int y1 = (y + h) > sh ? sh : (y + h);
+    for (int yy = y0; yy < y1; yy++) {
+        uint32_t *row = (uint32_t *)(g_screen_fb->map + yy * dpitch);
+        for (int xx = x0; xx < x1; xx++) row[xx] = bgrx;
+    }
+}
+
+void vyro_screen_fill_circle(int cx, int cy, int r, uint32_t bgrx) {
+    if (!g_screen_fb || !g_screen_fb->map || r <= 0) return;
+    int sw = (int)g_screen_fb->width;
+    int sh = (int)g_screen_fb->height;
+    int dpitch = (int)g_screen_fb->pitch;
+
+    int r2 = r * r;
+    for (int dy = -r; dy <= r; dy++) {
+        int yy = cy + dy;
+        if (yy < 0 || yy >= sh) continue;
+        int dx_max = 0;
+        /* simple int sqrt: scan-line width for this row */
+        for (int t = r; t >= 0; t--) {
+            if (dy * dy + t * t <= r2) { dx_max = t; break; }
+        }
+        uint32_t *row = (uint32_t *)(g_screen_fb->map + yy * dpitch);
+        int x0 = cx - dx_max; if (x0 < 0)  x0 = 0;
+        int x1 = cx + dx_max; if (x1 >= sw) x1 = sw - 1;
+        for (int xx = x0; xx <= x1; xx++) row[xx] = bgrx;
+    }
+}
+
 static int alloc_fb(int fd, uint32_t w, uint32_t h, struct vyro_fb *out) {
     struct drm_mode_create_dumb creq = {.width = w, .height = h, .bpp = 32};
     if (ioctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0) {

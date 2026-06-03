@@ -12,7 +12,7 @@ VYRO_COMPOSITOR_DEPENDENCIES = libdrm libvyro-linux
 
 define VYRO_COMPOSITOR_BUILD_CMDS
     $(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall \
-        $(@D)/src/main.c $(@D)/src/server.c \
+        $(@D)/src/main.c $(@D)/src/server.c $(@D)/src/chrome.c \
         $(shell $(PKG_CONFIG_HOST_BINARY) --cflags libdrm) \
         $(shell $(PKG_CONFIG_HOST_BINARY) --libs libdrm) \
         -o $(@D)/vyro-compositor
