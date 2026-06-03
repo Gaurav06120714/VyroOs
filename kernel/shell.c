@@ -1451,6 +1451,23 @@ static void cmd_tcprecv() {
 #include "trust.h"
 #include "wallpaper.h"
 #include "widgets_desktop.h"
+#include "tunes.h"
+
+static void cmd_play() {
+    if (argc < 2) {
+        print_color("\n  Usage: play boot|alert|scale|arpeggio|error\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    if      (kstrcmp(argv[1], "boot")     == 0) tunes_play_boot();
+    else if (kstrcmp(argv[1], "alert")    == 0) tunes_play_alert();
+    else if (kstrcmp(argv[1], "scale")    == 0) tunes_play_scale();
+    else if (kstrcmp(argv[1], "arpeggio") == 0) tunes_play_arpeggio();
+    else if (kstrcmp(argv[1], "error")    == 0) tunes_play_error();
+    else { print_color("\n  unknown tune\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    print("\n  played.\n\n");
+}
+
 
 static void cmd_wallpaper() {
     if (argc < 2) {
@@ -2409,6 +2426,7 @@ static const command_t commands[] = {
     { "glass",     cmd_glass     },
     { "glassmode", cmd_glassmode },
     { "wallpaper", cmd_wallpaper },
+    { "play",      cmd_play      },
     { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },

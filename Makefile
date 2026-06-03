@@ -81,6 +81,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/bignum_4k.o \
        $(BUILD)/ipv6.o \
        $(BUILD)/trust_anchors.o \
+       $(BUILD)/tunes.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -189,6 +190,8 @@ $(BUILD)/ipv6.o: kernel/ipv6.c
 	$(CC) $(CFLAGS) kernel/ipv6.c -o $(BUILD)/ipv6.o
 $(BUILD)/trust_anchors.o: kernel/trust_anchors.c
 	$(CC) $(CFLAGS) kernel/trust_anchors.c -o $(BUILD)/trust_anchors.o
+$(BUILD)/tunes.o: kernel/tunes.c
+	$(CC) $(CFLAGS) kernel/tunes.c -o $(BUILD)/tunes.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c

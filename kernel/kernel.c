@@ -188,6 +188,10 @@ void kernel_main() {
     trust_add(vyro_root_ca_rsa_der, vyro_root_ca_rsa_der_len);
     ok("Trust anchor store (2 built-in: vyro.test ECDSA + Vyro Root CA RSA)");
 
+    extern void tunes_play_boot();
+    tunes_play_boot();
+    ok("Boot chime (5-note arpeggio)");
+
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
     else             ok("xHCI USB 3.0 controller (none detected)");
