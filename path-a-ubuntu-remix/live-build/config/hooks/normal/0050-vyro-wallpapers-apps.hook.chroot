@@ -1,23 +1,22 @@
 #!/bin/sh
-# Vyro wallpapers + default-apps + Firefox-as-VyroBrowser rebrand.
+# vA.7.5: wallpapers staged at /usr/share/vyro-staging/wallpapers, rasterized
+# here. Sets favorite-apps and rebrands Firefox as VyroBrowser.
 
 set -e
 
-BRAND_SRC="/vyro-branding-src"
+STAGE="/usr/share/vyro-staging"
 
 # --- Wallpapers ---
 WP_DST="/usr/share/backgrounds/vyro"
-install -d "$WP_DST"
+install -d "${WP_DST}"
 if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-aurora.svg" -o "$WP_DST/vyro-aurora.png"
-    rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-glass.svg"  -o "$WP_DST/vyro-glass.png"
-    cp "$WP_DST/vyro-aurora.png" "$WP_DST/vyro-default.jpg" 2>/dev/null || \
-        rsvg-convert -w 3840 "$BRAND_SRC/wallpapers/vyro-aurora.svg" -o "$WP_DST/vyro-default.jpg"
+    rsvg-convert -w 3840 "${STAGE}/wallpapers/vyro-aurora.svg" -o "${WP_DST}/vyro-aurora.png"
+    rsvg-convert -w 3840 "${STAGE}/wallpapers/vyro-glass.svg"  -o "${WP_DST}/vyro-glass.png"
 fi
 install -d /usr/share/gnome-background-properties
-cp "$BRAND_SRC/wallpapers/vyro-default.xml" /usr/share/gnome-background-properties/vyro.xml
+cp "${STAGE}/wallpapers/vyro-default.xml" /usr/share/gnome-background-properties/vyro.xml
 
-# --- dconf defaults (wallpaper + favorite apps) ---
+# --- dconf defaults ---
 install -d /etc/dconf/db/local.d
 cat > /etc/dconf/db/local.d/10-vyro-desktop <<'EOF'
 [org/gnome/desktop/background]
@@ -39,11 +38,10 @@ enable-hot-corners=false
 EOF
 dconf update || true
 
-# --- Firefox as VyroBrowser (light rebrand) ---
-# Set default home + new-tab page to a Vyro welcome page; rename .desktop
+# --- Firefox as VyroBrowser ---
 FF_PREFS_DIR="/usr/lib/firefox/distribution"
-install -d "$FF_PREFS_DIR"
-cat > "$FF_PREFS_DIR/policies.json" <<'EOF'
+install -d "${FF_PREFS_DIR}"
+cat > "${FF_PREFS_DIR}/policies.json" <<'EOF'
 {
   "policies": {
     "Homepage": {
@@ -59,10 +57,8 @@ cat > "$FF_PREFS_DIR/policies.json" <<'EOF'
 }
 EOF
 
-# Rename Activities label without breaking the underlying app
 if [ -f /usr/share/applications/firefox.desktop ]; then
     sed -i 's/^Name=Firefox.*$/Name=VyroBrowser/' /usr/share/applications/firefox.desktop || true
-    sed -i 's/^GenericName=.*$/GenericName=Web Browser/' /usr/share/applications/firefox.desktop || true
 fi
 
-echo "vyro-wallpapers-apps hook: wallpapers + favorites + VyroBrowser rebrand installed"
+echo "vyro-wallpapers-apps hook: done"

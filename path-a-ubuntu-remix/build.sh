@@ -37,6 +37,10 @@ main() {
     require xorriso
 
     mkdir -p "${BUILD_DIR}"
+
+    echo "==> prepare includes.chroot from theme/ and branding/"
+    "${ROOT_DIR}/scripts/prepare-includes.sh"
+
     cd "${LB_DIR}"
 
     echo "==> lb clean"

@@ -1,23 +1,10 @@
 #!/bin/sh
-# Install the Vyro GNOME + GTK theme into /usr/share/themes/Vyro/
-# Runs inside the chroot during `lb build`.
+# vA.7.5: theme tree is already in /usr/share/themes/Vyro/ via includes.chroot.
+# This hook only sets dconf defaults so new users get the Vyro theme + dark
+# color scheme on first login.
 
 set -e
 
-THEME_SRC="/vyro-theme-src"   # bind-mounted by live-build
-THEME_DST="/usr/share/themes/Vyro"
-
-if [ ! -d "$THEME_SRC" ]; then
-    echo "vyro-theme hook: $THEME_SRC missing (expected via includes.chroot)" >&2
-    exit 0
-fi
-
-install -d "$THEME_DST"
-cp -r "$THEME_SRC/gnome-shell"  "$THEME_DST/"
-cp -r "$THEME_SRC/gtk-4.0"      "$THEME_DST/"
-cp    "$THEME_SRC/index.theme"  "$THEME_DST/"
-
-# Default new users to the Vyro theme + dark color scheme via dconf
 install -d /etc/dconf/db/local.d
 cat > /etc/dconf/db/local.d/00-vyro <<'EOF'
 [org/gnome/shell/extensions/user-theme]
@@ -35,5 +22,4 @@ button-layout='close,minimize,maximize:'
 EOF
 
 dconf update || true
-
-echo "vyro-theme hook: installed Vyro theme into $THEME_DST"
+echo "vyro-theme hook: dconf defaults written"
