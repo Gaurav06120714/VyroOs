@@ -119,6 +119,50 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
 // ServerHello parser — extracts the server's key_share X25519 pubkey.
 // Input is the handshake body (no record header, no handshake header).
 // ─────────────────────────────────────────────────────────────────────
+int tls_build_server_hello(uint8_t* out, uint32_t out_max,
+                           const uint8_t server_random[32],
+                           const uint8_t session_id[32], uint8_t sid_len,
+                           const uint8_t server_pub_x25519[32]) {
+    if (out_max < 200) return -1;
+    uint32_t p = 9;                              // reserve record(5) + hs(4)
+    // legacy_version 0x0303
+    out[p++] = 0x03; out[p++] = 0x03;
+    for (int i = 0; i < 32; i++) out[p++] = server_random[i];
+    out[p++] = sid_len;
+    for (int i = 0; i < sid_len; i++) out[p++] = session_id[i];
+    // cipher_suite
+    put16(out + p, TLS_CIPHER_CHACHA20_POLY1305_SHA256); p += 2;
+    out[p++] = 0x00;                             // compression_method=null
+
+    uint32_t ext_off = p;
+    p += 2;
+    uint32_t ext_start = p;
+
+    // supported_versions selected: ext_type=0x002b, body=0x0304
+    put16(out + p, 0x002b); p += 2;
+    put16(out + p, 2);      p += 2;
+    put16(out + p, 0x0304); p += 2;
+
+    // key_share selected: ext_type=0x0033, body = group(2) + key_len(2) + 32 bytes
+    put16(out + p, 0x0033); p += 2;
+    put16(out + p, 4 + 32); p += 2;
+    put16(out + p, TLS_GROUP_X25519); p += 2;
+    put16(out + p, 32); p += 2;
+    for (int i = 0; i < 32; i++) out[p++] = server_pub_x25519[i];
+
+    put16(out + ext_off, (uint16_t)(p - ext_start));
+
+    uint32_t hs_body_len = p - 9;
+    out[5] = TLS_HS_SERVER_HELLO;
+    put24(out + 6, hs_body_len);
+
+    uint32_t record_body_len = p - 5;
+    out[0] = TLS_RECORD_HANDSHAKE;
+    out[1] = 0x03; out[2] = 0x03;
+    put16(out + 3, (uint16_t)record_body_len);
+    return (int)p;
+}
+
 // Parse a ClientHello handshake body (caller skipped the 4-byte handshake header).
 int tls_parse_client_hello(const uint8_t* b, uint32_t n,
                            uint8_t client_pub[32],

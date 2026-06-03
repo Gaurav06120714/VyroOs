@@ -1835,6 +1835,28 @@ static void cmd_fatcat() {
 }
 
 
+static void cmd_tlsserverhello() {
+    static uint8_t random_out[32], sid[32], spriv[32], spub[32];
+    for (int i = 0; i < 32; i++) random_out[i] = (uint8_t)(0x50 + i);
+    for (int i = 0; i < 32; i++) sid[i]        = (uint8_t)(0x60 ^ i);
+    for (int i = 0; i < 32; i++) spriv[i]      = (uint8_t)(0x70 + i);
+    x25519_base(spub, spriv);
+    static uint8_t sh[512];
+    int n = tls_build_server_hello(sh, sizeof(sh), random_out, sid, 32, spub);
+    print_color("\n  ServerHello round-trip\n", YELLOW_ON_BLACK);
+    if (n < 0) { print_color("  build failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    print("  built bytes: "); print_int(n); print_char('\n');
+    print("  record type: 0x"); print_hex2(sh[0]); print_char('\n');
+    print("  HS type    : 0x"); print_hex2(sh[5]); print(" (0x02 = ServerHello)\n");
+
+    uint8_t got_pub[32];
+    int ok = tls_parse_server_hello(sh + 9, (uint32_t)n - 9, got_pub);
+    print("  parse_back : "); print(ok ? "OK\n" : "FAIL\n");
+    int eq = 1; for (int i = 0; i < 32; i++) if (got_pub[i] != spub[i]) { eq = 0; break; }
+    print("  pubkey roundtrip: "); print(eq ? "yes\n" : "no\n");
+    print_char('\n');
+}
+
 // Exercise the v3.34 ClientHello parser against a synthetic CH built by our
 // own client-side builder.
 static void cmd_tlsparseclient() {
@@ -2351,6 +2373,7 @@ static const command_t commands[] = {
     { "tls",       cmd_tls       },
     { "tlshandshake", cmd_tlshandshake },
     { "tlsparseclient", cmd_tlsparseclient },
+    { "tlsserverhello", cmd_tlsserverhello },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "fatwrite",  cmd_fatwrite  },
