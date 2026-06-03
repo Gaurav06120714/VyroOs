@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v5.0
-**Last update:** v5.0 release tag — full TLS 1.3 client+server, RSA-PSS, IPv6 NDP, VyFS perms+symlinks, 5 trust anchors, glassmorphism desktop, 60+ shell commands
+**Current release:** v6.0
+**Last update:** v6.0 release — production-OS audit, v6 roadmap, ARM64 HAL skeleton, real CPUID, ACPI table walker + MADT, AHCI / E1000 / NVMe controller detection, USB image build target
 
 ## v3.11 → v3.30 highlights
 

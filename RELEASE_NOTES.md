@@ -1,5 +1,46 @@
 # Release Notes
 
+## v6.0 — Real-hardware foundations
+
+Vyro OS v6.0 is the first release that takes "run on real hardware" seriously. It adds the discovery and identification layers that any production OS depends on, and ships a real bootable USB image. **It does not yet boot on Apple Silicon Macs** — that requires a full ARM64 port (~48 person-months per `ROADMAP_V6.md`).
+
+### New since v5.0
+- **`AUDIT.md`** — 14-section honest catalogue of every gap between v5.0 and a production OS on Apple hardware. Calibrated against Asahi Linux's actual timeline.
+- **`ROADMAP_V6.md`** — 4 tracks (real x86_64 PCs, Apple Silicon, userspace + Chromium, security) totaling ~116 person-months / 10 engineer-years.
+- **HAL skeleton** (`kernel/arch/{hal.h,x86_64/hal_x86_64.c,arm64/hal_arm64.c}`) — hardware-abstraction surface, x86_64 CPUID parse with real vendor/brand/family/model/features, ARM64 MIDR_EL1 + CNTVCT_EL0 ready for future cross-compile.
+- **ACPI table walker** — RSDP discovery, RSDT/XSDT enumeration, table lookup by 4-character signature, MADT walker reports the actual Local APIC and IOAPIC list on real firmware.
+- **AHCI SATA controller detection** — PCI probe, ABAR mapping, GHC.AE enable, capability parse, active-port enumeration.
+- **Intel E1000-family NIC detection** — covers 12 device IDs (82540EM/82574L/I217/I218/I219/I225/I210) including pre-2009 Intel Macs.
+- **NVMe controller detection** — class 0x01/0x08/0x02 probe, 64-bit BAR0 handling, CAP + VS register parse.
+- **`make usb`** — builds a 32 MB bootable raw image (`build/vyro-usb.img`) and prints the exact `diskutil` + `dd` sequence for macOS.
+- **`docs/USB_INSTALL.md`** — honest compatibility table: legacy-BIOS PCs ✅, pre-T2 Intel Macs ⚠️, T2/Apple Silicon Macs ❌.
+- **`cpuhal`, `acpi`, `ahci`, `e1000`, `nvme`** shell commands.
+
+### What this does NOT yet add
+- Real DMA TX/RX on the new NIC drivers (detection only)
+- Real disk I/O on AHCI/NVMe (controller setup only)
+- ACPI AML interpretation → real battery / fan / thermals
+- ARM64 cross-compile target
+- UEFI Graphics Output Protocol mode setting
+- USB HID enumeration → real keyboard
+- WiFi / Bluetooth drivers
+- Mac-specific quirks (SMC, T2, AGX)
+
+These are tracked in `ROADMAP_V6.md` with realistic person-month estimates.
+
+### How to install on a USB stick
+```bash
+make clean && make && make usb
+# then: diskutil list / sudo dd if=build/vyro-usb.img of=/dev/rdiskN bs=1m
+```
+
+See `docs/USB_INSTALL.md` for the full procedure and the compatibility table.
+
+### Kernel size
+~248 KB / 384 KB ceiling.
+
+---
+
 ## v5.0 — Major release
 
 Vyro OS 5.0 closes most of the pending items from v4.0. Highlights since the v4.0 baseline:
