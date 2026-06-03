@@ -86,6 +86,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/hal_x86_64.o \
        $(BUILD)/acpi.o \
        $(BUILD)/ahci.o \
+       $(BUILD)/e1000.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -204,6 +205,8 @@ $(BUILD)/acpi.o: kernel/acpi.c
 	$(CC) $(CFLAGS) kernel/acpi.c -o $(BUILD)/acpi.o
 $(BUILD)/ahci.o: kernel/ahci.c
 	$(CC) $(CFLAGS) kernel/ahci.c -o $(BUILD)/ahci.o
+$(BUILD)/e1000.o: drivers/e1000.c
+	$(CC) $(CFLAGS) drivers/e1000.c -o $(BUILD)/e1000.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c

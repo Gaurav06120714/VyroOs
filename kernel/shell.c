@@ -1494,6 +1494,27 @@ static void cmd_ln() {
 #include "arch/hal.h"
 #include "acpi.h"
 #include "ahci.h"
+#include "../drivers/e1000.h"
+
+static void cmd_e1000() {
+    if (!e1000_init()) {
+        print_color("\n  No Intel E1000-family NIC detected.\n  (QEMU: launch with -device e1000 instead of -device rtl8139)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const e1000_info_t* e = e1000_info();
+    print_color("\n  Intel Ethernet controller\n", YELLOW_ON_BLACK);
+    print("  Device ID    : 0x"); print_hex(e->device_id); print_char('\n');
+    print("  MMIO base    : 0x"); print_hex((uint32_t)(e->mmio_base & 0xFFFFFFFF)); print_char('\n');
+    print("  MAC          : ");
+    for (int i = 0; i < 6; i++) {
+        print_hex2(e->mac[i]); if (i < 5) print_char(':');
+    }
+    print_char('\n');
+    print("  STATUS       : 0x"); print_hex(e->link_status);
+    print((e->link_status & 0x2) ? " (link up)" : " (link down)");
+    print("\n\n");
+}
 
 static void cmd_ahci() {
     if (!ahci_init()) {
@@ -2724,6 +2745,7 @@ static const command_t commands[] = {
     { "cpuhal",    cmd_cpu_hal   },
     { "acpi",      cmd_acpi      },
     { "ahci",      cmd_ahci      },
+    { "e1000",     cmd_e1000     },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },
