@@ -24,7 +24,7 @@ enum {
 #define X509_TIME_MAX    32
 #define X509_SAN_MAX      8
 #define X509_SAN_LEN_MAX 128
-#define X509_PUBKEY_N_MAX 256          // RSA-2048 modulus
+#define X509_PUBKEY_N_MAX 512          // RSA-4096 modulus (covers 2048 and 4096)
 #define X509_PUBKEY_E_MAX   8
 
 typedef struct {

@@ -1,6 +1,7 @@
 #include "x509.h"
 #include "rsa.h"
 #include "ecdsa.h"
+#include "bignum_4k.h"
 
 // Minimal DER reader + X.509 v3 parser. Extracts the identity-relevant fields
 // only: Subject CN, Issuer CN, validity period, SubjectAltName DNS entries,
@@ -318,10 +319,19 @@ int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
     uint32_t tbs_l    = child->tbs_len;
     if (child->sig_alg == X509_SIG_SHA256_RSA &&
         parent->pkey_alg == X509_PKEY_RSA && parent->pubkey_n_len > 0) {
-        return rsa_pkcs1_v15_sha256_verify(
-            parent->pubkey_n, parent->pubkey_n_len,
-            parent->pubkey_e, parent->pubkey_e_len,
-            sig, sig_l, tbs, tbs_l);
+        // Dispatch by modulus width: ≤256 bytes uses the 2048-bit bignum
+        // (faster), >256 bytes uses bignum_4k (handles RSA-3072/4096 roots).
+        if (parent->pubkey_n_len <= 256) {
+            return rsa_pkcs1_v15_sha256_verify(
+                parent->pubkey_n, parent->pubkey_n_len,
+                parent->pubkey_e, parent->pubkey_e_len,
+                sig, sig_l, tbs, tbs_l);
+        } else {
+            return rsa4k_pkcs1_v15_sha256_verify(
+                parent->pubkey_n, parent->pubkey_n_len,
+                parent->pubkey_e, parent->pubkey_e_len,
+                sig, sig_l, tbs, tbs_l);
+        }
     }
     if (child->sig_alg == X509_SIG_ECDSA_SHA256 &&
         parent->pkey_alg == X509_PKEY_EC && parent->pubkey_ec_valid) {
