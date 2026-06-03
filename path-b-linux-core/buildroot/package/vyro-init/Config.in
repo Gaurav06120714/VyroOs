@@ -1,0 +1,12 @@
+config BR2_PACKAGE_VYRO_INIT
+    bool "vyro-init"
+    help
+      Vyro PID 1 — minimal service supervisor for Path B.
+
+      Mounts /proc, /sys, /dev, /run, /tmp; starts udev for device nodes;
+      reaps zombies; launches vyro-compositor as the foreground service.
+
+      Not a systemd replacement for general Linux use — just enough to
+      bring up the Vyro desktop.
+
+      https://github.com/Gaurav06120714/VyroOs

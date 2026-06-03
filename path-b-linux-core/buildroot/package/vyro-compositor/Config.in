@@ -1,0 +1,12 @@
+config BR2_PACKAGE_VYRO_COMPOSITOR
+    bool "vyro-compositor"
+    select BR2_PACKAGE_LIBDRM
+    select BR2_PACKAGE_LIBVYRO_LINUX
+    help
+      The Vyro display server + window manager.
+
+      Opens /dev/dri/card0 directly, drives mode-setting, allocates dumb
+      buffers, composites window pixels, and dispatches input events from
+      libinput. No X11, no Wayland.
+
+      https://github.com/Gaurav06120714/VyroOs

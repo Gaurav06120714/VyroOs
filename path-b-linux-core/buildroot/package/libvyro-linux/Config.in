@@ -1,0 +1,13 @@
+config BR2_PACKAGE_LIBVYRO_LINUX
+    bool "libvyro-linux"
+    depends on BR2_TOOLCHAIN_HAS_THREADS
+    select BR2_PACKAGE_LIBDRM
+    select BR2_PACKAGE_LIBINPUT
+    help
+      The Vyro userland support library, ported to Linux.
+
+      Provides the same window/draw/input/IPC API as the microkernel
+      libvyro, implemented over Linux DRM/KMS, evdev, and musl/glibc
+      syscalls. Required by every Vyro desktop application.
+
+      https://github.com/Gaurav06120714/VyroOs
