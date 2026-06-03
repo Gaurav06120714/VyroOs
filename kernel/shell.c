@@ -1491,6 +1491,29 @@ static void cmd_ln() {
     print("\n  symlink "); print(argv[3]); print(" -> "); print(argv[2]); print("\n\n");
 }
 
+#include "arch/hal.h"
+static void cmd_cpuinfo() {
+    hal_cpu_info_t info;
+    hal_cpu_detect(&info);
+    print_color("\n  CPU\n", YELLOW_ON_BLACK);
+    print("  Arch     : "); print(hal_arch_name()); print_char('\n');
+    print("  Vendor   : "); print(info.vendor);    print_char('\n');
+    if (info.brand[0]) { print("  Brand    : "); print(info.brand); print_char('\n'); }
+    print("  Family   : "); print_int(info.family);   print_char('\n');
+    print("  Model    : "); print_int(info.model);    print_char('\n');
+    print("  Stepping : "); print_int(info.stepping); print_char('\n');
+    print("  Features : ");
+    if (info.has_sse2)   print("sse2 ");
+    if (info.has_avx)    print("avx ");
+    if (info.has_avx2)   print("avx2 ");
+    if (info.has_aes_ni) print("aes-ni ");
+    if (info.has_sha)    print("sha ");
+    if (info.has_rdrand) print("rdrand ");
+    if (info.has_rdseed) print("rdseed ");
+    if (info.has_pcid)   print("pcid ");
+    print("\n\n");
+}
+
 static void cmd_sched() {
     print_color("\n  Scheduler instrumentation\n", YELLOW_ON_BLACK);
     print("  Mode             : cooperative + timer-tickle (v3.12, v3.37)\n");
@@ -2634,6 +2657,7 @@ static const command_t commands[] = {
     { "tune",      cmd_tune      },
     { "bench",     cmd_bench     },
     { "sched",     cmd_sched     },
+    { "cpuinfo",   cmd_cpuinfo   },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },
