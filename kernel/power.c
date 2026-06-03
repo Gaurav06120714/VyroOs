@@ -35,3 +35,18 @@ void power_reboot() {
     __asm__ volatile("cli");
     for (;;) __asm__ volatile("hlt");
 }
+
+// Halt all CPUs. APs sit in their hlt loop already; BSP joins them.
+// Doesn't power off the machine — leaves the framebuffer intact so a "halted"
+// banner can stay on screen.
+void power_halt() {
+    __asm__ volatile("cli");
+    for (;;) __asm__ volatile("hlt");
+}
+
+// Suspend-to-RAM placeholder. Real S3 sleep requires writing SLP_TYPa to the
+// PM1a control with bit 13 set; that's its own deeper integration with ACPI
+// table parsing. For now we just go to halt as a documented no-op.
+void power_suspend() {
+    power_halt();
+}

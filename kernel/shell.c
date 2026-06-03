@@ -2549,6 +2549,19 @@ static void cmd_reboot() {
     power_reboot();
 }
 
+static void cmd_halt() {
+    print_color("\n  System halted. (CPU in HLT loop.)\n\n",
+                MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    power_halt();
+}
+
+static void cmd_suspend() {
+    print_color("\n  Suspend-to-RAM is a placeholder — halts the CPU.\n"
+                "  Real S3 needs full ACPI table parsing (deferred).\n\n",
+                MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    power_suspend();
+}
+
 static void cmd_shutdown() {
     print_color("\n  Shutting down Vyro OS. Goodbye.\n", YELLOW_ON_BLACK);
     sleep_ms(500);
@@ -2668,6 +2681,8 @@ static const command_t commands[] = {
     { "reboot",   cmd_reboot   },
     { "shutdown", cmd_shutdown },
     { "poweroff", cmd_shutdown },
+    { "halt",     cmd_halt     },
+    { "suspend",  cmd_suspend  },
 };
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
