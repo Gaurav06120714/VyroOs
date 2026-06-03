@@ -172,6 +172,10 @@ void kernel_main() {
     if (rsa_selftest()) ok("RSA bignum + PKCS1-v1_5 (modexp selftest passes)");
     else                ok("RSA bignum + PKCS1-v1_5 (SELFTEST FAILED)");
 
+    extern int ecdsa_selftest();
+    if (ecdsa_selftest()) ok("ECDSA P-256 verify (RFC 6979 vector matches)");
+    else                  ok("ECDSA P-256 verify (SELFTEST FAILED)");
+
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
     else             ok("xHCI USB 3.0 controller (none detected)");

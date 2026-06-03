@@ -43,6 +43,11 @@ typedef struct {
     uint8_t  pubkey_e[X509_PUBKEY_E_MAX];
     uint32_t pubkey_e_len;
 
+    // EC public key (P-256, uncompressed affine coords).
+    uint8_t  pubkey_ec_x[32];
+    uint8_t  pubkey_ec_y[32];
+    uint8_t  pubkey_ec_valid;
+
     // Offsets within the original DER buffer.
     uint32_t tbs_off, tbs_len;
     uint32_t sig_off, sig_len;

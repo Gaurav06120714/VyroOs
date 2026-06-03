@@ -384,7 +384,8 @@ static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_
 
     // Self-signed verification: works for openssl s_server's default self-signed
     // cert. Chain-with-trust-anchor lands in a later phase.
-    if (leaf.sig_alg == X509_SIG_SHA256_RSA && leaf.pkey_alg == X509_PKEY_RSA) {
+    if ((leaf.sig_alg == X509_SIG_SHA256_RSA && leaf.pkey_alg == X509_PKEY_RSA) ||
+        (leaf.sig_alg == X509_SIG_ECDSA_SHA256 && leaf.pkey_alg == X509_PKEY_EC)) {
         ctx->cert_self_sign_ok = (uint8_t)x509_verify_signature(der, cert_len, &leaf, &leaf);
     }
     ctx->hostname_match_ok = (uint8_t)hostname_matches_cert(&leaf, ctx->hostname);

@@ -1,5 +1,6 @@
 #include "x509.h"
 #include "rsa.h"
+#include "ecdsa.h"
 
 // Minimal DER reader + X.509 v3 parser. Extracts the identity-relevant fields
 // only: Subject CN, Issuer CN, validity period, SubjectAltName DNS entries,
@@ -259,6 +260,14 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
                   out->pubkey_e_len = el;
               }
           }
+      } else if (der_expect(&s, TAG_BITSTRING, &bs, &bs_len) && bs_len >= 1
+                 && bs[0] == 0 && out->pkey_alg == X509_PKEY_EC) {
+          // EC uncompressed point: 0x00 (unused) || 0x04 || X(32) || Y(32)
+          if (bs_len == 1 + 1 + 64 && bs[1] == 0x04) {
+              for (int i = 0; i < 32; i++) out->pubkey_ec_x[i] = bs[2 + i];
+              for (int i = 0; i < 32; i++) out->pubkey_ec_y[i] = bs[2 + 32 + i];
+              out->pubkey_ec_valid = 1;
+          }
       }
     }
 
@@ -303,13 +312,24 @@ int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
     if (!child_der || !child || !parent) return 0;
     if (child->tbs_off + child->tbs_len > child_der_len) return 0;
     if (child->sig_off + child->sig_len > child_der_len) return 0;
-    if (parent->pkey_alg != X509_PKEY_RSA || parent->pubkey_n_len == 0) return 0;
-    if (child->sig_alg != X509_SIG_SHA256_RSA) return 0;  // SHA-384/512 not yet
-    return rsa_pkcs1_v15_sha256_verify(
-        parent->pubkey_n, parent->pubkey_n_len,
-        parent->pubkey_e, parent->pubkey_e_len,
-        child_der + child->sig_off, child->sig_len,
-        child_der + child->tbs_off, child->tbs_len);
+    const uint8_t* sig = child_der + child->sig_off;
+    uint32_t sig_l    = child->sig_len;
+    const uint8_t* tbs = child_der + child->tbs_off;
+    uint32_t tbs_l    = child->tbs_len;
+    if (child->sig_alg == X509_SIG_SHA256_RSA &&
+        parent->pkey_alg == X509_PKEY_RSA && parent->pubkey_n_len > 0) {
+        return rsa_pkcs1_v15_sha256_verify(
+            parent->pubkey_n, parent->pubkey_n_len,
+            parent->pubkey_e, parent->pubkey_e_len,
+            sig, sig_l, tbs, tbs_l);
+    }
+    if (child->sig_alg == X509_SIG_ECDSA_SHA256 &&
+        parent->pkey_alg == X509_PKEY_EC && parent->pubkey_ec_valid) {
+        return ecdsa_p256_sha256_verify(
+            parent->pubkey_ec_x, parent->pubkey_ec_y,
+            sig, sig_l, tbs, tbs_l);
+    }
+    return 0;
 }
 
 extern const uint8_t x509_testvec_der[406];
