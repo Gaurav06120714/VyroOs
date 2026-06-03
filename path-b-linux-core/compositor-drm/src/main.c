@@ -37,6 +37,41 @@ struct vyro_fb {
     uint32_t height;
 };
 
+/* Single screen for vB.0.3; multi-monitor is a later phase. */
+static struct vyro_fb *g_screen_fb = NULL;
+
+/* --- vB.0.3: surface for compositor-drm/src/server.c --- */
+
+void vyro_screen_info(uint32_t *w, uint32_t *h) {
+    if (g_screen_fb) { if (w) *w = g_screen_fb->width;  if (h) *h = g_screen_fb->height; }
+    else             { if (w) *w = 0;                   if (h) *h = 0; }
+}
+
+void vyro_screen_blit(int dst_x, int dst_y,
+                      const uint8_t *src, uint32_t src_w,
+                      uint32_t src_h, uint32_t src_stride) {
+    if (!g_screen_fb || !g_screen_fb->map || !src) return;
+    int sw = (int)g_screen_fb->width;
+    int sh = (int)g_screen_fb->height;
+    int dpitch = (int)g_screen_fb->pitch;
+
+    for (uint32_t row = 0; row < src_h; row++) {
+        int yy = dst_y + (int)row;
+        if (yy < 0 || yy >= sh) continue;
+        for (uint32_t col = 0; col < src_w; col++) {
+            int xx = dst_x + (int)col;
+            if (xx < 0 || xx >= sw) continue;
+            uint32_t *dst32 = (uint32_t *)(g_screen_fb->map + yy * dpitch);
+            const uint32_t *src32 = (const uint32_t *)(src + row * src_stride);
+            dst32[xx] = src32[col];
+        }
+    }
+}
+
+void vyro_screen_flush(void) {
+    /* dumb buffer is mmap'd write-back; no explicit flush needed on x86 */
+}
+
 static int alloc_fb(int fd, uint32_t w, uint32_t h, struct vyro_fb *out) {
     struct drm_mode_create_dumb creq = {.width = w, .height = h, .bpp = 32};
     if (ioctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0) {
@@ -115,8 +150,18 @@ int main(void) {
         return 1;
     }
 
-    fprintf(stderr, "vyro-compositor: held %ux%u for 5s\n", mode.hdisplay, mode.vdisplay);
-    sleep(5);
+    /* vB.0.3: expose the dumb buffer to the IPC server and run its loop. */
+    g_screen_fb = &fb;
+
+    extern int vyro_server_init(void);
+    extern int vyro_server_tick(int timeout_ms);
+    if (vyro_server_init() < 0) return 1;
+
+    fprintf(stderr, "vyro-compositor: %ux%u — entering server loop\n",
+            mode.hdisplay, mode.vdisplay);
+    while (1) {
+        if (vyro_server_tick(16) < 0) break;   /* ~60 Hz tick */
+    }
 
     if (saved) {
         drmModeSetCrtc(fd, saved->crtc_id, saved->buffer_id, saved->x, saved->y,
