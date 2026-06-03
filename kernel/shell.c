@@ -1847,6 +1847,20 @@ static void cmd_fatcat() {
 }
 
 
+static void cmd_tlsservercert() {
+    extern const uint8_t x509_testvec_der[406];
+    static uint8_t buf[1024];
+    int n = tls_build_certificate_msg(buf, sizeof(buf), x509_testvec_der, 406);
+    print_color("\n  Server Certificate handshake message\n", YELLOW_ON_BLACK);
+    if (n < 0) { print_color("  build failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    print("  Total bytes  : "); print_int(n); print_char('\n');
+    print("  HS type      : 0x"); print_hex2(buf[0]); print(" (0x0b = Certificate)\n");
+    print("  body length  : "); print_int(((int)buf[1] << 16) | ((int)buf[2] << 8) | buf[3]);
+    print_char('\n');
+    print("  Embedded DER : 406 bytes (vyro.test ECDSA test cert)\n");
+    print_char('\n');
+}
+
 static void cmd_tlsserverhello() {
     static uint8_t random_out[32], sid[32], spriv[32], spub[32];
     for (int i = 0; i < 32; i++) random_out[i] = (uint8_t)(0x50 + i);
@@ -2386,6 +2400,7 @@ static const command_t commands[] = {
     { "tlshandshake", cmd_tlshandshake },
     { "tlsparseclient", cmd_tlsparseclient },
     { "tlsserverhello", cmd_tlsserverhello },
+    { "tlsservercert",  cmd_tlsservercert  },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "fatwrite",  cmd_fatwrite  },

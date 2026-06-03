@@ -119,6 +119,36 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
 // ServerHello parser — extracts the server's key_share X25519 pubkey.
 // Input is the handshake body (no record header, no handshake header).
 // ─────────────────────────────────────────────────────────────────────
+int tls_build_certificate_msg(uint8_t* out, uint32_t out_max,
+                              const uint8_t* cert_der, uint32_t cert_der_len) {
+    // Body: request_context(1) + CertificateList(3) + (cert_data(3) + DER + ext(2))
+    uint32_t body_len = 1 + 3 + 3 + cert_der_len + 2;
+    uint32_t total    = 4 + body_len;
+    if (total > out_max) return -1;
+    out[0] = 11;                       // handshake type = Certificate
+    put24(out + 1, body_len);
+    uint32_t p = 4;
+    out[p++] = 0;                      // request_context length = 0
+    put24(out + p, 3 + cert_der_len + 2); p += 3;        // CertificateList length
+    put24(out + p, cert_der_len); p += 3;                 // cert_data length
+    for (uint32_t i = 0; i < cert_der_len; i++) out[p++] = cert_der[i];
+    out[p++] = 0; out[p++] = 0;        // extensions length = 0
+    return (int)p;
+}
+
+int tls_build_server_finished(uint8_t* out, uint32_t out_max,
+                              const uint8_t server_hs_traffic_secret[32],
+                              const uint8_t transcript_hash[32]) {
+    if (out_max < 4 + 32) return -1;
+    uint8_t finished_key[32];
+    tls13_hkdf_expand_label(server_hs_traffic_secret, "finished",
+                            (const uint8_t*)"", 0, finished_key, 32);
+    out[0] = 20;                        // handshake type = Finished
+    out[1] = 0; out[2] = 0; out[3] = 32;
+    hmac_sha256(finished_key, 32, transcript_hash, 32, out + 4);
+    return 36;
+}
+
 int tls_build_server_hello(uint8_t* out, uint32_t out_max,
                            const uint8_t server_random[32],
                            const uint8_t session_id[32], uint8_t sid_len,
