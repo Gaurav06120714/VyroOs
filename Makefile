@@ -51,6 +51,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/usermode.o  \
        $(BUILD)/elf.o       \
        $(BUILD)/user_init.o \
+       $(BUILD)/user_hello.o \
        $(BUILD)/pci.o       \
        $(BUILD)/net.o       \
        $(BUILD)/arp.o       \
@@ -488,6 +489,23 @@ open('$(BUILD)/user_init.c','w').write('const unsigned char user_init_elf[]={'+'
 $(BUILD)/user_init.o: $(BUILD)/user_init.c
 	$(CC) $(CFLAGS) $(BUILD)/user_init.c -o $(BUILD)/user_init.o
 	@echo "  [CC]    user_init.o"
+
+$(BUILD)/hello.elf: user/hello.c user/user.ld
+	@mkdir -p $(BUILD)
+	$(CC) -ffreestanding -fno-stack-protector -fno-builtin -nostdlib \
+	      -nostdinc -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-80387 \
+	      -O2 -c user/hello.c -o $(BUILD)/hello_user.o
+	$(LD) -T user/user.ld -o $(BUILD)/hello.elf $(BUILD)/hello_user.o
+	@echo "  [USER]  hello.elf"
+
+$(BUILD)/user_hello.c: $(BUILD)/hello.elf
+	@python3 -c "import sys; d=open('$(BUILD)/hello.elf','rb').read(); \
+open('$(BUILD)/user_hello.c','w').write('const unsigned char user_hello_elf[]={'+','.join(str(b) for b in d)+'};\nconst unsigned int user_hello_elf_len='+str(len(d))+';\n')"
+	@echo "  [GEN]   user_hello.c ($(shell wc -c < $(BUILD)/hello.elf 2>/dev/null || echo 0) bytes ELF)"
+
+$(BUILD)/user_hello.o: $(BUILD)/user_hello.c
+	$(CC) $(CFLAGS) $(BUILD)/user_hello.c -o $(BUILD)/user_hello.o
+	@echo "  [CC]    user_hello.o"
 
 # ───────────────────────────────────────────────
 # Debug with GDB
