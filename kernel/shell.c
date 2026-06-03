@@ -1447,6 +1447,40 @@ static void cmd_tcprecv() {
 #include "http.h"
 #include "xhci.h"
 #include "trust.h"
+#include "wallpaper.h"
+#include "widgets_desktop.h"
+
+static void cmd_wallpaper() {
+    if (argc < 2) {
+        print_color("\n  Usage: wallpaper aurora|sunset|ocean|forest|night|carbon\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        print("  Current: "); print(wallpaper_name(wallpaper_get())); print("\n\n");
+        return;
+    }
+    uint8_t t = 0;
+    if      (!kstrcmp(argv[1], "aurora")) t = WP_AURORA;
+    else if (!kstrcmp(argv[1], "sunset")) t = WP_SUNSET;
+    else if (!kstrcmp(argv[1], "ocean"))  t = WP_OCEAN;
+    else if (!kstrcmp(argv[1], "forest")) t = WP_FOREST;
+    else if (!kstrcmp(argv[1], "night"))  t = WP_NIGHT;
+    else if (!kstrcmp(argv[1], "carbon")) t = WP_CARBON;
+    else { print_color("\n  Unknown theme\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    wallpaper_set(t);
+    print_color("\n  Wallpaper set to ", YELLOW_ON_BLACK);
+    print(wallpaper_name(t)); print("\n  (next 'gui' or 'widgets' will reflect it)\n\n");
+}
+
+static void cmd_widgets() {
+    if (!comp_init()) {
+        print_color("\n  compositor unavailable\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    wallpaper_render();
+    widgets_desktop_render();
+    comp_present();
+    sleep_ms(5000);
+}
+
 
 static void cmd_trust() {
     print_color("\n  Trust anchors\n", YELLOW_ON_BLACK);
@@ -2313,6 +2347,8 @@ static const command_t commands[] = {
     { "lapic",     cmd_lapic     },
     { "glass",     cmd_glass     },
     { "glassmode", cmd_glassmode },
+    { "wallpaper", cmd_wallpaper },
+    { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
     { "httpsget",  cmd_httpsget  },

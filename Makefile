@@ -75,6 +75,8 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/rsa.o       \
        $(BUILD)/ecdsa.o     \
        $(BUILD)/trust.o     \
+       $(BUILD)/wallpaper.o \
+       $(BUILD)/widgets_desktop.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -173,6 +175,10 @@ $(BUILD)/ecdsa.o: kernel/ecdsa.c
 	$(CC) $(CFLAGS) kernel/ecdsa.c -o $(BUILD)/ecdsa.o
 $(BUILD)/trust.o: kernel/trust.c
 	$(CC) $(CFLAGS) kernel/trust.c -o $(BUILD)/trust.o
+$(BUILD)/wallpaper.o: kernel/wallpaper.c
+	$(CC) $(CFLAGS) kernel/wallpaper.c -o $(BUILD)/wallpaper.o
+$(BUILD)/widgets_desktop.o: kernel/widgets_desktop.c
+	$(CC) $(CFLAGS) kernel/widgets_desktop.c -o $(BUILD)/widgets_desktop.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c
