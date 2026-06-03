@@ -59,6 +59,41 @@ int ipv6_input(const uint8_t* frame, uint16_t len) {
     if (!addr_eq(ip->dst, local_addr)) return 1;
 
     const icmpv6_header_t* ic = (const icmpv6_header_t*)(frame + 14 + 40);
+
+    // ── Neighbor Solicitation (type 135) → reply with Neighbor Advertisement
+    //    (type 136), echoing the target address plus our link-layer addr.
+    if (ic->type == 135 && payload_len >= 24) {
+        const uint8_t* target = (const uint8_t*)ic + 8;       // skip type+code+csum+reserved
+        // Build NA: Eth dst = src's MAC, src = our MAC; ipv6 src = our local_addr,
+        // dst = solicitor's address; ICMPv6: type=136, code=0, flags=0x60 (S+O),
+        // target addr (16), option: target link-layer (2 + 6 bytes).
+        static uint8_t reply[14 + 40 + 32];
+        for (int i = 0; i < 6; i++) reply[i]     = frame[6 + i];
+        for (int i = 0; i < 6; i++) reply[6 + i] = net_mac()[i];
+        reply[12] = 0x86; reply[13] = 0xDD;
+        ipv6_header_t* ip2 = (ipv6_header_t*)(reply + 14);
+        for (int i = 0; i < 4; i++) ip2->ver_tc_fl[i] = 0;
+        ip2->ver_tc_fl[0] = 0x60;
+        uint16_t na_payload = 32;
+        ip2->payload_len = (uint16_t)((na_payload << 8) | (na_payload >> 8));
+        ip2->next_header = 58;
+        ip2->hop_limit   = 255;
+        for (int i = 0; i < 16; i++) ip2->src[i] = local_addr[i];
+        for (int i = 0; i < 16; i++) ip2->dst[i] = ip->src[i];
+        uint8_t* na = reply + 14 + 40;
+        na[0] = 136; na[1] = 0; na[2] = 0; na[3] = 0;
+        na[4] = 0x60; na[5] = na[6] = na[7] = 0;    // S=1, O=1
+        for (int i = 0; i < 16; i++) na[8 + i] = target[i];
+        na[24] = 2; na[25] = 1;                     // Target Link-layer Address
+        for (int i = 0; i < 6; i++) na[26 + i] = net_mac()[i];
+        // checksum
+        ((icmpv6_header_t*)na)->checksum = 0;
+        uint16_t cs = icmpv6_checksum(ip2->src, ip2->dst, na, na_payload);
+        ((icmpv6_header_t*)na)->checksum = htons(cs);
+        rtl8139_send(reply, sizeof(reply));
+        return 1;
+    }
+
     if (ic->type != ICMPV6_ECHO_REQUEST) return 1;
 
     // Build echo reply: swap src/dst, type=129, recompute checksum.
