@@ -36,4 +36,39 @@ static inline long  vyro_rand(void)            { return _syscall(SYS_RAND, 0); }
 static inline void  vyro_sleep(long ms)        { _syscall(SYS_SLEEP, ms); }
 static inline void  vyro_exit(void)            { _syscall(SYS_EXIT, 0); }
 
+// ── Userspace utilities (no syscalls; pure user code) ──
+
+static inline unsigned long vyro_strlen(const char* s) {
+    unsigned long n = 0;
+    while (s && s[n]) n++;
+    return n;
+}
+
+static inline int vyro_strcmp(const char* a, const char* b) {
+    while (*a && *b && *a == *b) { a++; b++; }
+    return (unsigned char)*a - (unsigned char)*b;
+}
+
+static inline void vyro_print_int(long v) {
+    if (v < 0) { vyro_putc('-'); v = -v; }
+    char buf[32]; int n = 0;
+    if (v == 0) { vyro_putc('0'); return; }
+    while (v > 0) { buf[n++] = (char)('0' + (v % 10)); v /= 10; }
+    while (n-- > 0) vyro_putc(buf[n]);
+}
+
+static inline void vyro_print_hex(unsigned long v) {
+    vyro_putc('0'); vyro_putc('x');
+    int started = 0;
+    for (int i = 60; i >= 0; i -= 4) {
+        int nib = (int)((v >> i) & 0xF);
+        if (nib || started || i == 0) {
+            vyro_putc(nib < 10 ? (char)('0' + nib) : (char)('A' + nib - 10));
+            started = 1;
+        }
+    }
+}
+
+static inline void vyro_println(const char* s) { vyro_print(s); vyro_putc('\n'); }
+
 #endif
