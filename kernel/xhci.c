@@ -228,3 +228,30 @@ int xhci_enable_slot(void) {
 }
 
 uint32_t xhci_cmd_ring_index(void) { return cmd_ring_idx; }
+
+static uint32_t event_ring_idx   = 0;
+static uint8_t  event_cycle_bit  = 1;
+
+int xhci_event_poll(uint8_t* trb_type, uint8_t* completion_code, uint8_t* slot_id) {
+    if (!info.present || event_ring_phys == 0) return 0;
+    uint8_t* trb = (uint8_t*)(uintptr_t)event_ring_phys + event_ring_idx * 16;
+    uint8_t cycle = trb[12] & 1;
+    if (cycle != event_cycle_bit) return 0;     // no new event
+    // TRB type is in upper 6 bits of byte 13
+    if (trb_type)        *trb_type        = (trb[13] >> 2) & 0x3F;
+    // Completion code at byte 11 bits 0..7 of status DWORD
+    if (completion_code) *completion_code = trb[11];
+    // Slot ID for command completion events is at byte 15 bits 0..7 of control DWORD
+    if (slot_id)         *slot_id         = trb[15];
+
+    // Advance the event ring; update ERDP via runtime register.
+    event_ring_idx++;
+    if (event_ring_idx >= 256) { event_ring_idx = 0; event_cycle_bit ^= 1; }
+    uint64_t cap = info.mmio_base;
+    uint32_t rtsoff = mmio_r32(cap + 0x18) & ~0x1F;
+    uint64_t runtime = cap + rtsoff;
+    uint64_t erdp = event_ring_phys + event_ring_idx * 16;
+    mmio_w32(runtime + 0x20 + 0x38, (uint32_t)(erdp & 0xFFFFFFF0) | (1u << 3)); // EHB=1 to ack
+    mmio_w32(runtime + 0x20 + 0x3C, (uint32_t)(erdp >> 32));
+    return 1;
+}

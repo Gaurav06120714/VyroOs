@@ -1594,6 +1594,22 @@ static void cmd_xhci_enableslot() {
     print_color("\n  Enable Slot queue\n", YELLOW_ON_BLACK);
     print("  queued+doorbell  : "); print(ok ? "OK\n" : "FAIL\n");
     print("  cmd ring index   : "); print_int(xhci_cmd_ring_index()); print_char('\n');
+
+    // Drain the event ring (up to 10 ms wait).
+    print("  Waiting for event completion...\n");
+    uint8_t tt = 0, cc = 0, sid = 0;
+    int got = 0;
+    for (int i = 0; i < 100; i++) {
+        if (xhci_event_poll(&tt, &cc, &sid)) { got = 1; break; }
+        sleep_ms(1);
+    }
+    if (got) {
+        print("  Event TRB type   : "); print_int(tt); print(" (33 = Command Completion)\n");
+        print("  Completion code  : "); print_int(cc); print(" (1 = SUCCESS)\n");
+        print("  Slot ID assigned : "); print_int(sid); print_char('\n');
+    } else {
+        print_color("  No event arrived in 100 ms\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    }
     print("  USBSTS           : 0x"); print_hex(xhci_status()); print_char('\n');
     print_char('\n');
 }

@@ -53,4 +53,9 @@ int      xhci_enable_slot(void);
 
 uint32_t xhci_cmd_ring_index(void);
 
+// Poll the event ring for the next event TRB. Returns 1 if an event was
+// consumed (writes its TRB type, completion code and slot ID into the out
+// parameters). Returns 0 if no event is available.
+int  xhci_event_poll(uint8_t* trb_type, uint8_t* completion_code, uint8_t* slot_id);
+
 #endif
