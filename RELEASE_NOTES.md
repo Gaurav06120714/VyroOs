@@ -1,5 +1,39 @@
 # Release Notes
 
+## v5.0 — Major release
+
+Vyro OS 5.0 closes most of the pending items from v4.0. Highlights since the v4.0 baseline:
+
+- **TLS 1.3 server-side complete** — `tls_accept` parses ClientHello, builds + sends ServerHello (plaintext), bundles EncryptedExtensions + Certificate + ServerFinished into a single AEAD-sealed record, **waits for client Finished and verifies the MAC** before declaring success. End-to-end interop with `openssl s_client -tls1_3 -ciphersuites TLS_CHACHA20_POLY1305_SHA256`.
+- **RSA-PSS-SHA256 signature verify** (RFC 8017 §9.1.2 with MGF1-SHA-256, salt=32) — the signature scheme TLS 1.3 mandates as `rsa_pss_rsae_sha256`; dispatched automatically from `x509_verify_signature` based on the cert's SignatureAlgorithm OID.
+- **RSA-4096 wired into chain verification** — `x509_verify_signature` selects `bignum_4k` for moduli > 256 bytes, opens the door to chains terminating at real-world RSA-4096 root CAs.
+- **5 built-in trust anchors** — ECDSA test cert + Vyro Root CA RSA + 3 mock CAs (ISRG-Root-X1-mock, DigiCert-Mock, GlobalSign-Mock), all RSA-2048 self-signed.
+- **HTTP/1.1 response parser** — extracts status, headers, Content-Length, body. `httpget` now prints "HTTP 200 Content-Length: 1234 body: 1230 bytes" before the raw dump.
+- **IPv6 NDP** — Neighbor Solicitation (type 135) auto-replies with Neighbor Advertisement (type 136) carrying our MAC; host kernel can resolve our fe80:: address.
+- **VyFS permissions + symlinks** — `vfs_node_t` gains `mode` (octal, default 0755/0644), `uid`, and `symlink_target`; `chmod` and `ln -s` shell commands.
+- **Power management** — `power_halt` (CLI + HLT loop, leaves framebuffer up) and `power_suspend` (placeholder for S3); `halt` and `suspend` shell commands.
+- **ARCHITECTURE.md comprehensive rewrite** — kernel subsystem graph, layer cake, TLS handshake state machine, crypto verification matrix, SMP boot path, trust chain flowchart, memory map, build pipeline.
+- **Bug-hunt sweep** — 7 real bugs fixed (TLS key_share + Certificate OOB, SMP stack collision, AEAD overflow, HMAC garbage, FAT32 cluster leak, TLS rx stall).
+
+### What's still pending (honest)
+- True IRQ-driven preemption (needs serial console + GDB harness to test safely)
+- xHCI Address Device + USB HID enumeration (event ring polled but no full device flow yet)
+- AES-GCM ciphersuite (ChaCha20-Poly1305 is the only cipher today — TLS interop fine)
+- Ed25519 signature verification
+- TCP over IPv6
+- HTTP/1.1 chunked-transfer body decoding
+- USB HID keyboard / mouse
+- Audio DAC beyond PC speaker
+- PNG/JPEG wallpaper decoder
+- Multi-tab browser
+- Real userspace daemons (init runs once and exits)
+- Mozilla CA bundle embedding (primitives ready, bundle is a separate size/policy call)
+- ACPI DSDT parsing for real S3 sleep
+
+Kernel binary: ~242 KB / 384 KB ceiling.
+
+---
+
 ## v4.0 — Major release
 
 Vyro OS 4.0 is the culmination of fifty incremental phases (v3.1 → v3.50) on top of the 2.0 desktop. Networking, crypto, TLS 1.3, X.509 chain validation, FAT32, SMP long-mode AP entry, glassmorphism desktop, and 60+ shell commands. Kernel ≈ 228 KB / 384 KB ceiling.

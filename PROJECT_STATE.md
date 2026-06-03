@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v4.0
-**Last update:** v4.0 release tag — culmination of 50 phases (v3.1 → v3.50)
+**Current release:** v5.0
+**Last update:** v5.0 release tag — full TLS 1.3 client+server, RSA-PSS, IPv6 NDP, VyFS perms+symlinks, 5 trust anchors, glassmorphism desktop, 60+ shell commands
 
 ## v3.11 → v3.30 highlights
 
