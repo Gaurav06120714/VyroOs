@@ -1,0 +1,218 @@
+/*
+ * Vyro GTK4 theme — glassmorphism, dark by default
+ * Targets GTK 4.x (Files, Settings, Calculator, Text Editor, ...)
+ */
+
+@define-color vyro_bg              #0B0B12;
+@define-color vyro_surface         alpha(#141620, 0.55);
+@define-color vyro_surface_strong  alpha(#141620, 0.78);
+@define-color vyro_fg              #E8E9F1;
+@define-color vyro_fg_muted        #A0A4B6;
+@define-color vyro_accent          #B388FF;
+@define-color vyro_accent_hover    #C7A6FF;
+@define-color vyro_border          alpha(#FFFFFF, 0.08);
+
+* {
+    font-family: "Inter", "Cantarell", sans-serif;
+    font-size: 11pt;
+}
+
+window {
+    background-color: @vyro_bg;
+    color: @vyro_fg;
+}
+
+/* ---- Header bar ---- */
+headerbar,
+.titlebar {
+    background-color: @vyro_surface;
+    border-bottom: 1px solid @vyro_border;
+    min-height: 44px;
+    padding: 0 8px;
+    backdrop-filter: blur(24px);
+}
+
+headerbar > windowhandle > box > label.title,
+.titlebar > windowhandle > box > label.title {
+    color: @vyro_fg;
+    font-weight: 600;
+}
+
+/* ---- Buttons ---- */
+button {
+    background-color: alpha(#FFFFFF, 0.06);
+    border: 1px solid @vyro_border;
+    color: @vyro_fg;
+    border-radius: 10px;
+    padding: 6px 14px;
+    transition: all 150ms ease;
+}
+
+button:hover {
+    background-color: alpha(@vyro_accent, 0.18);
+    border-color: alpha(@vyro_accent, 0.40);
+    color: #FFFFFF;
+}
+
+button:active {
+    background-color: alpha(@vyro_accent, 0.30);
+}
+
+button.suggested-action {
+    background-color: @vyro_accent;
+    border-color: @vyro_accent;
+    color: @vyro_bg;
+}
+
+button.suggested-action:hover {
+    background-color: @vyro_accent_hover;
+    border-color: @vyro_accent_hover;
+}
+
+button.destructive-action {
+    background-color: #E5484D;
+    border-color: #E5484D;
+    color: #FFFFFF;
+}
+
+/* ---- Entry / search ---- */
+entry,
+searchentry {
+    background-color: alpha(@vyro_fg, 0.06);
+    border: 1px solid @vyro_border;
+    color: @vyro_fg;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+entry:focus,
+searchentry:focus {
+    border-color: @vyro_accent;
+    box-shadow: 0 0 0 3px alpha(@vyro_accent, 0.25);
+}
+
+/* ---- Sidebar (Files, Settings) ---- */
+.sidebar,
+placessidebar {
+    background-color: @vyro_surface;
+    border-right: 1px solid @vyro_border;
+    backdrop-filter: blur(24px);
+}
+
+.sidebar row,
+placessidebar row {
+    color: @vyro_fg_muted;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin: 2px 6px;
+}
+
+.sidebar row:selected,
+placessidebar row:selected {
+    background-color: alpha(@vyro_accent, 0.20);
+    color: #FFFFFF;
+}
+
+.sidebar row:hover,
+placessidebar row:hover {
+    background-color: alpha(@vyro_fg, 0.06);
+    color: @vyro_fg;
+}
+
+/* ---- List rows ---- */
+listview,
+list {
+    background: transparent;
+}
+
+row {
+    background-color: transparent;
+    color: @vyro_fg;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+row:hover {
+    background-color: alpha(@vyro_fg, 0.06);
+}
+
+row:selected {
+    background-color: alpha(@vyro_accent, 0.20);
+    color: #FFFFFF;
+}
+
+/* ---- Popovers / menus ---- */
+popover {
+    background-color: @vyro_surface_strong;
+    border: 1px solid @vyro_border;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px alpha(black, 0.45);
+    color: @vyro_fg;
+    backdrop-filter: blur(24px);
+}
+
+popover modelbutton {
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+popover modelbutton:hover {
+    background-color: alpha(@vyro_accent, 0.18);
+    color: #FFFFFF;
+}
+
+/* ---- Switch ---- */
+switch {
+    background-color: alpha(@vyro_fg, 0.10);
+    border-radius: 999px;
+    min-width: 48px;
+    min-height: 26px;
+}
+
+switch:checked {
+    background-color: @vyro_accent;
+}
+
+switch slider {
+    background-color: #FFFFFF;
+    border-radius: 999px;
+    margin: 3px;
+}
+
+/* ---- Scrollbar ---- */
+scrollbar {
+    background: transparent;
+}
+
+scrollbar slider {
+    background-color: alpha(@vyro_fg, 0.20);
+    border-radius: 999px;
+    min-width: 6px;
+    min-height: 6px;
+}
+
+scrollbar slider:hover {
+    background-color: alpha(@vyro_fg, 0.40);
+}
+
+/* ---- Progress / level bars ---- */
+progressbar > trough {
+    background-color: alpha(@vyro_fg, 0.10);
+    border-radius: 999px;
+    min-height: 6px;
+}
+
+progressbar > trough > progress {
+    background-color: @vyro_accent;
+    border-radius: 999px;
+}
+
+/* ---- Tooltip ---- */
+tooltip {
+    background-color: @vyro_surface_strong;
+    border: 1px solid @vyro_border;
+    border-radius: 8px;
+    color: @vyro_fg;
+    padding: 4px 8px;
+    backdrop-filter: blur(24px);
+}

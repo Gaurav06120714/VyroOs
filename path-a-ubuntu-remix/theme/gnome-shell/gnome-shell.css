@@ -1,0 +1,156 @@
+/*
+ * Vyro GNOME Shell theme — glassmorphism, dark by default
+ * Targets GNOME 46 (Ubuntu 24.04 LTS)
+ */
+
+/* ---- Design tokens (kept in sync with theme/README.md) ---- */
+stage {
+    font-family: "Inter", "Cantarell", sans-serif;
+    font-size: 11pt;
+    color: #E8E9F1;
+}
+
+/* ---- Top panel ---- */
+#panel {
+    background-color: rgba(20, 22, 32, 0.55);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    height: 32px;
+    /* GNOME Shell respects backdrop-filter via Mutter's effect stack */
+    -st-blur-effect: 24px;
+}
+
+#panel .panel-button {
+    color: #E8E9F1;
+    border-radius: 10px;
+    padding: 0 10px;
+    margin: 4px 2px;
+    transition-duration: 150ms;
+}
+
+#panel .panel-button:hover,
+#panel .panel-button:focus {
+    background-color: rgba(179, 136, 255, 0.18);
+    color: #C7A6FF;
+}
+
+#panel .panel-button:active,
+#panel .panel-button:checked {
+    background-color: rgba(179, 136, 255, 0.30);
+    color: #FFFFFF;
+}
+
+/* ---- Calendar / quick settings popover ---- */
+.popup-menu-content,
+.quick-settings,
+.calendar,
+.world-clocks-button,
+.weather-button {
+    background-color: rgba(20, 22, 32, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    -st-blur-effect: 24px;
+}
+
+/* ---- Dash (dock) ---- */
+#dash {
+    background-color: rgba(20, 22, 32, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    -st-blur-effect: 24px;
+}
+
+.dash-item-container > StWidget {
+    border-radius: 12px;
+    transition-duration: 150ms;
+}
+
+.dash-item-container > StWidget:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Overview ---- */
+.workspace-thumbnails {
+    background: transparent;
+}
+
+.window-clone-border {
+    border: 2px solid #B388FF;
+    border-radius: 10px;
+}
+
+/* ---- Search ---- */
+#searchEntry {
+    background-color: rgba(20, 22, 32, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    color: #E8E9F1;
+    selection-background-color: rgba(179, 136, 255, 0.35);
+    padding: 10px 14px;
+    -st-blur-effect: 24px;
+}
+
+#searchEntry:focus {
+    border-color: #B388FF;
+}
+
+/* ---- Notifications / OSD ---- */
+.notification-banner,
+.osd-window {
+    background-color: rgba(20, 22, 32, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    color: #E8E9F1;
+    -st-blur-effect: 24px;
+}
+
+/* ---- Buttons ---- */
+.button,
+.modal-dialog-linked-button {
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #E8E9F1;
+    border-radius: 10px;
+    padding: 8px 16px;
+    transition-duration: 150ms;
+}
+
+.button:hover {
+    background-color: rgba(179, 136, 255, 0.18);
+    border-color: rgba(179, 136, 255, 0.40);
+    color: #FFFFFF;
+}
+
+.button.suggested-action,
+.button:default {
+    background-color: #B388FF;
+    border-color: #B388FF;
+    color: #0B0B12;
+}
+
+.button.suggested-action:hover,
+.button:default:hover {
+    background-color: #C7A6FF;
+    border-color: #C7A6FF;
+}
+
+/* ---- Activities button ---- */
+#panel #panelActivities {
+    border-radius: 10px;
+}
+
+/* ---- Lock screen ---- */
+.unlock-dialog {
+    background-color: rgba(11, 11, 18, 0.65);
+    -st-blur-effect: 24px;
+}
+
+.unlock-dialog-user-list .user-widget {
+    background-color: rgba(20, 22, 32, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px;
+}
