@@ -53,6 +53,8 @@ int ipv6_input(const uint8_t* frame, uint16_t len) {
     uint16_t payload_len = ((uint16_t)ip->payload_len) >> 0;
     payload_len = ((payload_len & 0xFF) << 8) | ((payload_len >> 8) & 0xFF);
     if (14 + 40 + payload_len > len) return 1;
+    // Drop IPv6 fragments (next_header=44) and any other extension header.
+    // Reassembly is its own future phase; today we only respond to bare ICMPv6.
     if (ip->next_header != 58) return 1;
     if (!addr_eq(ip->dst, local_addr)) return 1;
 
