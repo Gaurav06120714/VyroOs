@@ -1453,9 +1453,9 @@ static void cmd_tcprecv() {
 #include "widgets_desktop.h"
 #include "tunes.h"
 
-static void cmd_play() {
+static void cmd_tune() {
     if (argc < 2) {
-        print_color("\n  Usage: play boot|alert|scale|arpeggio|error\n\n",
+        print_color("\n  Usage: tune boot|alert|scale|arpeggio|error\n\n",
                     MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
         return;
     }
@@ -2426,7 +2426,7 @@ static const command_t commands[] = {
     { "glass",     cmd_glass     },
     { "glassmode", cmd_glassmode },
     { "wallpaper", cmd_wallpaper },
-    { "play",      cmd_play      },
+    { "tune",      cmd_tune      },
     { "widgets",   cmd_widgets   },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
