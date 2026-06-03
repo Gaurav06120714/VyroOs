@@ -1581,10 +1581,18 @@ static void cmd_httpsget() {
 static void cmd_smp() {
     print_color("\n  SMP / AP bring-up\n", YELLOW_ON_BLACK);
     print("  APs that responded to SIPI: ");
-    print_int(smp_ap_count());
+    print_int(smp_ap_count()); print_char('\n');
+    print("  APs running ap_main (C): ");
+    print_int(smp_ap_in_c_count()); print_char('\n');
+    print("  Live APIC IDs           : ");
+    const uint8_t* map = smp_ap_in_c_map();
+    int printed = 0;
+    for (int i = 0; i < 256; i++) {
+        if (map[i]) { if (printed) print(","); print_int(i); printed++; }
+    }
+    if (!printed) print("(none)");
     print_char('\n');
     print("  Trampoline at 0x"); print_hex(SMP_TRAMP_PHYS); print_char('\n');
-    print("  Flag byte at 0x"); print_hex(SMP_FLAG_PHYS); print_char('\n');
     print_char('\n');
 }
 

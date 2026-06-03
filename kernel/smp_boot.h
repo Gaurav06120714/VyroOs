@@ -17,4 +17,10 @@
 void smp_start_aps(void);
 uint32_t smp_ap_count(void);
 
+// Number of APs that have reached C (called ap_main).
+uint32_t smp_ap_in_c_count(void);
+
+// Per-CPU presence map: 1 byte per APIC ID (up to 256).
+const uint8_t* smp_ap_in_c_map(void);
+
 #endif
