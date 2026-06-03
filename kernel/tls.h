@@ -36,6 +36,17 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
 int tls_parse_server_hello(const uint8_t* hs_body, uint32_t hs_body_len,
                            uint8_t server_pub_x25519[32]);
 
+// Parse a ClientHello handshake message (just the handshake body, no record header).
+// On success fills client_pub_x25519 with the client's X25519 key_share and
+// `out_chacha_ok` with whether TLS_CHACHA20_POLY1305_SHA256 was offered.
+// Returns 1 on success, 0 if the message is malformed or required extensions
+// (supported_versions=0x0304, key_share=x25519) are absent.
+int tls_parse_client_hello(const uint8_t* hs_body, uint32_t hs_body_len,
+                           uint8_t client_pub_x25519[32],
+                           uint8_t client_random[32],
+                           uint8_t session_id[32], uint8_t* sid_len,
+                           int* out_chacha_ok);
+
 // TLS 1.3 key schedule (RFC 8446 §7.1).
 // Given the X25519 shared secret and the SHA-256 hash of (ClientHello || ServerHello),
 // computes the handshake secret and the server/client handshake traffic secrets, plus

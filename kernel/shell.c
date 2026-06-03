@@ -1764,6 +1764,31 @@ static void cmd_fatcat() {
 }
 
 
+// Exercise the v3.34 ClientHello parser against a synthetic CH built by our
+// own client-side builder.
+static void cmd_tlsparseclient() {
+    static uint8_t random_in[32], sid_in[32], cpriv[32], cpub[32];
+    for (int i = 0; i < 32; i++) random_in[i] = (uint8_t)(0x10 + i);
+    for (int i = 0; i < 32; i++) sid_in[i]    = (uint8_t)(0x20 ^ i);
+    for (int i = 0; i < 32; i++) cpriv[i]     = (uint8_t)(0x40 + i);
+    x25519_base(cpub, cpriv);
+    static uint8_t ch[1024];
+    int n = tls_build_client_hello(ch, sizeof(ch), random_in, sid_in, cpub, "vyro.test");
+    if (n < 0) { print_color("\n  build_client_hello failed\n\n",
+                             MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    // Skip record header (5) + handshake header (4)
+    uint8_t got_pub[32], got_rand[32], got_sid[32]; uint8_t sl = 0; int chacha = 0;
+    int ok = tls_parse_client_hello(ch + 9, (uint32_t)n - 9,
+                                    got_pub, got_rand, got_sid, &sl, &chacha);
+    print_color("\n  ClientHello round-trip parse\n", YELLOW_ON_BLACK);
+    print("  parse              : "); print(ok ? "OK\n" : "FAIL\n");
+    print("  ChaCha20 offered   : "); print(chacha ? "yes\n" : "no\n");
+    print("  session_id length  : "); print_int(sl); print_char('\n');
+    int eq = 1; for (int i = 0; i < 32; i++) if (got_pub[i] != cpub[i]) { eq = 0; break; }
+    print("  key_share matches  : "); print(eq ? "yes\n" : "no\n");
+    print_char('\n');
+}
+
 static void cmd_tlshandshake() {
     if (argc < 3) {
         print_color("\n  Usage: tlshandshake <ip> <port> [hostname]\n\n",
@@ -2245,6 +2270,7 @@ static const command_t commands[] = {
     { "tlskdf",    cmd_tlskdf    },
     { "tls",       cmd_tls       },
     { "tlshandshake", cmd_tlshandshake },
+    { "tlsparseclient", cmd_tlsparseclient },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "fatwrite",  cmd_fatwrite  },

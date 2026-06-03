@@ -119,6 +119,79 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
 // ServerHello parser — extracts the server's key_share X25519 pubkey.
 // Input is the handshake body (no record header, no handshake header).
 // ─────────────────────────────────────────────────────────────────────
+// Parse a ClientHello handshake body (caller skipped the 4-byte handshake header).
+int tls_parse_client_hello(const uint8_t* b, uint32_t n,
+                           uint8_t client_pub[32],
+                           uint8_t client_random[32],
+                           uint8_t session_id[32], uint8_t* sid_len,
+                           int* out_chacha_ok) {
+    if (n < 40) return 0;
+    uint32_t p = 0;
+    if (b[p++] != 0x03 || b[p++] != 0x03) return 0;       // legacy_version
+    for (int i = 0; i < 32; i++) client_random[i] = b[p++];
+    uint8_t sl = b[p++];
+    if (p + sl > n) return 0;
+    if (sid_len) *sid_len = sl;
+    for (int i = 0; i < sl; i++) session_id[i] = b[p + i];
+    p += sl;
+    // cipher_suites
+    if (p + 2 > n) return 0;
+    uint16_t cs_len = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
+    if (p + cs_len > n) return 0;
+    int chacha_ok = 0;
+    for (uint16_t i = 0; i + 1 < cs_len; i += 2) {
+        uint16_t cs = ((uint16_t)b[p + i] << 8) | b[p + i + 1];
+        if (cs == TLS_CIPHER_CHACHA20_POLY1305_SHA256) { chacha_ok = 1; break; }
+    }
+    p += cs_len;
+    if (out_chacha_ok) *out_chacha_ok = chacha_ok;
+    if (!chacha_ok) return 0;
+    // compression_methods
+    if (p + 1 > n) return 0;
+    uint8_t comp_len = b[p++];
+    if (p + comp_len > n) return 0;
+    p += comp_len;
+    // extensions
+    if (p + 2 > n) return 0;
+    uint16_t ext_total = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
+    if (p + ext_total > n) return 0;
+    uint32_t end = p + ext_total;
+
+    int tls13_offered = 0;
+    int got_pub = 0;
+    while (p + 4 <= end) {
+        uint16_t et = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
+        uint16_t el = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
+        if (p + el > end) return 0;
+        if (et == 0x002b) {                                // supported_versions
+            if (el < 1) return 0;
+            uint8_t list_len = b[p];
+            for (uint8_t i = 1; i + 1 < el; i += 2) {
+                uint16_t v = ((uint16_t)b[p + i] << 8) | b[p + i + 1];
+                if (v == 0x0304) { tls13_offered = 1; break; }
+            }
+            (void)list_len;
+        } else if (et == 0x0033) {                          // key_share
+            if (el < 2) return 0;
+            uint16_t list_len = ((uint16_t)b[p] << 8) | b[p + 1];
+            uint32_t kp = 2;
+            while (kp + 4 <= 2 + list_len && (uint16_t)kp < el) {
+                uint16_t group = ((uint16_t)b[p + kp] << 8) | b[p + kp + 1];
+                uint16_t klen  = ((uint16_t)b[p + kp + 2] << 8) | b[p + kp + 3];
+                if (kp + 4 + klen > el) break;
+                if (group == TLS_GROUP_X25519 && klen == 32) {
+                    for (int i = 0; i < 32; i++) client_pub[i] = b[p + kp + 4 + i];
+                    got_pub = 1;
+                    break;
+                }
+                kp += 4 + klen;
+            }
+        }
+        p += el;
+    }
+    return tls13_offered && got_pub;
+}
+
 int tls_parse_server_hello(const uint8_t* b, uint32_t n, uint8_t server_pub[32]) {
     if (n < 38) return 0;
     uint32_t p = 0;
