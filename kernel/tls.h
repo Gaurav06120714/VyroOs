@@ -103,6 +103,8 @@ typedef struct {
     uint8_t  saw_certificate;
     uint8_t  cert_parse_ok;
     uint8_t  cert_self_sign_ok;       // 1 if leaf signature verifies under leaf's own pubkey
+    uint8_t  cert_chain_verified;     // 1 if chain links all verified + terminated at trust anchor
+    uint8_t  cert_chain_len;          // number of certs in the received chain
     uint8_t  hostname_match_ok;       // 1 if hostname matched leaf's CN or any SAN
     char     cert_subject_cn[128];
     char     cert_issuer_cn[128];

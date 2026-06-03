@@ -176,6 +176,11 @@ void kernel_main() {
     if (ecdsa_selftest()) ok("ECDSA P-256 verify (RFC 6979 vector matches)");
     else                  ok("ECDSA P-256 verify (SELFTEST FAILED)");
 
+    extern int  trust_add(const uint8_t*, uint32_t);
+    extern const uint8_t x509_testvec_der[406];
+    trust_add(x509_testvec_der, 406);
+    ok("Trust anchor store (1 built-in: vyro.test ECDSA P-256)");
+
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
     else             ok("xHCI USB 3.0 controller (none detected)");

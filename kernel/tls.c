@@ -7,6 +7,7 @@
 #include "net_pump.h"
 #include "csprng.h"
 #include "x509.h"
+#include "trust.h"
 #include "../drivers/timer.h"
 
 static uint32_t mini_strlen(const char* s) {
@@ -347,6 +348,27 @@ static int hostname_matches_cert(const x509_cert_t* c, const char* host) {
     return 0;
 }
 
+#define CHAIN_MAX  4
+#define CHAIN_DER_BUF_MAX 4096
+
+// Walk the cert chain we've just stashed. Returns 1 if every link verifies
+// AND the topmost cert is itself signed by a trust anchor in our store.
+static int walk_chain(uint8_t (*der_bufs)[CHAIN_DER_BUF_MAX],
+                      uint32_t* der_lens,
+                      x509_cert_t* certs, int n) {
+    if (n < 1) return 0;
+    for (int i = 0; i + 1 < n; i++) {
+        if (!x509_verify_signature(der_bufs[i], der_lens[i], &certs[i], &certs[i + 1]))
+            return 0;
+    }
+    // Top: search trust anchors for one whose subject CN matches issuer CN.
+    const x509_cert_t* anchor = 0;
+    if (!trust_find_by_subject_cn(certs[n - 1].issuer_cn, &anchor, 0, 0)) return 0;
+    if (!x509_verify_signature(der_bufs[n - 1], der_lens[n - 1], &certs[n - 1], anchor))
+        return 0;
+    return 1;
+}
+
 // TLS 1.3 Certificate message body (RFC 8446 §4.4.2):
 //   opaque certificate_request_context<0..2^8-1>
 //   CertificateList certificate_list<0..2^24-1>
@@ -363,32 +385,50 @@ static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_
     uint32_t list_len = ((uint32_t)body[p] << 16) | ((uint32_t)body[p+1] << 8) | body[p+2];
     p += 3;
     if (p + list_len > n) return;
-    if (list_len < 3) return;
-    // Leaf cert is first entry.
-    uint32_t cert_len = ((uint32_t)body[p] << 16) | ((uint32_t)body[p+1] << 8) | body[p+2];
-    p += 3;
-    if (p + cert_len > n) return;
-    const uint8_t* der = body + p;
+    uint32_t list_end = p + list_len;
 
-    static x509_cert_t leaf;
+    static uint8_t      chain_der[CHAIN_MAX][CHAIN_DER_BUF_MAX];
+    static uint32_t     chain_der_lens[CHAIN_MAX];
+    static x509_cert_t  chain_certs[CHAIN_MAX];
+    int chain_n = 0;
+
     ctx->saw_certificate = 1;
-    if (!x509_parse(der, cert_len, &leaf)) {
-        ctx->cert_parse_ok = 0;
-        return;
+    while (p + 3 <= list_end && chain_n < CHAIN_MAX) {
+        uint32_t cert_len = ((uint32_t)body[p] << 16) | ((uint32_t)body[p+1] << 8) | body[p+2];
+        p += 3;
+        if (p + cert_len > list_end || cert_len > CHAIN_DER_BUF_MAX) return;
+        for (uint32_t i = 0; i < cert_len; i++) chain_der[chain_n][i] = body[p + i];
+        chain_der_lens[chain_n] = cert_len;
+        if (!x509_parse(chain_der[chain_n], cert_len, &chain_certs[chain_n])) {
+            return;
+        }
+        p += cert_len;
+        // skip extensions
+        if (p + 2 > list_end) return;
+        uint16_t ext_len = ((uint16_t)body[p] << 8) | body[p+1];
+        p += 2 + ext_len;
+        chain_n++;
     }
-    ctx->cert_parse_ok = 1;
-    for (int i = 0; i < 128 && leaf.subject_cn[i]; i++) ctx->cert_subject_cn[i] = leaf.subject_cn[i];
-    for (int i = 0; i < 128 && leaf.issuer_cn[i];  i++) ctx->cert_issuer_cn[i]  = leaf.issuer_cn[i];
-    ctx->cert_sig_alg  = leaf.sig_alg;
-    ctx->cert_pkey_alg = leaf.pkey_alg;
+    ctx->cert_parse_ok    = 1;
+    ctx->cert_chain_len   = (uint8_t)chain_n;
 
-    // Self-signed verification: works for openssl s_server's default self-signed
-    // cert. Chain-with-trust-anchor lands in a later phase.
-    if ((leaf.sig_alg == X509_SIG_SHA256_RSA && leaf.pkey_alg == X509_PKEY_RSA) ||
-        (leaf.sig_alg == X509_SIG_ECDSA_SHA256 && leaf.pkey_alg == X509_PKEY_EC)) {
-        ctx->cert_self_sign_ok = (uint8_t)x509_verify_signature(der, cert_len, &leaf, &leaf);
+    const x509_cert_t* leaf = &chain_certs[0];
+    for (int i = 0; i < 128 && leaf->subject_cn[i]; i++) ctx->cert_subject_cn[i] = leaf->subject_cn[i];
+    for (int i = 0; i < 128 && leaf->issuer_cn[i];  i++) ctx->cert_issuer_cn[i]  = leaf->issuer_cn[i];
+    ctx->cert_sig_alg  = leaf->sig_alg;
+    ctx->cert_pkey_alg = leaf->pkey_alg;
+
+    // Self-sign convenience check.
+    if ((leaf->sig_alg == X509_SIG_SHA256_RSA && leaf->pkey_alg == X509_PKEY_RSA) ||
+        (leaf->sig_alg == X509_SIG_ECDSA_SHA256 && leaf->pkey_alg == X509_PKEY_EC)) {
+        ctx->cert_self_sign_ok =
+            (uint8_t)x509_verify_signature(chain_der[0], chain_der_lens[0], leaf, leaf);
     }
-    ctx->hostname_match_ok = (uint8_t)hostname_matches_cert(&leaf, ctx->hostname);
+    // Chain validation against trust anchors.
+    ctx->cert_chain_verified =
+        (uint8_t)walk_chain(chain_der, chain_der_lens, chain_certs, chain_n);
+
+    ctx->hostname_match_ok = (uint8_t)hostname_matches_cert(leaf, ctx->hostname);
 }
 
 static int process_handshake_payload(tls_ctx_t* ctx, const uint8_t* inner, uint32_t n) {

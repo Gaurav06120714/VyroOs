@@ -74,6 +74,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/bignum.o    \
        $(BUILD)/rsa.o       \
        $(BUILD)/ecdsa.o     \
+       $(BUILD)/trust.o     \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -170,6 +171,8 @@ $(BUILD)/rsa.o: kernel/rsa.c
 	$(CC) $(CFLAGS) kernel/rsa.c -o $(BUILD)/rsa.o
 $(BUILD)/ecdsa.o: kernel/ecdsa.c
 	$(CC) $(CFLAGS) kernel/ecdsa.c -o $(BUILD)/ecdsa.o
+$(BUILD)/trust.o: kernel/trust.c
+	$(CC) $(CFLAGS) kernel/trust.c -o $(BUILD)/trust.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c

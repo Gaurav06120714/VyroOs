@@ -1446,6 +1446,16 @@ static void cmd_tcprecv() {
 #include "smp_boot.h"
 #include "http.h"
 #include "xhci.h"
+#include "trust.h"
+
+static void cmd_trust() {
+    print_color("\n  Trust anchors\n", YELLOW_ON_BLACK);
+    int n = trust_count();
+    print("  installed: "); print_int(n); print(" / "); print_int(TRUST_MAX); print_char('\n');
+    if (n == 0) print("  (empty — no anchors will validate)\n");
+    print_char('\n');
+}
+
 
 static void cmd_xhci() {
     const xhci_info_t* x = xhci_info();
@@ -1759,6 +1769,11 @@ static void cmd_tlshandshake() {
         print("  Self-sign RSA  : ");
         if (tctx.cert_self_sign_ok) print_color("VERIFIED\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
         else                         print("(not RSA, or failed)\n");
+        print("  Chain length   : "); print_int(tctx.cert_chain_len); print_char('\n');
+        print("  Chain verified : ");
+        if (tctx.cert_chain_verified) print_color("YES (anchored in trust store)\n",
+                                                  MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        else                           print("NO (no matching trust anchor)\n");
         print("  Hostname match : ");
         if (tctx.hostname_match_ok) print_color("YES\n", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
         else                         print_color("NO\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
@@ -2202,6 +2217,7 @@ static const command_t commands[] = {
     { "httpsget",  cmd_httpsget  },
     { "xhci",      cmd_xhci      },
     { "x509verify",cmd_x509verify},
+    { "trust",     cmd_trust     },
     { "disk",      cmd_disk    },
     { "diskwrite", cmd_diskwrite },
     { "diskread",  cmd_diskread  },
