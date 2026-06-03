@@ -2,6 +2,66 @@
 
 All notable changes to Vyro OS.
 
+## [v3.30] — xHCI controller halt + reset
+Operational-register accessors (USBCMD, USBSTS, CRCR, DCBAAP, CONFIG); `xhci_reset` runs the spec Halt → HCRST → wait-for-CNR sequence; `xhci_status`; `xhcireset` shell command.
+
+## [v3.29] — SMP APs reach C
+Trampoline reads LAPIC ID via MMIO at `0xFEE00020`, computes per-CPU stack at `0x100000 + apic_id × 64KB`, calls `ap_main(apic_id)`. Presence bitmap + `aps_in_c_count`; `smp` shell command surfaces live APIC IDs.
+
+## [v3.28] — Trust anchors + multi-cert chain validation
+`trust.{h,c}` stores up to 4 anchor certs (DER + parsed). TLS Certificate handler walks full CertificateList per RFC 8446 §4.4.2, verifies leaf → intermediate → trust anchor chain. Embedded ECDSA test cert auto-registered at boot. `trust` shell command.
+
+## [v3.27] — ECDSA P-256 verification
+Full Jacobian-coordinate point arithmetic on NIST P-256, modular inverse via Fermat's little theorem, DER signature parser, complete ECDSA verify algorithm. Host-validated against RFC 6979 §A.2.5 (1.2 s). `x509_verify_signature` dispatches to RSA or ECDSA.
+
+## [v3.26] — TLS Certificate handshake parse
+`process_certificate_msg` walks RFC 8446 §4.4.2, extracts leaf cert, runs `x509_verify_signature(leaf, leaf, leaf)` for self-signed case. Hostname matched against SAN + Subject CN with case-insensitive + leftmost-`*.` wildcard rules.
+
+## [v3.25] — SMP long-mode AP entry
+174-byte trampoline (`smp_trampoline.asm`) goes 16-bit real → 32-bit PM → 64-bit LM. BSP publishes PML4 phys at `0x9008`; AP enables PE, PAE, LME, PG. `lock inc` on flag byte signals alive.
+
+## [v3.24] — TLS app traffic keys + client Finished
+`finalize_handshake` computes client Finished MAC, sends as encrypted handshake record; derives `master_secret` and application traffic secrets per RFC 8446 §7.1. `tls_send`/`tls_recv` for app data. `httpsget` now does a real end-to-end HTTPS GET.
+
+## [v3.23] — X.509 RSA signature verification + bignum fix
+`x509_parse` extracts RSA (n, e) from SubjectPublicKeyInfo; remembers tbs and signature byte offsets. `x509_verify_signature` runs `rsa_pkcs1_v15_sha256_verify`. **Critical fix:** `bn2_mod` runaway shift-subtract replaced with bounded binary long division + 2049th-bit overflow tracking.
+
+## [v3.22] — xHCI USB 3.0 scaffolding
+PCI scan for class 0x0C / subclass 0x03 / prog-if 0x30; MMIO BAR0; capability registers parsed (CAPLENGTH, HCIVERSION, HCSPARAMS1, PAGESIZE). `xhci` shell command.
+
+## [v3.21] — HTTP/1.1 GET client
+`http_get` does TCP connect + GET request + response drain until close. `httpget` shell command; `httpsget` placeholder.
+
+## [v3.20] — RSA-PKCS1-v1_5 signature verification
+2048-bit bignum library (64 × 32-bit limbs), schoolbook multiply, square-and-multiply modexp. `rsa_pkcs1_v15_sha256_verify` decodes the recovered signature against the SHA-256 DigestInfo prefix.
+
+## [v3.19] — SMP AP bring-up (real-mode)
+12-byte trampoline at `0x8000`, INIT-SIPI-SIPI via LAPIC ICR, APs `lock inc` a flag at `0x9000`.
+
+## [v3.18] — FAT32 writes + subdirectory navigation
+`fat32_write_file` allocates cluster chain, updates FAT (all copies), creates/overwrites dir entry. `fat32_path_lookup` walks `/`-separated paths. `fatwrite` + `fatpath` shell commands.
+
+## [v3.17] — Cryptographic CSPRNG
+ChaCha20 keystream PRNG; SHA-256-derived key; entropy pool seeded by RDRAND, RDTSC, timer ticks. `csprng_reseed` for additional entropy. TLS now uses `csprng_bytes`.
+
+## [v3.16] — Bootloader sector budget bump
+24 chunks → 48 chunks: 192 KB → 384 KB kernel ceiling.
+
+## [v3.15] — Glassmorphism compositor primitives
+`comp_blur_rect` (multi-pass 3-tap box blur), `comp_tint_rect` (alpha-blend), `comp_rounded_rect` (corner-radius mask), `comp_glass_panel` (blur + tint + rounded edge). `glass` shell command demos.
+
+## [v3.14] — Local APIC initialization
+IA32_APIC_BASE MSR read, MMIO enable via SVR, `lapic_id` / `lapic_version` accessors, ICR-driven `send_ipi` primitive. `lapic` shell command.
+
+## [v3.13] — FAT32 read-only driver
+BPB parse, FAT chain walk, root directory enumerate, 8.3 filename match, file read via `ata_read_sector`. `fatls` + `fatcat` shell commands.
+
+## [v3.12] — Preemptive scheduler tick (cooperative-tickle)
+`sched_tick` called from PIT IRQ tracks quantum; `sched_check_preempt` yields current task at safe kernel boundaries; 20 ms quantum.
+
+## [v3.11] — TLS 1.3 handshake over TCP
+`tls_connect` state machine sends ClientHello via `tcp_send`, receives ServerHello, decrypts encrypted handshake records, verifies server Finished MAC against `HMAC(finished_key, transcript_hash)`. `tlshandshake` shell command.
+
 ## [v3.10] — TLS 1.3 Primitives (record framing + ClientHello + ServerHello + key schedule)
 
 ### Added

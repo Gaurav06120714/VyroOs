@@ -1,7 +1,32 @@
 # Vyro OS — Project State
 
-**Current release:** v3.10
-**Last update:** Phase v3.10 (TLS 1.3 Primitives — record framing + ClientHello + ServerHello + key schedule)
+**Current release:** v3.30
+**Last update:** Phase v3.30 (xHCI controller halt + reset)
+
+## v3.11 → v3.30 highlights
+
+| Phase | Title |
+|---|---|
+| v3.11 | TLS 1.3 handshake over TCP — server Finished MAC verified |
+| v3.12 | Preemptive scheduler tick (cooperative-tickle via PIT) |
+| v3.13 | FAT32 read-only driver |
+| v3.14 | Local APIC initialization |
+| v3.15 | Glassmorphism compositor primitives (blur, tint, rounded panels) |
+| v3.16 | Bootloader sector budget bumped 192 KB → 384 KB |
+| v3.17 | ChaCha20-based CSPRNG, RDRAND + RDTSC seeded |
+| v3.18 | FAT32 writes + subdirectory navigation |
+| v3.19 | SMP AP bring-up (real-mode trampoline) |
+| v3.20 | RSA-2048 PKCS1-v1_5 signature verification |
+| v3.21 | HTTP/1.1 GET client |
+| v3.22 | xHCI controller detection + capability parse |
+| v3.23 | X.509 RSA chain hook + bignum bug fix (binary long division) |
+| v3.24 | TLS application traffic keys + client Finished — HTTPS GET works |
+| v3.25 | SMP AP long-mode trampoline (real → 32 → 64 bit) |
+| v3.26 | TLS Certificate parse + hostname match + RSA self-sign verify |
+| v3.27 | ECDSA P-256 verification (RFC 6979 KAT verified) |
+| v3.28 | Trust anchors + multi-cert chain validation |
+| v3.29 | SMP APs reach C — per-CPU stack + `ap_main()` entry |
+| v3.30 | xHCI controller halt + reset |
 
 ## Subsystem matrix
 
