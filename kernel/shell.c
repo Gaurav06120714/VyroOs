@@ -1492,10 +1492,10 @@ static void cmd_ln() {
 }
 
 #include "arch/hal.h"
-static void cmd_cpuinfo() {
+static void cmd_cpu_hal() {
     hal_cpu_info_t info;
     hal_cpu_detect(&info);
-    print_color("\n  CPU\n", YELLOW_ON_BLACK);
+    print_color("\n  CPU (HAL)\n", YELLOW_ON_BLACK);
     print("  Arch     : "); print(hal_arch_name()); print_char('\n');
     print("  Vendor   : "); print(info.vendor);    print_char('\n');
     if (info.brand[0]) { print("  Brand    : "); print(info.brand); print_char('\n'); }
@@ -2657,7 +2657,7 @@ static const command_t commands[] = {
     { "tune",      cmd_tune      },
     { "bench",     cmd_bench     },
     { "sched",     cmd_sched     },
-    { "cpuinfo",   cmd_cpuinfo   },
+    { "cpuhal",    cmd_cpu_hal   },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },
