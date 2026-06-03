@@ -1,5 +1,34 @@
 # Release Notes
 
+## v4.0 — Major release
+
+Vyro OS 4.0 is the culmination of fifty incremental phases (v3.1 → v3.50) on top of the 2.0 desktop. Networking, crypto, TLS 1.3, X.509 chain validation, FAT32, SMP long-mode AP entry, glassmorphism desktop, and 60+ shell commands. Kernel ≈ 228 KB / 384 KB ceiling.
+
+### Headline capabilities
+- **HTTPS GET works** against any TLS 1.3 server using RSA-2048 or ECDSA-P256 certs.
+- **Server-side TLS** primitives — ClientHello parse, ServerHello/Certificate/Finished build — ready for the server state machine.
+- **Cert chain validation** against built-in trust anchors (1 ECDSA + 1 RSA-2048).
+- **RSA-4096 verify** ready for Mozilla CA roots once embedded.
+- **SMP** APs reach long-mode C with per-CPU stacks.
+- **IPv6** echo reply works on link-local fe80:: addresses.
+- **Glassmorphism desktop** — blurred translucent window chrome, frosted notification toasts, 6 wallpaper themes, clock + calendar + weather widgets.
+- **Cryptographic PRNG** seeded by RDRAND + RDTSC.
+- **Boot chime** + 4 other tunes on the PC speaker.
+
+### Known limitations
+- No real IRQ-driven preemption (cooperative-tickle only).
+- No USB device enumeration (xHCI scaffolding only).
+- No Mozilla CA bundle (RSA-4096 primitive ready, bundle not embedded due to kernel size budget).
+- HTTPS chain validation works against self-signed leaves and our 2 built-in anchors; arbitrary Internet CAs not yet trusted.
+
+### Build
+```
+make clean && make
+```
+Boots in QEMU at 1024×768.
+
+
+
 ## v3.10 — TLS 1.3 Primitives
 
 Vyro OS can now produce a complete TLS 1.3 ClientHello, parse the corresponding ServerHello, and derive every secret in the handshake key schedule. The whole chain is verified at every boot against the canonical RFC 8448 §3 trace — meaning we can prove byte-for-byte that the OS's TLS implementation agrees with the IETF spec's reference output.

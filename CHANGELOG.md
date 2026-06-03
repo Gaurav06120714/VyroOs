@@ -2,6 +2,47 @@
 
 All notable changes to Vyro OS.
 
+## [v4.0] — Release: 50 phases since v3.0
+
+Vyro OS 4.0 is the culmination of fifty incremental phases shipped on top of the 2.0 desktop foundation. Highlights:
+
+- **Networking stack**: full TCP (handshake, listen/accept, data transfer, reassembly, fast retransmit, congestion control), UDP with port dispatch, DHCP, DNS, ARP, ICMP/ICMPv6 echo, IPv6 link-local with EUI-64.
+- **Crypto suite**: ChaCha20-Poly1305 AEAD (RFC 8439), SHA-256, HMAC-SHA-256, HKDF + TLS 1.3 Expand-Label/Derive-Secret (RFC 5869/8446), X25519 ECDH (RFC 7748), RSA-2048 PKCS1-v1_5 verify, **RSA-4096 verify** (parallel bignum_4k), **ECDSA P-256 verify** (RFC 6979). All host-validated against published RFC test vectors.
+- **TLS 1.3**: full client handshake (ClientHello, ServerHello, key schedule, decrypt encrypted handshake, server Finished MAC verify, **client Finished** + application traffic keys + HTTPS GET) + server-side ClientHello parser, **ServerHello/Certificate/Finished builders**.
+- **X.509**: DER parser, Subject/Issuer CN, SAN, validity, signature algorithm OIDs, RSA pubkey extraction, EC pubkey extraction, **chain validation** with trust anchors (2 built-in: ECDSA test cert + Vyro Root CA RSA).
+- **Filesystem**: FAT32 read **and write**, subdirectory navigation, integrated into the Files app.
+- **SMP**: Local APIC initialization, **AP bring-up trampoline (real → 32-bit → 64-bit long mode)**, per-CPU stacks, `ap_main()` C entry, per-AP presence map.
+- **USB**: xHCI controller detection, halt+reset, DCBAA + Command Ring + Event Ring scaffolding.
+- **Storage**: Bootloader sector budget bumped from 192 KB to 384 KB ceiling.
+- **Desktop**: Compositor glassmorphism primitives (blur, tint, rounded panels), 6 procedural wallpapers, clock/calendar/weather widgets, glass window chrome, glassmorphism notification toasts.
+- **Userspace**: libvyro extended with printf-lite utilities; 2 user ELFs (`init`, `hello`).
+- **Crypto-secured random**: ChaCha20 keystream PRNG seeded by RDRAND + RDTSC + timer.
+- **Audio**: 5 PC-speaker tunes including a boot chime that plays at startup.
+- **Diagnostics**: `bench` micro-benchmarks crypto + scheduler; `tls`/`tlskdf`/`crypto`/`x509`/`x509verify`/`tlsparseclient`/`tlsserverhello`/`tlsservercert`/`smp`/`xhci*`/`fatls`/`fatwrite`/`tlshandshake`/`httpget`/`httpsget` shell commands.
+
+Kernel binary size: ~228 KB / 384 KB ceiling.
+
+## [v3.50] — `bench` shell command (crypto micro-benchmarks)
+## [v3.49] — PC-speaker tunes + boot chime
+## [v3.48] — TLS server Certificate + Finished message builders
+## [v3.47] — Second trust anchor (Vyro Root CA RSA-2048)
+## [v3.46] — Glassmorphism notification toasts
+## [v3.45] — Wallpaper + widgets default on GUI startup
+## [v3.44] — Files app FAT32/VyFS toggle
+## [v3.43] — xHCI event ring + Interrupter 0
+## [v3.42] — IPv6 + ICMPv6 echo reply (EUI-64 link-local)
+## [v3.41] — TLS server-side ServerHello builder
+## [v3.40] — Multi-app userspace (hello + init)
+## [v3.39] — 4096-bit bignum + RSA-4096 verify
+## [v3.38] — Runtime smoke launch (QEMU validation)
+## [v3.37] — Aggressive cooperative-preempt hooks
+## [v3.36] — Wallpaper engine + desktop widgets
+## [v3.35] — xHCI DCBAA + Command Ring + start
+## [v3.34] — TLS server-side ClientHello parser
+## [v3.33] — Glassmorphism window chrome toggle
+## [v3.32] — libvyro userspace utilities
+## [v3.31] — docs catch-up
+
 ## [v3.30] — xHCI controller halt + reset
 Operational-register accessors (USBCMD, USBSTS, CRCR, DCBAAP, CONFIG); `xhci_reset` runs the spec Halt → HCRST → wait-for-CNR sequence; `xhci_status`; `xhcireset` shell command.
 

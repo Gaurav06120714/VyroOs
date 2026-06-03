@@ -1,7 +1,7 @@
 # Vyro OS — Project State
 
-**Current release:** v3.30
-**Last update:** Phase v3.30 (xHCI controller halt + reset)
+**Current release:** v4.0
+**Last update:** v4.0 release tag — culmination of 50 phases (v3.1 → v3.50)
 
 ## v3.11 → v3.30 highlights
 
