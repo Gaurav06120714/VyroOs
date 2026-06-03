@@ -1495,6 +1495,23 @@ static void cmd_ln() {
 #include "acpi.h"
 #include "ahci.h"
 #include "../drivers/e1000.h"
+#include "nvme.h"
+
+static void cmd_nvme() {
+    if (!nvme_init()) {
+        print_color("\n  No NVMe controller.\n  (QEMU: -drive file=ssd.img,if=none,id=n -device nvme,drive=n,serial=foo)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const nvme_info_t* n = nvme_info();
+    print_color("\n  NVMe controller\n", YELLOW_ON_BLACK);
+    print("  MMIO base       : 0x"); print_hex((uint32_t)(n->mmio_base & 0xFFFFFFFF)); print_char('\n');
+    print("  Version         : 0x"); print_hex(n->version);
+    print(" (major="); print_int((n->version >> 16) & 0xFFFF);
+    print(" minor="); print_int((n->version >> 8) & 0xFF); print(")\n");
+    print("  Max queue entr  : "); print_int(n->max_q_entries); print_char('\n');
+    print("  Doorbell stride : "); print_int(n->doorbell_stride); print("\n\n");
+}
 
 static void cmd_e1000() {
     if (!e1000_init()) {
@@ -2746,6 +2763,7 @@ static const command_t commands[] = {
     { "acpi",      cmd_acpi      },
     { "ahci",      cmd_ahci      },
     { "e1000",     cmd_e1000     },
+    { "nvme",      cmd_nvme      },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },

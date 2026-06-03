@@ -87,6 +87,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/acpi.o \
        $(BUILD)/ahci.o \
        $(BUILD)/e1000.o \
+       $(BUILD)/nvme.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -207,6 +208,8 @@ $(BUILD)/ahci.o: kernel/ahci.c
 	$(CC) $(CFLAGS) kernel/ahci.c -o $(BUILD)/ahci.o
 $(BUILD)/e1000.o: drivers/e1000.c
 	$(CC) $(CFLAGS) drivers/e1000.c -o $(BUILD)/e1000.o
+$(BUILD)/nvme.o: kernel/nvme.c
+	$(CC) $(CFLAGS) kernel/nvme.c -o $(BUILD)/nvme.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c
