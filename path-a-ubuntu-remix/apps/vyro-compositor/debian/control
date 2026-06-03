@@ -1,0 +1,23 @@
+Source: vyro-compositor
+Section: x11
+Priority: optional
+Maintainer: Gaurav <gauravganeshteegulla@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               libdrm-dev,
+               libinput-dev,
+               pkg-config
+Standards-Version: 4.6.2
+Homepage: https://github.com/Gaurav06120714/VyroOs
+
+Package: vyro-compositor
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Vyro display server (Path B) packaged for Ubuntu (experimental)
+ vyro-compositor is the from-scratch DRM/KMS display server developed in
+ the Vyro OS Path B Linux+userland track. It owns /dev/dri/card0 directly,
+ speaks the Vyro IPC protocol over /run/vyro/compositor.sock, and renders
+ the glassmorphism window chrome itself with no Wayland or X11 layer.
+ .
+ This package is the Path A (Ubuntu remix) repackaging that lets users
+ pick "Vyro Compositor (experimental)" at the GDM login screen alongside
+ the default GNOME session.

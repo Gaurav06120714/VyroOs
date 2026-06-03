@@ -1,0 +1,15 @@
+Source: vyro-calculator
+Section: x11
+Priority: optional
+Maintainer: Gaurav <gauravganeshteegulla@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/Gaurav06120714/VyroOs
+
+Package: vyro-calculator
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, vyro-compositor
+Description: Vyro Calculator (Path B) packaged for Ubuntu (experimental)
+ Native Vyro Calculator built against libvyro-linux + the vyro-compositor
+ IPC. Runs under the "Vyro Compositor (experimental)" GDM session shipped
+ with the Path A Vyro OS ISO.

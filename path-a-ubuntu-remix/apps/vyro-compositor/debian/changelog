@@ -1,0 +1,5 @@
+vyro-compositor (0.1.0-1) noble; urgency=medium
+
+  * Initial packaging — Path B compositor as Ubuntu .deb.
+
+ -- Gaurav <gauravganeshteegulla@gmail.com>  Wed, 03 Jun 2026 19:30:00 +0530
