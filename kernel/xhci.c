@@ -192,3 +192,39 @@ int xhci_event_ring_setup(void) {
 
 uint64_t xhci_event_ring_phys(void) { return event_ring_phys; }
 uint64_t xhci_erst_phys(void)       { return erst_phys; }
+
+// Command-ring state for Enable Slot et al.
+static uint32_t cmd_ring_idx   = 0;
+static uint8_t  cmd_cycle_bit  = 1;
+
+// DBOFF lives at capability register 0x14.
+static uint64_t doorbell_base(void) {
+    uint32_t dboff = mmio_r32(info.mmio_base + 0x14) & ~0x3;
+    return info.mmio_base + dboff;
+}
+
+int xhci_enable_slot(void) {
+    if (!info.present || cmd_ring_phys == 0) return 0;
+    // TRB layout: 16 bytes — Param[0..7]=0, Status[8..11]=0, Control[12..15]
+    // Control: cycle bit(0) | TRB type 9 << 10 | slot_type=0 << 16
+    uint8_t* trb = (uint8_t*)(uintptr_t)cmd_ring_phys + cmd_ring_idx * 16;
+    for (int i = 0; i < 16; i++) trb[i] = 0;
+    uint32_t control = (uint32_t)cmd_cycle_bit | (9u << 10);
+    trb[12] = (uint8_t)control;
+    trb[13] = (uint8_t)(control >> 8);
+    trb[14] = (uint8_t)(control >> 16);
+    trb[15] = (uint8_t)(control >> 24);
+
+    cmd_ring_idx++;
+    if (cmd_ring_idx >= XHCI_CMD_RING_N - 1) {
+        // We'd need a Link TRB to wrap. For this phase just stop short.
+        cmd_ring_idx = 0;
+        cmd_cycle_bit ^= 1;
+    }
+
+    // Ring the host controller doorbell (DB[0]).
+    mmio_w32(doorbell_base() + 0, 0);
+    return 1;
+}
+
+uint32_t xhci_cmd_ring_index(void) { return cmd_ring_idx; }

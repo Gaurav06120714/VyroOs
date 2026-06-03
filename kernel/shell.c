@@ -1568,6 +1568,19 @@ static void cmd_xhci() {
     print_char('\n');
 }
 
+static void cmd_xhci_enableslot() {
+    if (!xhci_info()->present) {
+        print_color("\n  no xHCI\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int ok = xhci_enable_slot();
+    print_color("\n  Enable Slot queue\n", YELLOW_ON_BLACK);
+    print("  queued+doorbell  : "); print(ok ? "OK\n" : "FAIL\n");
+    print("  cmd ring index   : "); print_int(xhci_cmd_ring_index()); print_char('\n');
+    print("  USBSTS           : 0x"); print_hex(xhci_status()); print_char('\n');
+    print_char('\n');
+}
+
 static void cmd_xhci_bringup() {
     if (!xhci_info()->present) {
         print_color("\n  No xHCI controller (re-launch QEMU with -device qemu-xhci)\n\n",
@@ -2499,6 +2512,7 @@ static const command_t commands[] = {
     { "xhci",      cmd_xhci      },
     { "xhcireset", cmd_xhci_reset},
     { "xhcibringup", cmd_xhci_bringup },
+    { "xhcienableslot", cmd_xhci_enableslot },
     { "x509verify",cmd_x509verify},
     { "trust",     cmd_trust     },
     { "disk",      cmd_disk    },

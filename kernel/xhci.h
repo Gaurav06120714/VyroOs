@@ -46,4 +46,11 @@ int      xhci_event_ring_setup(void);
 uint64_t xhci_event_ring_phys(void);
 uint64_t xhci_erst_phys(void);
 
+// Queue an Enable Slot command (TRB type 9) onto the command ring and ring
+// the doorbell at DB[0] (host-controller doorbell). Doesn't wait for the
+// event-ring completion; returns 1 if the queue + doorbell succeeded.
+int      xhci_enable_slot(void);
+
+uint32_t xhci_cmd_ring_index(void);
+
 #endif
