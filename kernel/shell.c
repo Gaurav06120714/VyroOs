@@ -1468,7 +1468,23 @@ static void cmd_xhci() {
     print("  Ports (max)  : "); print_int(x->max_ports); print_char('\n');
     print("  Interrupters : "); print_int(x->max_intrs); print_char('\n');
     print("  Page size    : "); print_int(x->page_size_bytes); print_char('\n');
+    print("  USBSTS       : 0x"); print_hex(xhci_status()); print_char('\n');
     print_char('\n');
+}
+
+static void cmd_xhci_reset() {
+    if (!xhci_info()->present) {
+        print_color("\n  No xHCI controller. Boot QEMU with -device qemu-xhci to test.\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  Resetting xHCI controller...\n", YELLOW_ON_BLACK);
+    int ok = xhci_reset();
+    if (ok) print_color("  HCRST complete, CNR=0 (controller ready)\n",
+                        MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    else    print_color("  Reset timed out (CNR did not clear)\n",
+                        MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    print("  USBSTS now: 0x"); print_hex(xhci_status()); print("\n\n");
 }
 
 
@@ -2224,6 +2240,7 @@ static const command_t commands[] = {
     { "httpget",   cmd_httpget   },
     { "httpsget",  cmd_httpsget  },
     { "xhci",      cmd_xhci      },
+    { "xhcireset", cmd_xhci_reset},
     { "x509verify",cmd_x509verify},
     { "trust",     cmd_trust     },
     { "disk",      cmd_disk    },

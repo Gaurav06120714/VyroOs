@@ -28,4 +28,10 @@ typedef struct {
 int  xhci_init(void);                 // returns 1 if controller found
 const xhci_info_t* xhci_info(void);
 
+// Halt and reset the controller. Returns 1 on success.
+int  xhci_reset(void);
+
+// Read the operational USBSTS register.
+uint32_t xhci_status(void);
+
 #endif
