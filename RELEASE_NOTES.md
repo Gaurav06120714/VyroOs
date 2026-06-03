@@ -1,5 +1,63 @@
 # Release Notes
 
+## v7.2 — Stack closure
+
+The second quarterly meta-release. v7.1 had three working stacks with
+known gaps between them; v7.2 closes most of those gaps.
+
+### Path A — Ubuntu remix (vA.7.11 → vA.7.12)
+- Defensive CI hardening — `readlink -f` for `ROOT_DIR`, root assertion,
+  `/sbin` PATH for `sudo`, glob fallback for ISO output naming,
+  `continue-on-error` on the arm64 matrix entry. This is the work that
+  makes the first end-to-end green ISO build realistic instead of
+  trial-and-error.
+- Cross-path sharing model is now documented end-to-end in
+  `docs/CROSS_PATH.md` — what's shared (design tokens, app logic), what
+  is not (display server, kernel), and the experimental "Vyro
+  Compositor session under Path A" scaffolding via a GDM `xsessions`
+  `.desktop` entry that future phases will wire to real binaries.
+
+### Path B — Linux + Vyro userland (vB.0.7 → vB.0.9)
+- **Generic block-device abstraction** — `block_device_t` over AHCI and
+  NVMe. One `block_read(idx, lba, count, buf)` regardless of transport.
+- **Files app** — second concurrent client validating the multi-client
+  IPC server design. POSIX `opendir`/`readdir`/`stat`, keyboard +
+  mouse navigation, full breadcrumb of the user's filesystem.
+- **vyro-init session wiring** — boots Linux → `/run/vyro` →
+  `vyro-compositor` → `wait_for_socket` → walk `/etc/vyro/session.d/*.cmd`
+  → autostart Files + Calculator. A clean Path B image now lands the user
+  directly in the desktop with both apps already open.
+
+### Path C — Microkernel (vC.6.5 → vC.6.7)
+- **Unified memory-map parser** — BIOS E820 *and* UEFI GetMemoryMap
+  normalized into one PMM-consumable table.
+- **PMM driven by memmap** — bitmap starts defensively all-busy, USABLE
+  ranges freed, RESERVED/ACPI_NVS/BAD re-busied. The "I trust my
+  bitmap" loop is finally closed.
+- **ATA WRITE_DMA_EX (0x35) + IDENTIFY (0xEC)** — AHCI gets working
+  writes and the block layer learns real disk model + LBA48 sector
+  count. Storage stack is now end-to-end functional for both read and
+  write on real SATA disks.
+
+### What v7.2 deliberately does *not* claim
+- Path A ISO has still not been *built end-to-end successfully in CI*.
+  The CI hardening from vA.7.11 should make the next attempt the first
+  green build, but the milestone moves to v7.3 if anything in the live-
+  build chain surprises us.
+- Path B compositor + apps have not been booted on real hardware. Every
+  piece compiles cleanly and the protocol math is correct, but the
+  first boot-to-desktop demo lives at v7.3.
+- The "Vyro Compositor session under Path A" GDM entry from vA.7.12 is
+  scaffolding only — the binaries it points at are not yet packaged
+  into the Path A ISO. The TryExec guard means GDM cleanly falls back
+  to GNOME if the user picks it.
+
+### Stats this cycle
+8 new tags landed (4× vA, 3× vB, 3× vC, plus this v7.2) plus the
+preceding v7.1 → v7.2 transition. Repo now sits at 117 tags total.
+
+---
+
 ## v7.1 — Tri-path momentum
 
 The first quarterly meta-release after the tri-path pivot (v7.0). Three
