@@ -3,22 +3,31 @@
 
 #include "../include/types.h"
 
-// NVMe controller detection. Identifies a controller via PCI class 0x01,
-// subclass 0x08, prog-if 0x02, reads BAR0 MMIO and parses the Controller
-// Capability register (CAP, 8 bytes at offset 0). Full Admin Queue setup
-// + Identify Controller + namespace I/O is the next phase — that's what
-// boots from a real NVMe SSD on modern PCs and Macs.
+// NVMe controller. v5.7 detected via PCI and parsed CAP. vC.6.2 brings
+// up the Admin Submission/Completion Queues and issues Identify Controller
+// + Identify Namespace 1 so we know the device's real serial, model, and
+// LBA size. I/O queues + read/write land in vC.6.3.
 
 typedef struct {
     int      present;
     uint64_t mmio_base;
-    uint64_t cap;            // raw CAP register
-    uint32_t version;        // VS register
-    uint32_t max_q_entries;  // CAP.MQES + 1
-    uint8_t  doorbell_stride;// CAP.DSTRD
+    uint64_t cap;
+    uint32_t version;
+    uint32_t max_q_entries;
+    uint8_t  doorbell_stride;
+
+    // vC.6.2 additions
+    int      admin_ready;
+    char     serial[21];          // 20 ASCII + NUL
+    char     model[41];           // 40 ASCII + NUL
+    uint64_t ns1_size_blocks;     // namespace 1 size in LBAs
+    uint32_t ns1_lba_bytes;       // typically 512 or 4096
 } nvme_info_t;
 
 int  nvme_init(void);
 const nvme_info_t* nvme_info(void);
+
+// vC.6.2: bring up admin queues + identify. Returns 1 on success.
+int  nvme_admin_init(void);
 
 #endif
