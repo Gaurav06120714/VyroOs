@@ -1514,6 +1514,24 @@ static void cmd_acpi() {
     print("  MADT (APIC): "); print(madt ? "present" : "absent"); print_char('\n');
     print("  HPET       : "); print(hpet ? "present" : "absent"); print_char('\n');
     print("  MCFG (ECAM): "); print(mcfg ? "present" : "absent"); print_char('\n');
+
+    if (madt) {
+        static acpi_lapic_t lapics[ACPI_MAX_LAPIC];
+        static acpi_ioapic_t ioapics[ACPI_MAX_IOAPIC];
+        uint32_t r = acpi_walk_madt(lapics, ACPI_MAX_LAPIC, ioapics, ACPI_MAX_IOAPIC);
+        uint32_t nl = r >> 16, ni = r & 0xFFFF;
+        print("\n  MADT: "); print_int(nl); print(" Local APIC(s), ");
+        print_int(ni); print(" IO-APIC(s)\n");
+        for (uint32_t i = 0; i < nl; i++) {
+            print("    LAPIC id="); print_int(lapics[i].apic_id);
+            print(" enabled="); print_int(lapics[i].enabled); print_char('\n');
+        }
+        for (uint32_t i = 0; i < ni; i++) {
+            print("    IOAPIC id="); print_int(ioapics[i].ioapic_id);
+            print(" base=0x"); print_hex(ioapics[i].address);
+            print(" gsi="); print_int(ioapics[i].gsi_base); print_char('\n');
+        }
+    }
     print("\n");
 }
 static void cmd_cpu_hal() {

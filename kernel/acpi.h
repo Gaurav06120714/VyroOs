@@ -58,4 +58,26 @@ uint32_t acpi_table_count(void);
 // Print a one-line summary of each table (sig, length, OEM id) to the shell.
 void acpi_dump_tables(void (*println)(const char*));
 
+// MADT (APIC) entries. ACPI 6.x defines many entry types — we keep the two
+// that matter for SMP bring-up: processor LAPIC and IOAPIC.
+#define MADT_LAPIC   0
+#define MADT_IOAPIC  1
+
+typedef struct {
+    uint8_t  apic_id;
+    uint8_t  enabled;       // bit 0 of flags
+} acpi_lapic_t;
+
+typedef struct {
+    uint8_t  ioapic_id;
+    uint32_t address;
+    uint32_t gsi_base;
+} acpi_ioapic_t;
+
+#define ACPI_MAX_LAPIC   64
+#define ACPI_MAX_IOAPIC   8
+
+uint32_t acpi_walk_madt(acpi_lapic_t* lapics_out, uint32_t lapic_max,
+                        acpi_ioapic_t* ioapics_out, uint32_t ioapic_max);
+
 #endif

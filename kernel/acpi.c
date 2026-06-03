@@ -71,6 +71,37 @@ const acpi_sdt_t* acpi_find_table(const char sig[4]) {
 
 uint32_t acpi_table_count(void) { return n_tables; }
 
+// Walk the MADT (APIC) variable-length entry list. The MADT header is the
+// standard SDT (36 bytes) + 4 bytes Local Interrupt Controller Address +
+// 4 bytes Flags. Entries that follow are (type, length, data) records.
+uint32_t acpi_walk_madt(acpi_lapic_t* lapics_out, uint32_t lapic_max,
+                        acpi_ioapic_t* ioapics_out, uint32_t ioapic_max) {
+    const acpi_sdt_t* madt = acpi_find_table("APIC");
+    if (!madt) return 0;
+    const uint8_t* p = (const uint8_t*)madt + sizeof(acpi_sdt_t) + 8; // skip LAPIC addr + flags
+    const uint8_t* end = (const uint8_t*)madt + madt->length;
+    uint32_t nl = 0, ni = 0;
+    while (p + 2 <= end) {
+        uint8_t type = p[0];
+        uint8_t len  = p[1];
+        if (len < 2 || p + len > end) break;
+        if (type == MADT_LAPIC && len >= 8 && nl < lapic_max) {
+            lapics_out[nl].apic_id = p[3];
+            lapics_out[nl].enabled = p[4] & 1;
+            nl++;
+        } else if (type == MADT_IOAPIC && len >= 12 && ni < ioapic_max) {
+            ioapics_out[ni].ioapic_id = p[2];
+            ioapics_out[ni].address   = (uint32_t)p[4] | ((uint32_t)p[5] << 8)
+                                       | ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
+            ioapics_out[ni].gsi_base  = (uint32_t)p[8] | ((uint32_t)p[9] << 8)
+                                       | ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
+            ni++;
+        }
+        p += len;
+    }
+    return (nl << 16) | ni;
+}
+
 void acpi_dump_tables(void (*println)(const char*)) {
     char buf[80];
     for (uint32_t i = 0; i < n_tables; i++) {
