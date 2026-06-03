@@ -1,110 +1,182 @@
-# Vyro OS 2.0
+# Vyro OS 7.0 — Tri-Path Release
 
-> A 64-bit **desktop operating system** built entirely from scratch — no Linux,
-> no BSD, no existing kernel. From a 512-byte boot sector to a polished
-> windowed desktop with apps, a dock, notifications, and a full app framework.
-> **NASM + C · x86_64 · MIT · $0 budget.**
+> A real, installable, daily-drivable operating system — built three ways in parallel.
+> **NASM + C · Ubuntu base · Linux kernel + Vyro userland · $0 budget.**
 
-![status](https://img.shields.io/badge/version-2.0-blue)
+![status](https://img.shields.io/badge/version-7.0-blue)
 ![arch](https://img.shields.io/badge/arch-x86__64-green)
 ![license](https://img.shields.io/badge/license-MIT-yellow)
-![phases](https://img.shields.io/badge/phases-50%2F50-success)
+![paths](https://img.shields.io/badge/paths-A%20%7C%20B%20%7C%20C-purple)
 
 ---
 
-## What is Vyro OS 2.0?
+## What changed in 7.0
 
-A genuinely real operating system written from nothing across **50 phases**.
-v1.0 (Phases 0–30) gave us a real 64-bit kernel with a shell, networking,
-disk, security, ELF programs, and a basic window manager. **v2.0 (Phases
-31–50)** turned it into a **modern desktop OS** — double-buffered compositor,
-themed widget toolkit, an app framework, and a full suite of native apps:
-Files, Settings, Terminal, TextEdit, Calculator, Clock, Task Manager,
-Launchpad, Notification Center, Control Center, Browser, App Store.
+After 80 tags and 6 major versions of from-scratch microkernel work, Vyro OS
+is forking into three concurrent product paths. Each path serves a real
+audience and ships a real artifact.
 
-## Quick start
+| Path | Identity | Base | Time-to-ship | Lives in |
+|------|----------|------|--------------|----------|
+| **A** | Vyro OS Desktop | Ubuntu 24.04 LTS remix | 2–4 weeks | `path-a-ubuntu-remix/` |
+| **B** | Vyro OS Core | Linux kernel + Vyro userland | 2–4 months | `path-b-linux-core/` |
+| **C** | Vyro Microkernel | from-scratch 64-bit kernel | ongoing research | repo root |
+
+The original microkernel work (boot/, kernel/, drivers/, etc.) is preserved
+unchanged at the repo root and continues as **Path C**. Paths A and B are
+new top-level directories so the three product lines can ship independently.
+
+---
+
+## Path A — Vyro OS Desktop (Ubuntu remix)
+
+**Goal:** ship a real installable ISO that boots on any PC, runs Chrome,
+talks to WiFi, drives the GPU — within weeks, not years.
+
+- **Base:** Ubuntu 24.04 LTS (kernel 6.8, GNOME 46)
+- **Build tooling:** [`live-build`](https://salsa.debian.org/live-team/live-build)
+- **Customization:** Vyro glassmorphism GNOME theme, Plymouth boot splash,
+  GDM login theme, installer slideshow, default app set
+- **Output:** `vyro-os-7.x-amd64.iso` published as a GitHub Release
 
 ```bash
-brew install nasm qemu x86_64-elf-gcc x86_64-elf-binutils make
+cd path-a-ubuntu-remix/
+./build.sh           # produces vyro-os-7.x-amd64.iso
+```
+
+Phase plan: [path-a-ubuntu-remix/PHASES.md](path-a-ubuntu-remix/PHASES.md).
+
+---
+
+## Path B — Vyro OS Core (Linux kernel, Vyro userland)
+
+**Goal:** keep everything that makes Vyro OS *Vyro* — compositor, window
+manager, libvyro, the 12 native apps, the visual identity — but drop them
+on top of the Linux kernel so we get real hardware support for free.
+
+- **Kernel:** Linux 6.x via Buildroot
+- **Init:** custom Vyro init / systemd-lite
+- **Graphics:** Vyro compositor reworked on DRM/KMS (no Wayland, no X11)
+- **Userland:** libvyro reimplemented over Linux syscalls
+- **Apps:** the 12 desktop apps recompiled as Linux ELFs
+
+```bash
+cd path-b-linux-core/
+make                 # produces vyro-core-7.x.img
+```
+
+Phase plan: [path-b-linux-core/PHASES.md](path-b-linux-core/PHASES.md).
+
+---
+
+## Path C — Vyro Microkernel (legacy from-scratch kernel)
+
+**Goal:** continue the original research kernel as an honest, scoped
+research project — not pretending to be a daily driver, but a real
+exploration of "what does it take to write an OS from a 512-byte boot
+sector."
+
+- All v1.0 → v6.0 work lives here untouched
+- New work tagged as `vC.X.Y` to disambiguate from Path A (`vA.X.Y`) and Path B (`vB.X.Y`)
+- Pending tracks from `ROADMAP_V6.md` (real hardware drivers, ARM64 port,
+  userspace, security hardening) continue as time allows
+
+```bash
+make                 # builds the original from-scratch kernel
+make usb             # produces a real 32MB bootable USB image
+```
+
+---
+
+## Quick start (pick a path)
+
+```bash
+# Path A — Ubuntu remix ISO
+cd path-a-ubuntu-remix && ./build.sh
+
+# Path B — Linux + Vyro userland
+cd path-b-linux-core && make
+
+# Path C — original from-scratch kernel
 make
 ```
 
-A 1024×768 QEMU window opens into the Vyro OS shell. Type `gui` to launch
-the graphical desktop.
+---
 
-## The 2.0 desktop
+## Why three paths instead of one?
 
-In the GUI:
+Honest answer:
 
-- **Dock** (bottom-center, macOS-style) — Files, Terminal, Settings, Browser, Launchpad, Notifications
-- **Top bar** with live RTC clock
-- **Windows** with traffic-light close/minimize/maximize, drop shadows, drag, resize, snap
-- **Launchpad** — click the Apps icon to see every installed app
-- **Press T** anywhere to flip dark/light theme
-- **ESC** to exit
+- **Path A** is what gets Vyro OS into people's hands this month. Real
+  hardware, real apps, real WiFi. The kernel underneath is Linux but the
+  product on screen is unmistakably Vyro.
+- **Path B** is the long-term product — the Linux kernel handles the
+  20-million-line problem of supporting modern hardware, and we spend our
+  budget on the userland and design that actually differentiates Vyro.
+- **Path C** is the from-scratch microkernel research project. It is not
+  going to boot Chrome on Apple Silicon any time soon, and the v6.0
+  `AUDIT.md` is honest about why (~116 person-months remaining). But it's
+  real code, it boots, and it stays.
 
-## What's new in 2.0 (Phases 31-50)
+Every "indie OS" that actually shipped to users (elementary, Pop!_OS,
+Zorin, Garuda, Mint, Endeavour) is an Ubuntu/Arch/Fedora derivative with
+custom userland. Path A + B follows that template. Path C keeps the
+microkernel dream alive without pretending it's ready for daily use.
 
-| Phase | Feature |
-|-------|---------|
-| 31 | Double-buffered compositor + theme system (dark/light) |
-| 32 | Bitmap app icons + notification toasts + window-open animation |
-| 33 | Window controls — minimize, maximize, resize grip, snap shortcuts (1-4, 0) |
-| 34-35 | Widget toolkit (button, label, panel, toggle, progress, list, tile) + app framework v2 |
-| 36 | **Settings app** — 8 sections (General, Display, Personal, Accounts, Network, Security, Storage, About) |
-| 37 | **Files app** — VyFS browser with toolbar, breadcrumb, status |
-| 38 | **Terminal app** — windowed shell with command history |
-| 39 | **TextEdit app** — visual text editor |
-| 40 | **Calculator + Clock apps** — big readable display, real RTC |
-| 41 | **Task Manager** — CPU/memory bars, process list |
-| 42 | **Launchpad** — app grid launcher |
-| 43 | **Notification Center** — toasts + history |
-| 44 | **Control Center** — Wi-Fi/Bluetooth/DND/AirDrop tiles, brightness, volume |
-| 45 | **Multi-window VyroBrowser** — HTML renderer in a real app window |
-| 46 | **Sockets API** — Berkeley sockets with TCP state machine (RFC 793) |
-| 47 | **DHCP + DNS** — DHCP packet structures, DNS resolver with hosts table |
-| 48 | **App Store GUI** — graphical vyropkg with install buttons |
-| 49 | **IPC** — pipes, message queues, POSIX-style signals |
-| 50 | Release: docs, README v2 |
+---
 
-## All-up feature matrix
+## Versioning across paths
 
-| Subsystem | Status |
-|-----------|--------|
-| Bootloader (BIOS + UEFI), 64-bit long mode | ✅ |
-| Interrupts (IDT/PIC), exceptions, syscalls (`int 0x80`) | ✅ |
-| Memory: PMM + heap + 4GB paging | ✅ |
-| Scheduler, ring-3 user mode, ELF64 loader | ✅ |
-| Filesystem (VyFS), ATA disk (persistent) | ✅ |
-| **Compositor v2 (back buffer), theme system** | ✅ NEW |
-| **Window manager: drag/min/max/resize/snap** | ✅ NEW |
-| **Widget toolkit + app framework v2** | ✅ NEW |
-| **12 native apps in launcher + dock** | ✅ NEW |
-| **Notifications + Control Center + Task Manager** | ✅ NEW |
-| Networking (Eth/ARP/IPv4/ICMP) + **Sockets API + DHCP + DNS** | ✅ |
-| **IPC: pipes, queues, signals** | ✅ NEW |
-| Security: users + SHA-256 auth, ring 0/3 | ✅ |
-| Package manager (vyropkg) + **graphical App Store** | ✅ NEW |
-| Sound (PC speaker), mouse, keyboard, RTC | ✅ |
-| SMP detection (ACPI), ACPI power off/reboot | ✅ |
+| Path | Tag prefix | Example |
+|------|-----------|---------|
+| Path A — Ubuntu remix | `vA.X.Y` | `vA.7.0` = first Ubuntu remix release |
+| Path B — Linux+userland | `vB.X.Y` | `vB.0.1` = first Linux-kernel boot |
+| Path C — microkernel | `vC.X.Y` | `vC.6.1` = continuation of v6.0 work |
+| Unified meta-release | `vX.Y` | `v7.0` = "tri-path launch" |
+
+The 80 historical tags `v0.1` … `v6.0` are kept as-is. New tags follow the
+prefix scheme so the three product lines can move at independent cadence.
+
+---
+
+## Repository layout
+
+```
+.
+├── path-a-ubuntu-remix/    # Path A: Ubuntu 24.04 LTS remix
+│   ├── PHASES.md
+│   ├── live-build/
+│   ├── theme/
+│   ├── branding/
+│   └── build.sh
+├── path-b-linux-core/      # Path B: Linux kernel + Vyro userland
+│   ├── PHASES.md
+│   ├── buildroot/
+│   ├── compositor-drm/
+│   ├── libvyro-linux/
+│   └── Makefile
+├── boot/                   # Path C: original from-scratch bootloader (BIOS + UEFI)
+├── kernel/                 # Path C: original 64-bit kernel
+├── drivers/                # Path C: original drivers
+├── user/                   # Path C: original userland
+├── docs/                   # cross-path documentation
+├── ROADMAP.md              # legacy roadmap (Path C)
+├── ROADMAP_V6.md           # Path C real-hardware roadmap
+├── ROADMAP_V7.md           # tri-path roadmap (this release)
+├── AUDIT.md                # honest gap analysis (Path C)
+└── README.md
+```
+
+---
 
 ## Documentation
 
-- **[docs/DESIGN.md](docs/DESIGN.md)** — full architecture, memory map, diagrams
-- **[docs/DESIGN-2.0.md](docs/DESIGN-2.0.md)** — desktop-layer architecture
-- **[ROADMAP.md](ROADMAP.md)** — v3.0+
-- **[boot/uefi/README.md](boot/uefi/README.md)** — UEFI boot path
-
-## Source layout
-
-```
-boot/        bootloaders (BIOS asm + UEFI C)
-kernel/      kernel + subsystems
-kernel/apps/ 12 native desktop applications
-drivers/     hardware drivers
-user/        sample ELF app + libvyro framework
-docs/        design documents
-```
+- [ROADMAP_V7.md](ROADMAP_V7.md) — full tri-path roadmap with phase-by-phase plan
+- [path-a-ubuntu-remix/PHASES.md](path-a-ubuntu-remix/PHASES.md) — Path A delivery plan
+- [path-b-linux-core/PHASES.md](path-b-linux-core/PHASES.md) — Path B delivery plan
+- [AUDIT.md](AUDIT.md) — honest technical audit of the microkernel (Path C)
+- [ROADMAP_V6.md](ROADMAP_V6.md) — Path C real-hardware roadmap (4 tracks, ~116 PM)
+- [docs/USB_INSTALL.md](docs/USB_INSTALL.md) — installing the Path C microkernel from USB
 
 ## License
 
