@@ -62,12 +62,24 @@ typedef struct __attribute__((packed)) {
     hba_prdt_entry_t prdt[1];  // single PRD entry for vC.6.1
 } hba_cmd_table_t;
 
-// Static allocations (1 KiB aligned for CLB; 256-byte for FB). Reserved
-// in the kernel image's BSS — keep it small because the BSS lives in the
-// limited 384 KB kernel sector budget. One port for now.
-static __attribute__((aligned(1024)))  hba_cmd_header_t g_clb[32];
-static __attribute__((aligned(256)))   uint8_t           g_fb[256];
-static __attribute__((aligned(128)))   hba_cmd_table_t   g_cmdtbl;
+// vC.6.4: per-port static allocations. AHCI tops out at 32 ports per spec,
+// but in practice 1-6 are present on real hardware. Keep BSS budget sane
+// by giving each port a smaller 8-slot command list (256 bytes/port) and
+// one command table per port.
+#define AHCI_MAX_PORTS  32
+#define AHCI_PORT_SLOTS 8
+
+static __attribute__((aligned(1024))) hba_cmd_header_t g_clb_pool[AHCI_MAX_PORTS][AHCI_PORT_SLOTS];
+static __attribute__((aligned(256)))  uint8_t           g_fb_pool[AHCI_MAX_PORTS][256];
+static __attribute__((aligned(128)))  hba_cmd_table_t   g_cmdtbl_pool[AHCI_MAX_PORTS];
+
+/* Per-port bring-up status bitmap. */
+static uint32_t g_port_ready_mask = 0;
+
+/* Compatibility aliases for legacy single-port code paths. */
+#define g_clb    (g_clb_pool[0])
+#define g_fb     (g_fb_pool[0])
+#define g_cmdtbl (g_cmdtbl_pool[0])
 
 // --- helpers ---
 static inline uint32_t mmio_r32(uint64_t addr) { return *(volatile uint32_t*)addr; }
@@ -145,52 +157,60 @@ static void port_start(uint32_t port) {
 
 int ahci_port_init(uint32_t port) {
     if (!info.present) return 0;
+    if (port >= AHCI_MAX_PORTS) return 0;
     if (!(ahci_active_ports() & (1u << port))) return 0;
     if (!port_stop(port)) return 0;
 
     uint64_t pb = port_base(port);
+    hba_cmd_header_t *clb    = g_clb_pool[port];
+    uint8_t          *fb     = g_fb_pool[port];
+    hba_cmd_table_t  *cmdtbl = &g_cmdtbl_pool[port];
 
-    // Zero the structures
-    for (uint32_t i = 0; i < sizeof(g_clb); i++) ((uint8_t*)g_clb)[i] = 0;
-    for (uint32_t i = 0; i < sizeof(g_fb);  i++) g_fb[i] = 0;
-    for (uint32_t i = 0; i < sizeof(g_cmdtbl); i++) ((uint8_t*)&g_cmdtbl)[i] = 0;
+    /* Zero this port's structures only — siblings keep theirs intact */
+    for (uint32_t i = 0; i < sizeof(g_clb_pool[port]);    i++) ((uint8_t*)clb)[i]    = 0;
+    for (uint32_t i = 0; i < sizeof(g_fb_pool[port]);     i++) fb[i]                  = 0;
+    for (uint32_t i = 0; i < sizeof(g_cmdtbl_pool[port]); i++) ((uint8_t*)cmdtbl)[i] = 0;
 
-    // Wire slot 0's header to our command table
-    g_clb[0].ctba  = (uint32_t)(uintptr_t)&g_cmdtbl;
-    g_clb[0].ctbau = 0;
+    /* Wire slot 0's header to this port's command table */
+    clb[0].ctba  = (uint32_t)(uintptr_t)cmdtbl;
+    clb[0].ctbau = 0;
 
-    // Program CLB and FB on the port (low-mem assumption; ctbau==0 ok)
-    mmio_w32(pb + PORT_CLB,  (uint32_t)(uintptr_t)g_clb);
+    mmio_w32(pb + PORT_CLB,  (uint32_t)(uintptr_t)clb);
     mmio_w32(pb + PORT_CLBU, 0);
-    mmio_w32(pb + PORT_FB,   (uint32_t)(uintptr_t)g_fb);
+    mmio_w32(pb + PORT_FB,   (uint32_t)(uintptr_t)fb);
     mmio_w32(pb + PORT_FBU,  0);
 
-    // Clear pending IS bits, then start FIS RX + cmd engine
     mmio_w32(pb + PORT_SERR, 0xFFFFFFFFu);
     mmio_w32(pb + PORT_IS,   0xFFFFFFFFu);
     port_start(port);
+
+    g_port_ready_mask |= (1u << port);
     return 1;
 }
 
 int ahci_port_read(uint32_t port, uint64_t lba, uint32_t count, void *buf) {
     if (!info.present || !buf || count == 0 || count > 8) return 0;
+    if (port >= AHCI_MAX_PORTS) return 0;
+    if (!(g_port_ready_mask & (1u << port))) return 0;
 
     uint64_t pb = port_base(port);
+    hba_cmd_header_t *clb    = g_clb_pool[port];
+    hba_cmd_table_t  *cmdtbl = &g_cmdtbl_pool[port];
 
     // Build the command header (slot 0)
-    g_clb[0].flags = (uint16_t)((sizeof(uint32_t) * 5) >> 1);  // CFL = 5 dwords for H2D
-    g_clb[0].prdtl = 1;
-    g_clb[0].prdbc = 0;
+    clb[0].flags = (uint16_t)((sizeof(uint32_t) * 5) >> 1);  // CFL = 5 dwords for H2D
+    clb[0].prdtl = 1;
+    clb[0].prdbc = 0;
 
     // Build the PRD entry
-    hba_prdt_entry_t *prd = &g_cmdtbl.prdt[0];
+    hba_prdt_entry_t *prd = &cmdtbl->prdt[0];
     prd->dba  = (uint32_t)(uintptr_t)buf;
     prd->dbau = 0;
     prd->rsv0 = 0;
     prd->dbc  = (count * 512u) - 1u;   // byte count - 1; bit 0 set means odd
 
     // Build the H2D register FIS: ATA READ_DMA_EX (0x25), LBA48
-    uint8_t *fis = g_cmdtbl.cfis;
+    uint8_t *fis = cmdtbl->cfis;
     for (int i = 0; i < 64; i++) fis[i] = 0;
     fis[0] = FIS_TYPE_REG_H2D;
     fis[1] = (1u << 7);                // C=1: command, not control

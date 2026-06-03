@@ -277,13 +277,17 @@ int nvme_io_init(void) {
     return 1;
 }
 
+// vC.6.4: PRP list for transfers > 8 KiB. Holds up to 512 page pointers
+// per the spec (4 KiB / 8 bytes). Page-aligned.
+#define NVME_PAGE_SIZE  4096u
+#define PRP_LIST_MAX    512
+static __attribute__((aligned(NVME_PAGE_SIZE))) uint64_t g_prp_list[PRP_LIST_MAX];
+
 static int nvme_rw(uint8_t opcode, uint64_t lba, uint32_t count, void *buf) {
     if (!info.admin_ready) return 0;
     if (!buf || count == 0) return 0;
-    // Single-PRP path: total bytes must fit in one page (4 KiB after the
-    // page-aligned buffer); larger transfers land in vC.6.4 alongside PRP lists.
+
     uint32_t bytes = count * info.ns1_lba_bytes;
-    if (bytes > 4096) return 0;
 
     nvme_sqe_t sqe = {0};
     sqe.opcode = opcode;
@@ -291,8 +295,28 @@ static int nvme_rw(uint8_t opcode, uint64_t lba, uint32_t count, void *buf) {
     sqe.prp1   = (uint64_t)(uintptr_t)buf;
     sqe.cdw10  = (uint32_t)(lba & 0xFFFFFFFFu);
     sqe.cdw11  = (uint32_t)(lba >> 32);
-    // cdw12: NLB (number of LBAs minus 1) in low 16 bits
     sqe.cdw12  = (count - 1u) & 0xFFFFu;
+
+    // PRP encoding per NVMe 1.4 §4.3:
+    //   <= 1 page (4 KiB)         : PRP1 only
+    //   <= 2 pages (4 KiB..8 KiB) : PRP1 + PRP2 (each a page pointer)
+    //   >  2 pages                : PRP1 + PRP2 -> PRP list (page-aligned array of u64 page ptrs)
+    if (bytes <= NVME_PAGE_SIZE) {
+        sqe.prp2 = 0;
+    } else if (bytes <= 2u * NVME_PAGE_SIZE) {
+        sqe.prp2 = (uint64_t)(uintptr_t)buf + NVME_PAGE_SIZE;
+    } else {
+        uint32_t pages = (bytes + NVME_PAGE_SIZE - 1u) / NVME_PAGE_SIZE;
+        // PRP1 covers page 0. PRP2 points at a PRP list covering pages 1..N-1.
+        if ((pages - 1u) > PRP_LIST_MAX) return 0;
+        for (uint32_t i = 1; i < pages; i++) {
+            g_prp_list[i - 1] = (uint64_t)(uintptr_t)buf + (uint64_t)i * NVME_PAGE_SIZE;
+        }
+        // Zero unused tail to avoid stale-data confusion across calls
+        for (uint32_t i = pages - 1; i < PRP_LIST_MAX; i++) g_prp_list[i] = 0;
+        sqe.prp2 = (uint64_t)(uintptr_t)g_prp_list;
+    }
+
     return io_submit(&sqe);
 }
 
