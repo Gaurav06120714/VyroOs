@@ -10,7 +10,8 @@ enum {
     X509_SIG_SHA384_RSA     = 2,    // 1.2.840.113549.1.1.12
     X509_SIG_SHA512_RSA     = 3,    // 1.2.840.113549.1.1.13
     X509_SIG_ECDSA_SHA256   = 4,    // 1.2.840.10045.4.3.2
-    X509_SIG_ECDSA_SHA384   = 5     // 1.2.840.10045.4.3.3
+    X509_SIG_ECDSA_SHA384   = 5,    // 1.2.840.10045.4.3.3
+    X509_SIG_RSA_PSS_SHA256 = 6     // 1.2.840.113549.1.1.10 (RSASSA-PSS, params SHA-256)
 };
 
 // Recognized public-key algorithms.

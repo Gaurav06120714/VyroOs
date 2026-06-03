@@ -2,6 +2,9 @@
 #include "rsa.h"
 #include "ecdsa.h"
 #include "bignum_4k.h"
+#include "rsa_pss.h"
+
+static const uint8_t OID_RSA_PSS[] = { 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0x0A };
 
 // Minimal DER reader + X.509 v3 parser. Extracts the identity-relevant fields
 // only: Subject CN, Issuer CN, validity period, SubjectAltName DNS entries,
@@ -83,6 +86,7 @@ static uint8_t map_sig_alg(const uint8_t* oid, uint32_t len) {
     if (oid_eq(oid, len, OID_SHA512_RSA,   sizeof(OID_SHA512_RSA)))   return X509_SIG_SHA512_RSA;
     if (oid_eq(oid, len, OID_ECDSA_SHA256, sizeof(OID_ECDSA_SHA256))) return X509_SIG_ECDSA_SHA256;
     if (oid_eq(oid, len, OID_ECDSA_SHA384, sizeof(OID_ECDSA_SHA384))) return X509_SIG_ECDSA_SHA384;
+    if (oid_eq(oid, len, OID_RSA_PSS,      sizeof(OID_RSA_PSS)))      return X509_SIG_RSA_PSS_SHA256;
     return X509_SIG_UNKNOWN;
 }
 
@@ -333,6 +337,13 @@ int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
                 sig, sig_l, tbs, tbs_l);
         }
     }
+    if (child->sig_alg == X509_SIG_RSA_PSS_SHA256 &&
+        parent->pkey_alg == X509_PKEY_RSA && parent->pubkey_n_len > 0) {
+        return rsa_pss_sha256_verify(
+            parent->pubkey_n, parent->pubkey_n_len,
+            parent->pubkey_e, parent->pubkey_e_len,
+            sig, sig_l, tbs, tbs_l);
+    }
     if (child->sig_alg == X509_SIG_ECDSA_SHA256 &&
         parent->pkey_alg == X509_PKEY_EC && parent->pubkey_ec_valid) {
         return ecdsa_p256_sha256_verify(
@@ -368,6 +379,7 @@ const char* x509_sig_alg_name(uint8_t e) {
     case X509_SIG_SHA512_RSA:   return "sha512WithRSAEncryption";
     case X509_SIG_ECDSA_SHA256: return "ecdsa-with-SHA256";
     case X509_SIG_ECDSA_SHA384: return "ecdsa-with-SHA384";
+    case X509_SIG_RSA_PSS_SHA256: return "rsa_pss_rsae_sha256";
     default:                    return "(unknown)";
     }
 }
