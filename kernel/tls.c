@@ -248,6 +248,7 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
         } else if (et == 0x0033) {                          // key_share
             if (el < 2) return 0;
             uint16_t list_len = ((uint16_t)b[p] << 8) | b[p + 1];
+            if (2 + (uint32_t)list_len > el) return 0;       // bounds-check
             uint32_t kp = 2;
             while (kp + 4 <= 2 + list_len && (uint16_t)kp < el) {
                 uint16_t group = ((uint16_t)b[p + kp] << 8) | b[p + kp + 1];
@@ -550,9 +551,10 @@ static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_
             return;
         }
         p += cert_len;
-        // skip extensions
+        // skip extensions — bounds-check ext_len against the list, not just the 2-byte header
         if (p + 2 > list_end) return;
         uint16_t ext_len = ((uint16_t)body[p] << 8) | body[p+1];
+        if (p + 2 + (uint32_t)ext_len > list_end) return;
         p += 2 + ext_len;
         chain_n++;
     }

@@ -67,11 +67,14 @@ lm64_start:
     mov eax, [0xFEE00020]
     shr eax, 24                          ; eax = apic id
 
-    ; Per-CPU stack: top = 0x100000 + (apic_id+1) * 0x10000 - 8
+    ; Per-CPU stack: top = 0x200000 + (apic_id+1) * 0x10000 - 8
+    ; Base bumped from 0x100000 to 0x200000 so APIC ID 0 (if it ever runs the
+    ; trampoline on hardware with non-contiguous IDs) does not overlap the
+    ; PMM bitmap at 0x100000-0x102000.
     mov ecx, eax                         ; save id
     inc eax
     shl rax, 16
-    add rax, 0x100000
+    add rax, 0x200000
     sub rax, 8
     mov rsp, rax
 
