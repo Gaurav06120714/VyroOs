@@ -25,7 +25,9 @@ void hmac_sha256(const uint8_t* key, uint32_t key_len,
     // inner = SHA256(ipad || msg)
     static uint8_t buf[16 * 1024];                 // capped, see below
     if (BLOCK_SIZE + msg_len > sizeof(buf)) {
-        // Defensive cap. TLS messages we care about are well under 16 KB.
+        // Defensive cap. Zero the output so callers don't read uninitialized
+        // memory and mistake an unhashable input for a real MAC.
+        for (int i = 0; i < 32; i++) out[i] = 0;
         return;
     }
     for (int i = 0; i < BLOCK_SIZE; i++) buf[i] = ipad[i];

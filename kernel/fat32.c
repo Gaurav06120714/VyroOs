@@ -295,7 +295,18 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
     uint32_t first_cl = 0, prev_cl = 0;
     for (uint32_t i = 0; i < clusters_needed; i++) {
         uint32_t cl = alloc_cluster();
-        if (cl == 0) return -1;
+        if (cl == 0) {
+            // Roll back: walk the chain we built and zero each FAT entry so
+            // the clusters aren't left orphaned in the FAT (persistent corruption).
+            uint32_t c = first_cl;
+            while (c >= 2 && c < 0x0FFFFFF8) {
+                uint32_t next = fat_next(c);
+                fat_write_entry(c, 0);
+                if (c == prev_cl) break;
+                c = next;
+            }
+            return -1;
+        }
         if (first_cl == 0) first_cl = cl;
         if (prev_cl)  fat_write_entry(prev_cl, cl);
         prev_cl = cl;
