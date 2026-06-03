@@ -1,5 +1,59 @@
 # Release Notes
 
+## v7.1 — Tri-path momentum
+
+The first quarterly meta-release after the tri-path pivot (v7.0). Three
+product lines moved in parallel and now all have working stacks end-to-end.
+
+### Path A — Ubuntu remix (vA.7.0 → vA.7.10)
+Real installable ISO scaffolded from scratch. Glassmorphism GNOME + GTK4
+theme, full branding suite (Plymouth animated splash, GDM theme, Calamares
+slideshow), 4K wallpapers, default-app dconf, Firefox-as-VyroBrowser
+rebrand, in-tree GTK4 sample app (`hello-vyro`) packaged as proper `.deb`,
+GitHub Actions ISO build pipeline producing both **amd64 and arm64** in
+parallel, auto-generated release-notes per tag, Plymouth halo + dot
+generators closing the asset gap from earlier in the cycle.
+
+Output artifact: `vyro-os-7.1-{amd64,arm64}.iso` (built by CI on tag push).
+
+### Path B — Linux + Vyro userland (vB.0.0 → vB.0.6)
+Real working display server on top of the Linux kernel. Compositor owns
+DRM/KMS directly, IPC server speaks the new wire protocol (v1) over
+`SOCK_SEQPACKET` with `SCM_RIGHTS` memfd passing, window chrome
+(traffic-light title bar + drop shadow + glass border, identical tokens
+to Path A), libinput-driven input layer with title-bar drag-to-move, and
+the first ported native Vyro app (Calculator) running end-to-end on the
+new stack.
+
+Architecture: Linux kernel → Buildroot rootfs → musl libc → vyro-init
+PID 1 → vyro-compositor (display server + IPC + chrome + input) →
+libvyro-linux client apps.
+
+### Path C — Microkernel (vC.6.1 → vC.6.5)
+Real storage and memory-map work on top of the v6.0 detection layer.
+AHCI command lists + FIS-based sector read, multi-port support across 32
+ports, NVMe Admin Queue + Identify Controller/Namespace, I/O Submission
+Queue 1 + READ/WRITE with proper PRP encoding (single page / two pages /
+multi-page lists), unified BIOS E820 + UEFI GetMemoryMap parser so the
+PMM finally knows real RAM layout instead of assuming.
+
+### What v7.1 deliberately does *not* claim
+- Path A ISO has not yet been built end-to-end successfully in CI — the
+  workflow is wired up and every dependency identified, but the first
+  full ISO build is the next milestone (v7.2).
+- Path B compositor and apps have not been booted on hardware. They
+  compile and the logic is right, but the first real boot-to-Calculator
+  demo lives at v7.2.
+- Path C drivers are real but not yet integrated into a block layer that
+  filesystems consume — they expose `nvme_read` / `ahci_port_read` but
+  nothing calls them yet.
+
+### Stats this cycle
+21 new tags landed (v7.0 + 11 vA + 7 vB + 5 vC) across the three paths,
+each commit pushed individually with a descriptive one-sentence subject.
+
+---
+
 ## v6.0 — Real-hardware foundations
 
 Vyro OS v6.0 is the first release that takes "run on real hardware" seriously. It adds the discovery and identification layers that any production OS depends on, and ships a real bootable USB image. **It does not yet boot on Apple Silicon Macs** — that requires a full ARM64 port (~48 person-months per `ROADMAP_V6.md`).
