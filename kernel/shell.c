@@ -1613,6 +1613,21 @@ static void cmd_smp() {
 }
 
 
+extern void gui_set_glass_mode(int on);
+extern int  gui_glass_mode(void);
+static void cmd_glassmode() {
+    int now = gui_glass_mode();
+    if (argc >= 2) {
+        if (argv[1][0] == 'o' && argv[1][1] == 'n')       gui_set_glass_mode(1);
+        else if (argv[1][0] == 'o' && argv[1][1] == 'f')  gui_set_glass_mode(0);
+        else { print_color("\n  Usage: glassmode on|off\n\n",
+                           MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    } else { gui_set_glass_mode(!now); }
+    print_color("\n  Window chrome glassmorphism: ", YELLOW_ON_BLACK);
+    print(gui_glass_mode() ? "ON" : "OFF");
+    print("\n  (next 'gui' invocation will reflect the change)\n\n");
+}
+
 static void cmd_glass() {
     if (!comp_init()) {
         print_color("\n  compositor unavailable\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
@@ -2236,6 +2251,7 @@ static const command_t commands[] = {
     { "fatpath",   cmd_fatpath   },
     { "lapic",     cmd_lapic     },
     { "glass",     cmd_glass     },
+    { "glassmode", cmd_glassmode },
     { "smp",       cmd_smp       },
     { "httpget",   cmd_httpget   },
     { "httpsget",  cmd_httpsget  },

@@ -176,8 +176,18 @@ static void draw_window(window_t* w, int focused, int mx, int my, int clicked) {
     }
     comp_shadow(rx, ry, rw, rh, t->win_shadow);
     uint32_t tcol = focused ? t->win_title_focus : t->win_title;
-    comp_rect(rx, ry, rw, TITLE_H, tcol);
-    comp_rect(rx, ry + TITLE_H, rw, rh - TITLE_H, t->win_body);
+    extern int gui_glass_mode(void);
+    if (gui_glass_mode() && age >= 8) {
+        // Frosted title bar + body — blur sees the desktop wallpaper underneath.
+        comp_glass_panel(rx, ry, rw, TITLE_H,
+                         focused ? 0xFFFFFF : 0xC0C0C0,
+                         focused ? 96 : 70, 0, t->win_border);
+        comp_glass_panel(rx, ry + TITLE_H, rw, rh - TITLE_H,
+                         t->win_body, 200, 0, t->win_border);
+    } else {
+        comp_rect(rx, ry, rw, TITLE_H, tcol);
+        comp_rect(rx, ry + TITLE_H, rw, rh - TITLE_H, t->win_body);
+    }
     comp_border(rx, ry, rw, rh, t->win_border);
 
     if (age >= 8) {
@@ -528,6 +538,10 @@ static void dispatch_action(int act) {
         case ACT_POWER_SHUTDOWN: power_shutdown(); break;
     }
 }
+
+static int glass_mode_on = 0;
+void gui_set_glass_mode(int on) { glass_mode_on = on ? 1 : 0; }
+int  gui_glass_mode(void)        { return glass_mode_on; }
 
 void gui_run() {
     if (!fb_available()) return;
