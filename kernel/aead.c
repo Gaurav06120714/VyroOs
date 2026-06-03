@@ -26,6 +26,11 @@ void aead_seal(const uint8_t key[32], const uint8_t nonce[12],
 
     // MAC over: aad | pad16(aad) | cipher | pad16(cipher) | len(aad) | len(cipher)
     static uint8_t mac_in[16384];
+    // Worst-case size = aad + 15 + plain + 15 + 16. Bail before overflow.
+    if ((uint64_t)aad_len + 15 + (uint64_t)plain_len + 15 + 16 > sizeof(mac_in)) {
+        for (int i = 0; i < 16; i++) tag_out[i] = 0;     // poisoned tag
+        return;
+    }
     uint32_t mp = 0;
     for (uint32_t i = 0; i < aad_len; i++) mac_in[mp++] = aad[i];
     while (mp % 16) mac_in[mp++] = 0;
@@ -45,6 +50,7 @@ int aead_open(const uint8_t key[32], const uint8_t nonce[12],
     derive_poly_key(key, nonce, pkey);
 
     static uint8_t mac_in[16384];
+    if ((uint64_t)aad_len + 15 + (uint64_t)cipher_len + 15 + 16 > sizeof(mac_in)) return 0;
     uint32_t mp = 0;
     for (uint32_t i = 0; i < aad_len; i++) mac_in[mp++] = aad[i];
     while (mp % 16) mac_in[mp++] = 0;
