@@ -13,6 +13,12 @@ PLY_DST="/usr/share/plymouth/themes/vyro"
 if command -v rsvg-convert >/dev/null 2>&1; then
     rsvg-convert -w 256 "${STAGE}/logos/vyro-mark.svg" -o "${PLY_DST}/vyro-mark.png"
 fi
+
+# vA.7.10: generate halo + dot procedurally so vyro.script's references resolve.
+if [ -x "${STAGE}/scripts/make-plymouth-assets.sh" ]; then
+    "${STAGE}/scripts/make-plymouth-assets.sh" "${PLY_DST}"
+fi
+
 plymouth-set-default-theme -R vyro || true
 
 # --- GDM CSS append (idempotent) ---

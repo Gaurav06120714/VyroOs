@@ -36,6 +36,7 @@ install -d "${INC}/usr/share/vyro-staging/logos"
 install -d "${INC}/usr/share/vyro-staging/wallpapers"
 install -d "${INC}/usr/share/vyro-staging/gdm"
 install -d "${INC}/usr/share/vyro-staging/installer"
+install -d "${INC}/usr/share/vyro-staging/scripts"
 
 cp "${ROOT_DIR}/branding/logos/"*.svg          "${INC}/usr/share/vyro-staging/logos/"
 cp "${ROOT_DIR}/branding/wallpapers/"*.svg     "${INC}/usr/share/vyro-staging/wallpapers/"
@@ -43,5 +44,7 @@ cp "${ROOT_DIR}/branding/wallpapers/"*.xml     "${INC}/usr/share/vyro-staging/wa
 cp "${ROOT_DIR}/branding/gdm/vyro-gdm.css"     "${INC}/usr/share/vyro-staging/gdm/"
 cp "${ROOT_DIR}/branding/installer/"*.desc     "${INC}/usr/share/vyro-staging/installer/"
 cp "${ROOT_DIR}/branding/installer/"*.qml      "${INC}/usr/share/vyro-staging/installer/"
+# vA.7.10: branding scripts (halo + dot generators etc.)
+install -m 0755 "${ROOT_DIR}/branding/scripts/"*.sh "${INC}/usr/share/vyro-staging/scripts/"
 
 echo "==> includes.chroot ready: $(find "${INC}" -type f | wc -l) files"

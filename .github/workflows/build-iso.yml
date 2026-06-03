@@ -62,6 +62,7 @@ jobs:
             xorriso \
             mtools \
             librsvg2-bin \
+            imagemagick \
             devscripts \
             debhelper \
             meson \
