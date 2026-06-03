@@ -1493,6 +1493,28 @@ static void cmd_ln() {
 
 #include "arch/hal.h"
 #include "acpi.h"
+#include "ahci.h"
+
+static void cmd_ahci() {
+    if (!ahci_init()) {
+        print_color("\n  No AHCI controller detected.\n  (QEMU: add -drive file=...,if=none,id=d -device ahci,id=ahci -device ide-hd,drive=d)\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    const ahci_info_t* a = ahci_info();
+    print_color("\n  AHCI controller\n", YELLOW_ON_BLACK);
+    print("  ABAR (MMIO)    : 0x"); print_hex((uint32_t)(a->mmio_base & 0xFFFFFFFF)); print_char('\n');
+    print("  Version        : 0x"); print_hex(a->version); print_char('\n');
+    print("  Capabilities   : 0x"); print_hex(a->capabilities); print_char('\n');
+    print("  Ports (max)    : "); print_int(a->num_ports); print_char('\n');
+    print("  Command slots  : "); print_int(a->num_command_slots); print_char('\n');
+    print("  64-bit addr    : "); print(a->supports_64bit ? "yes" : "no"); print_char('\n');
+    print("  Ports impl     : 0x"); print_hex(a->port_implemented_mask); print_char('\n');
+    uint32_t active = ahci_active_ports();
+    print("  Active ports   : 0x"); print_hex(active); print_char('\n');
+    int count = 0; for (uint32_t i = 0; i < 32; i++) if (active & (1u << i)) count++;
+    print("  Live drives    : "); print_int(count); print("\n\n");
+}
 
 static void acpi_println(const char* s) { print(s); print_char('\n'); }
 
@@ -2701,6 +2723,7 @@ static const command_t commands[] = {
     { "sched",     cmd_sched     },
     { "cpuhal",    cmd_cpu_hal   },
     { "acpi",      cmd_acpi      },
+    { "ahci",      cmd_ahci      },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },
