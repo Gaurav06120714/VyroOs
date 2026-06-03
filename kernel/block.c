@@ -13,10 +13,8 @@ static int ahci_read_thunk(block_device_t *bd, uint64_t lba, uint32_t count, voi
 }
 
 static int ahci_write_thunk(block_device_t *bd, uint64_t lba, uint32_t count, const void *buf) {
-    /* AHCI write lands in vC.6.7 alongside ATA WRITE_DMA_EX (0x35);
-     * for now report unsupported so the FS layer doesn't corrupt anything. */
-    (void)bd; (void)lba; (void)count; (void)buf;
-    return 0;
+    uint32_t port = (uint32_t)(uintptr_t)bd->transport;
+    return ahci_port_write(port, lba, count, buf);
 }
 
 /* ---- NVMe backend ---- */
@@ -48,12 +46,21 @@ static int register_ahci_port(uint32_t port) {
     bd->in_use             = 1;
     bd->kind               = BLOCK_KIND_AHCI;
     bd->index              = port;
-    bd->logical_block_size = 512;             // SATA default; ID DMA would refine
-    bd->total_blocks       = 0;               // unknown until IDENTIFY (vC.6.7)
+    bd->logical_block_size = 512;
     bd->transport          = (void *)(uintptr_t)port;
     bd->read               = ahci_read_thunk;
     bd->write              = ahci_write_thunk;
-    copy_str(bd->model, sizeof(bd->model), "SATA disk");
+
+    /* vC.6.7: ATA IDENTIFY for real model + total LBA48 sectors */
+    char model[48] = {0};
+    uint64_t sectors = 0;
+    if (ahci_port_identify(port, model, NULL, &sectors)) {
+        bd->total_blocks = sectors;
+        copy_str(bd->model, sizeof(bd->model), model[0] ? model : "SATA disk");
+    } else {
+        bd->total_blocks = 0;
+        copy_str(bd->model, sizeof(bd->model), "SATA disk");
+    }
     g_count++;
     return 1;
 }

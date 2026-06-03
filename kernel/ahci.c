@@ -248,3 +248,155 @@ int ahci_port_read(uint32_t port, uint64_t lba, uint32_t count, void *buf) {
     }
     return 0;
 }
+
+// =================================================================
+// vC.6.7 — ATA WRITE_DMA_EX + IDENTIFY
+// =================================================================
+
+#define PXCMD_W_BIT   (1u << 6)   // command-header flags: write direction
+
+// Shared issue path for read/write: builds the same H2D FIS with a
+// caller-supplied ATA opcode and direction flag, points the single PRD
+// at the supplied buffer, kicks slot 0, waits for CI to clear.
+static int port_rw(uint32_t port, uint8_t ata_op, int is_write,
+                   uint64_t lba, uint32_t count, void *buf) {
+    if (!info.present || !buf || count == 0 || count > 8) return 0;
+    if (port >= AHCI_MAX_PORTS) return 0;
+    if (!(g_port_ready_mask & (1u << port))) return 0;
+
+    uint64_t pb = port_base(port);
+    hba_cmd_header_t *clb    = g_clb_pool[port];
+    hba_cmd_table_t  *cmdtbl = &g_cmdtbl_pool[port];
+
+    uint16_t flags = (uint16_t)((sizeof(uint32_t) * 5) >> 1);     // CFL=5
+    if (is_write) flags |= PXCMD_W_BIT;
+    clb[0].flags = flags;
+    clb[0].prdtl = 1;
+    clb[0].prdbc = 0;
+
+    hba_prdt_entry_t *prd = &cmdtbl->prdt[0];
+    prd->dba  = (uint32_t)(uintptr_t)buf;
+    prd->dbau = 0;
+    prd->rsv0 = 0;
+    prd->dbc  = (count * 512u) - 1u;
+
+    uint8_t *fis = cmdtbl->cfis;
+    for (int i = 0; i < 64; i++) fis[i] = 0;
+    fis[0] = FIS_TYPE_REG_H2D;
+    fis[1] = (1u << 7);
+    fis[2] = ata_op;
+    fis[3] = 0;
+
+    fis[4] = (uint8_t)(lba >>  0);
+    fis[5] = (uint8_t)(lba >>  8);
+    fis[6] = (uint8_t)(lba >> 16);
+    fis[7] = (1u << 6);    // LBA mode
+
+    fis[8] = (uint8_t)(lba >> 24);
+    fis[9] = (uint8_t)(lba >> 32);
+    fis[10]= (uint8_t)(lba >> 40);
+    fis[11]= 0;
+
+    fis[12]= (uint8_t)(count & 0xFF);
+    fis[13]= (uint8_t)((count >> 8) & 0xFF);
+
+    for (int t = 0; t < 1000000; t++) {
+        if (!(mmio_r32(pb + PORT_TFD) & (PXTFD_BSY | PXTFD_DRQ))) break;
+    }
+    mmio_w32(pb + PORT_CI, 1u);
+
+    for (int t = 0; t < 5000000; t++) {
+        if (!(mmio_r32(pb + PORT_CI) & 1u)) {
+            if (mmio_r32(pb + PORT_TFD) & 0x01) return 0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int ahci_port_write(uint32_t port, uint64_t lba, uint32_t count, const void *buf) {
+    return port_rw(port, /*ata_op=WRITE_DMA_EX*/0x35, /*is_write=*/1,
+                   lba, count, (void *)buf);
+}
+
+// Strip trailing spaces, NUL-terminate.
+static void rtrim_pad(char *s) {
+    int n = 0; while (s[n]) n++;
+    while (n > 0 && s[n-1] == ' ') n--;
+    s[n] = '\0';
+}
+
+int ahci_port_identify(uint32_t port, char *out_model, char *out_serial,
+                       uint64_t *out_total_sectors) {
+    if (!info.present || port >= AHCI_MAX_PORTS) return 0;
+    if (!(g_port_ready_mask & (1u << port))) return 0;
+
+    // 512-byte response per ATA spec. Use the per-port command table's
+    // dba pointer area by allocating a stack-aligned buffer here.
+    static __attribute__((aligned(4))) uint8_t ident[512];
+    for (uint32_t i = 0; i < sizeof(ident); i++) ident[i] = 0;
+
+    uint64_t pb = port_base(port);
+    hba_cmd_header_t *clb    = g_clb_pool[port];
+    hba_cmd_table_t  *cmdtbl = &g_cmdtbl_pool[port];
+
+    clb[0].flags = (uint16_t)((sizeof(uint32_t) * 5) >> 1);
+    clb[0].prdtl = 1;
+    clb[0].prdbc = 0;
+
+    hba_prdt_entry_t *prd = &cmdtbl->prdt[0];
+    prd->dba = (uint32_t)(uintptr_t)ident; prd->dbau = 0; prd->rsv0 = 0;
+    prd->dbc = 512u - 1u;
+
+    uint8_t *fis = cmdtbl->cfis;
+    for (int i = 0; i < 64; i++) fis[i] = 0;
+    fis[0] = FIS_TYPE_REG_H2D;
+    fis[1] = (1u << 7);
+    fis[2] = 0xEC;  // ATA IDENTIFY DEVICE
+    /* No LBA, no count for IDENTIFY */
+
+    for (int t = 0; t < 1000000; t++) {
+        if (!(mmio_r32(pb + PORT_TFD) & (PXTFD_BSY | PXTFD_DRQ))) break;
+    }
+    mmio_w32(pb + PORT_CI, 1u);
+    int ok = 0;
+    for (int t = 0; t < 5000000; t++) {
+        if (!(mmio_r32(pb + PORT_CI) & 1u)) {
+            ok = !(mmio_r32(pb + PORT_TFD) & 0x01);
+            break;
+        }
+    }
+    if (!ok) return 0;
+
+    // Words are little-endian on the wire, but ASCII strings are stored
+    // big-endian *within* each word (legacy ATA "high byte first per word").
+    // Words 10..19 = serial (20 bytes), words 27..46 = model (40 bytes).
+    if (out_serial) {
+        for (int w = 0; w < 10; w++) {
+            uint16_t v = ident[(10 + w)*2] | (ident[(10 + w)*2 + 1] << 8);
+            out_serial[w*2 + 0] = (char)((v >> 8) & 0xFF);
+            out_serial[w*2 + 1] = (char)(v & 0xFF);
+        }
+        out_serial[20] = '\0';
+        rtrim_pad(out_serial);
+    }
+    if (out_model) {
+        for (int w = 0; w < 20; w++) {
+            uint16_t v = ident[(27 + w)*2] | (ident[(27 + w)*2 + 1] << 8);
+            out_model[w*2 + 0] = (char)((v >> 8) & 0xFF);
+            out_model[w*2 + 1] = (char)(v & 0xFF);
+        }
+        out_model[40] = '\0';
+        rtrim_pad(out_model);
+    }
+    if (out_total_sectors) {
+        // Words 100..103 = user-addressable LBA48 max sectors (64-bit)
+        uint64_t lba48 = 0;
+        for (int w = 0; w < 4; w++) {
+            uint64_t v = ident[(100 + w)*2] | (ident[(100 + w)*2 + 1] << 8);
+            lba48 |= v << (w * 16);
+        }
+        *out_total_sectors = lba48;
+    }
+    return 1;
+}

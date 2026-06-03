@@ -35,4 +35,14 @@ int ahci_port_init(uint32_t port);
 // Uses ATA READ_DMA_EX (0x25) via slot 0. Returns 1 on success.
 int ahci_port_read(uint32_t port, uint64_t lba, uint32_t count, void *buf);
 
+// vC.6.7: write `count` sectors starting at LBA `lba` from `buf` to `port`.
+// Uses ATA WRITE_DMA_EX (0x35) via slot 0. Returns 1 on success.
+int ahci_port_write(uint32_t port, uint64_t lba, uint32_t count, const void *buf);
+
+// vC.6.7: ATA IDENTIFY (0xEC) — 512-byte device info block. On success
+// populates the optional out-params with model+serial (ASCII, byte-swapped
+// per ATA convention) and the user-visible LBA48 total sectors.
+int ahci_port_identify(uint32_t port, char *out_model, char *out_serial,
+                       uint64_t *out_total_sectors);
+
 #endif
