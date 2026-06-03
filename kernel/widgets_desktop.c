@@ -35,8 +35,8 @@ void widget_clock_render(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     rtc_time_t t;
     rtc_read(&t);
     char buf[16];
-    two_digit(buf, t.hours);   buf[2] = ':'; two_digit(buf+3, t.minutes);
-    buf[5] = ':'; two_digit(buf+6, t.seconds);
+    two_digit(buf, t.hour);    buf[2] = ':'; two_digit(buf+3, t.minute);
+    buf[5] = ':'; two_digit(buf+6, t.second);
     comp_text(x + 16, y + 12, buf, 0xFFFFFF, 0x000000);
     char dateline[24];
     int p = 0;
