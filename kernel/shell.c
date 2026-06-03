@@ -1540,6 +1540,18 @@ static void cmd_xhci_bringup() {
     }
     print_char('\n');
     print("  USBSTS          : 0x"); print_hex(xhci_status()); print_char('\n');
+
+    int er = xhci_event_ring_setup();
+    print("  Event ring set  : "); print(er ? "OK\n" : "FAILED\n");
+    if (er) {
+        uint64_t e = xhci_event_ring_phys();
+        print("  Event ring phys : 0x");
+        for (int i = 60; i >= 0; i -= 4) {
+            int nib = (int)((e >> i) & 0xF);
+            print_char(nib < 10 ? ('0' + nib) : ('A' + nib - 10));
+        }
+        print_char('\n');
+    }
     print_char('\n');
 }
 

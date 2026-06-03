@@ -41,4 +41,9 @@ int  xhci_bring_up(void);
 uint64_t xhci_dcbaa_phys(void);
 uint64_t xhci_cmd_ring_phys(void);
 
+// Event ring setup for Interrupter 0. Returns 1 on success.
+int      xhci_event_ring_setup(void);
+uint64_t xhci_event_ring_phys(void);
+uint64_t xhci_erst_phys(void);
+
 #endif

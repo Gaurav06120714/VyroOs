@@ -146,3 +146,49 @@ int xhci_bring_up(void) {
 
 uint64_t xhci_dcbaa_phys(void)    { return dcbaa_phys; }
 uint64_t xhci_cmd_ring_phys(void) { return cmd_ring_phys; }
+
+// Event Ring scaffolding. Interrupter 0 (the only one this phase uses)
+// lives in the runtime register region. RTSOFF is in the capability registers.
+#define XHCI_RT_IR0_ERSTSZ   0x028
+#define XHCI_RT_IR0_ERSTBA   0x030
+#define XHCI_RT_IR0_ERDP     0x038
+
+static uint64_t event_ring_phys = 0;
+static uint64_t erst_phys       = 0;
+
+int xhci_event_ring_setup(void) {
+    if (!info.present) return 0;
+    uint64_t cap = info.mmio_base;
+    // RTSOFF is at offset 0x18 (DWORD-aligned).
+    uint32_t rtsoff = mmio_r32(cap + 0x18) & ~0x1F;
+    uint64_t runtime = cap + rtsoff;
+
+    // Allocate event ring: 256 TRBs × 16 bytes = 4 KB, 64-byte aligned.
+    void* ring = xhci_alloc_aligned(256 * 16, 64);
+    if (!ring) return 0;
+    for (int i = 0; i < 256 * 16; i++) ((uint8_t*)ring)[i] = 0;
+    event_ring_phys = (uint64_t)(uintptr_t)ring;
+
+    // ERST: one entry. Each entry is 16 bytes: ring_addr(8) | size(2) | rsvd(6).
+    uint8_t* erst = (uint8_t*)xhci_alloc_aligned(16, 64);
+    if (!erst) return 0;
+    for (int i = 0; i < 16; i++) erst[i] = 0;
+    *(volatile uint64_t*)(erst + 0) = event_ring_phys;
+    *(volatile uint16_t*)(erst + 8) = 256;
+    erst_phys = (uint64_t)(uintptr_t)erst;
+
+    // Program Interrupter 0
+    mmio_w32(runtime + 0x20 + XHCI_RT_IR0_ERSTSZ, 1);            // one segment
+    mmio_w32(runtime + 0x20 + XHCI_RT_IR0_ERDP,
+             (uint32_t)(event_ring_phys & 0xFFFFFFF0));
+    mmio_w32(runtime + 0x20 + XHCI_RT_IR0_ERDP + 4,
+             (uint32_t)(event_ring_phys >> 32));
+    mmio_w32(runtime + 0x20 + XHCI_RT_IR0_ERSTBA,
+             (uint32_t)(erst_phys & 0xFFFFFFC0));
+    mmio_w32(runtime + 0x20 + XHCI_RT_IR0_ERSTBA + 4,
+             (uint32_t)(erst_phys >> 32));
+    return 1;
+}
+
+uint64_t xhci_event_ring_phys(void) { return event_ring_phys; }
+uint64_t xhci_erst_phys(void)       { return erst_phys; }
