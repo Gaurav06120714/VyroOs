@@ -42,7 +42,11 @@ jobs:
             grub-pc-bin \
             grub-efi-amd64-bin \
             mtools \
-            librsvg2-bin
+            librsvg2-bin \
+            devscripts \
+            debhelper \
+            meson \
+            libgtk-4-dev
 
       - name: Compute version
         id: ver

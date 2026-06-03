@@ -41,6 +41,9 @@ main() {
     echo "==> prepare includes.chroot from theme/ and branding/"
     "${ROOT_DIR}/scripts/prepare-includes.sh"
 
+    echo "==> build in-tree .deb packages from apps/"
+    "${ROOT_DIR}/scripts/build-debs.sh"
+
     cd "${LB_DIR}"
 
     echo "==> lb clean"
