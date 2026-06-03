@@ -1454,6 +1454,7 @@ static void cmd_tcprecv() {
 #include "tunes.h"
 #include "chacha20.h"
 #include "ecdsa.h"
+#include "csprng.h"
 
 static void cmd_bench() {
     print_color("\n  Vyro OS micro-benchmarks\n", YELLOW_ON_BLACK);
@@ -1905,6 +1906,26 @@ static void cmd_fatcat() {
     print_int(n); print(" bytes --\n\n");
 }
 
+
+static void cmd_tlsserverdemo() {
+    // Build a fresh ClientHello, then feed it into tls_server_demo.
+    static uint8_t cpriv[32], cpub[32], crandom[32], csid[32];
+    csprng_bytes(cpriv, 32); csprng_bytes(crandom, 32); csprng_bytes(csid, 32);
+    x25519_base(cpub, cpriv);
+    static uint8_t ch[1024];
+    int chn = tls_build_client_hello(ch, sizeof(ch), crandom, csid, cpub, "vyro.test");
+    if (chn < 0) { print_color("\n  CH build failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    uint8_t log[256] = {0};
+    int ok = tls_server_demo(ch, (uint32_t)chn, log);
+    print_color("\n  Server-side TLS 1.3 handshake construction\n", YELLOW_ON_BLACK);
+    print("  ClientHello bytes : "); print_int(chn); print_char('\n');
+    print("  Steps completed   : "); print_int(log[0]); print(" / 7\n");
+    print("  Pipeline status   : ");
+    if (ok) print_color("FULL HANDSHAKE BUILT (parse CH -> CH valid -> gen keys -> SH -> derive -> Cert -> SF)\n",
+                        MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    else    print_color("FAILED at step above\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    print_char('\n');
+}
 
 static void cmd_tlsservercert() {
     extern const uint8_t x509_testvec_der[406];
@@ -2460,6 +2481,7 @@ static const command_t commands[] = {
     { "tlsparseclient", cmd_tlsparseclient },
     { "tlsserverhello", cmd_tlsserverhello },
     { "tlsservercert",  cmd_tlsservercert  },
+    { "tlsserverdemo",  cmd_tlsserverdemo  },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "fatwrite",  cmd_fatwrite  },

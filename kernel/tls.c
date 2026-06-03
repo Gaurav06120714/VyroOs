@@ -119,6 +119,73 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
 // ServerHello parser — extracts the server's key_share X25519 pubkey.
 // Input is the handshake body (no record header, no handshake header).
 // ─────────────────────────────────────────────────────────────────────
+int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
+                    uint8_t out_log[256]) {
+    int step = 0;
+    if (ch_record_len < 9) { out_log[0] = step; return 0; }
+    // Skip record(5) + handshake(4) header
+    uint8_t client_random[32], client_sid[32], client_pub[32];
+    uint8_t sid_len = 0; int chacha = 0;
+    if (!tls_parse_client_hello(ch_record + 9, ch_record_len - 9,
+                                client_pub, client_random, client_sid,
+                                &sid_len, &chacha)) {
+        out_log[0] = step;
+        return 0;
+    }
+    step++;
+    if (!chacha) { out_log[0] = step; return 0; }
+    step++;
+
+    // Generate server X25519 keypair
+    uint8_t server_priv[32], server_pub[32];
+    extern void csprng_bytes(uint8_t*, uint32_t);
+    csprng_bytes(server_priv, 32);
+    x25519_base(server_pub, server_priv);
+    step++;
+
+    // Build ServerHello
+    uint8_t server_random[32];
+    csprng_bytes(server_random, 32);
+    static uint8_t sh_buf[512];
+    int sh_n = tls_build_server_hello(sh_buf, sizeof(sh_buf),
+                                      server_random, client_sid, sid_len, server_pub);
+    if (sh_n < 0) { out_log[0] = step; return 0; }
+    step++;
+
+    // Compute shared secret + key schedule
+    uint8_t shared[32];
+    x25519(shared, server_priv, client_pub);
+    // transcript_hash(CH||SH) — over handshake bodies (no record headers)
+    static uint8_t transcript[2048];
+    uint32_t tlen = 0;
+    for (uint32_t i = 5; i < ch_record_len; i++) transcript[tlen++] = ch_record[i];
+    for (int i = 5; i < sh_n; i++) transcript[tlen++] = sh_buf[i];
+    uint8_t th[32];
+    sha256(transcript, tlen, th);
+    tls_handshake_keys_t keys;
+    tls_derive_handshake_keys(shared, th, &keys);
+    step++;
+
+    // Build Certificate message
+    extern const uint8_t x509_testvec_der[406];
+    static uint8_t cert_buf[1024];
+    int cert_n = tls_build_certificate_msg(cert_buf, sizeof(cert_buf),
+                                           x509_testvec_der, 406);
+    if (cert_n < 0) { out_log[0] = step; return 0; }
+    step++;
+
+    // Append Cert to transcript, then build ServerFinished
+    for (int i = 0; i < cert_n; i++) transcript[tlen++] = cert_buf[i];
+    sha256(transcript, tlen, th);
+    static uint8_t sf_buf[64];
+    int sf_n = tls_build_server_finished(sf_buf, sizeof(sf_buf),
+                                          keys.server_hs_traffic_secret, th);
+    if (sf_n != 36) { out_log[0] = step; return 0; }
+    step++;
+    out_log[0] = step;
+    return 1;
+}
+
 int tls_build_certificate_msg(uint8_t* out, uint32_t out_max,
                               const uint8_t* cert_der, uint32_t cert_der_len) {
     // Body: request_context(1) + CertificateList(3) + (cert_data(3) + DER + ext(2))

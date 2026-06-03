@@ -162,4 +162,12 @@ int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
 
 const char* tls_state_name(uint8_t s);
 
+// End-to-end server-side demo. Generates fresh server X25519, builds the
+// full handshake message sequence (SH, Cert, ServerFinished) against a
+// caller-supplied ClientHello, derives keys, and reports success/failure.
+// Returns 1 if every step (parse_client_hello, key schedule, builders) ran
+// without error.
+int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
+                    uint8_t out_log[256]);
+
 #endif
