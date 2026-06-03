@@ -1492,6 +1492,30 @@ static void cmd_ln() {
 }
 
 #include "arch/hal.h"
+#include "acpi.h"
+
+static void acpi_println(const char* s) { print(s); print_char('\n'); }
+
+static void cmd_acpi() {
+    if (!acpi_init()) {
+        print_color("\n  No ACPI RSDP found\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print_color("\n  ACPI tables (", YELLOW_ON_BLACK);
+    print_int(acpi_table_count());
+    print(")\n");
+    acpi_dump_tables(acpi_println);
+
+    const acpi_sdt_t* fadt = acpi_find_table("FACP");
+    const acpi_sdt_t* madt = acpi_find_table("APIC");
+    const acpi_sdt_t* hpet = acpi_find_table("HPET");
+    const acpi_sdt_t* mcfg = acpi_find_table("MCFG");
+    print("\n  FADT (FACP): "); print(fadt ? "present" : "absent"); print_char('\n');
+    print("  MADT (APIC): "); print(madt ? "present" : "absent"); print_char('\n');
+    print("  HPET       : "); print(hpet ? "present" : "absent"); print_char('\n');
+    print("  MCFG (ECAM): "); print(mcfg ? "present" : "absent"); print_char('\n');
+    print("\n");
+}
 static void cmd_cpu_hal() {
     hal_cpu_info_t info;
     hal_cpu_detect(&info);
@@ -2658,6 +2682,7 @@ static const command_t commands[] = {
     { "bench",     cmd_bench     },
     { "sched",     cmd_sched     },
     { "cpuhal",    cmd_cpu_hal   },
+    { "acpi",      cmd_acpi      },
     { "chmod",     cmd_chmod     },
     { "ln",        cmd_ln        },
     { "widgets",   cmd_widgets   },

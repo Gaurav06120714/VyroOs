@@ -84,6 +84,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/tunes.o \
        $(BUILD)/rsa_pss.o \
        $(BUILD)/hal_x86_64.o \
+       $(BUILD)/acpi.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -198,6 +199,8 @@ $(BUILD)/rsa_pss.o: kernel/rsa_pss.c
 	$(CC) $(CFLAGS) kernel/rsa_pss.c -o $(BUILD)/rsa_pss.o
 $(BUILD)/hal_x86_64.o: kernel/arch/x86_64/hal_x86_64.c
 	$(CC) $(CFLAGS) kernel/arch/x86_64/hal_x86_64.c -o $(BUILD)/hal_x86_64.o
+$(BUILD)/acpi.o: kernel/acpi.c
+	$(CC) $(CFLAGS) kernel/acpi.c -o $(BUILD)/acpi.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c
