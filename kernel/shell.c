@@ -1455,6 +1455,7 @@ static void cmd_tcprecv() {
 #include "chacha20.h"
 #include "ecdsa.h"
 #include "csprng.h"
+#include "sched.h"
 
 static void cmd_sched() {
     print_color("\n  Scheduler instrumentation\n", YELLOW_ON_BLACK);
