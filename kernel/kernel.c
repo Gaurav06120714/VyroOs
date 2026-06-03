@@ -182,8 +182,11 @@ void kernel_main() {
 
     extern int  trust_add(const uint8_t*, uint32_t);
     extern const uint8_t x509_testvec_der[406];
+    extern const uint8_t vyro_root_ca_rsa_der[];
+    extern const uint32_t vyro_root_ca_rsa_der_len;
     trust_add(x509_testvec_der, 406);
-    ok("Trust anchor store (1 built-in: vyro.test ECDSA P-256)");
+    trust_add(vyro_root_ca_rsa_der, vyro_root_ca_rsa_der_len);
+    ok("Trust anchor store (2 built-in: vyro.test ECDSA + Vyro Root CA RSA)");
 
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");

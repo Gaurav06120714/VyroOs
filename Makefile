@@ -80,6 +80,7 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/widgets_desktop.o \
        $(BUILD)/bignum_4k.o \
        $(BUILD)/ipv6.o \
+       $(BUILD)/trust_anchors.o \
        $(BUILD)/http.o      \
        $(BUILD)/xhci.o      \
        $(BUILD)/ata.o       \
@@ -186,6 +187,8 @@ $(BUILD)/bignum_4k.o: kernel/bignum_4k.c
 	$(CC) $(CFLAGS) kernel/bignum_4k.c -o $(BUILD)/bignum_4k.o
 $(BUILD)/ipv6.o: kernel/ipv6.c
 	$(CC) $(CFLAGS) kernel/ipv6.c -o $(BUILD)/ipv6.o
+$(BUILD)/trust_anchors.o: kernel/trust_anchors.c
+	$(CC) $(CFLAGS) kernel/trust_anchors.c -o $(BUILD)/trust_anchors.o
 $(BUILD)/http.o: kernel/http.c
 	$(CC) $(CFLAGS) kernel/http.c -o $(BUILD)/http.o
 $(BUILD)/xhci.o: kernel/xhci.c
