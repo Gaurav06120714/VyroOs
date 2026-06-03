@@ -292,11 +292,11 @@ static void draw_notifications() {
         int nx = comp_width() - 320 - nw - 16;
         int ny = TOPBAR_H + 12 + row * (nh + 8);
         comp_shadow(nx, ny, nw, nh, t->win_shadow);
-        comp_rect(nx, ny, nw, nh, t->dock_bg);
+        // Glassmorphism toast: blur + tint over the desktop wallpaper.
+        comp_glass_panel(nx, ny, nw, nh, 0x000000, 140, 12, t->win_border);
         comp_rect(nx, ny, 5, nh, t->accent);
-        comp_border(nx, ny, nw, nh, t->win_border);
-        comp_text(nx + 14, ny + 8, arr[i].title, t->text, t->dock_bg);
-        comp_text(nx + 14, ny + 28, arr[i].body, t->text_dim, t->dock_bg);
+        comp_text(nx + 14, ny + 8, arr[i].title, t->text, 0x000000);
+        comp_text(nx + 14, ny + 28, arr[i].body, t->text_dim, 0x000000);
         row++;
     }
 }
