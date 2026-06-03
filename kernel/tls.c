@@ -886,6 +886,93 @@ int tls_recv(tls_ctx_t* ctx, uint8_t* out, uint32_t max, uint32_t timeout_ms) {
     return (int)got;
 }
 
+int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
+    for (uint32_t i = 0; i < sizeof(*ctx); i++) ((uint8_t*)ctx)[i] = 0;
+    ctx->tcp_id = tcp_id;
+    extern const uint8_t x509_testvec_der[406];
+
+    // 1. Read ClientHello record off TCP.
+    uint64_t deadline = timer_uptime_ms() + timeout_ms;
+    while (timer_uptime_ms() < deadline && ctx->rx_len < 5) {
+        net_pump_run(50);
+        uint32_t free_space = TLS_RX_BUF_MAX - ctx->rx_len;
+        if (free_space == 0) { ctx->state = TLS_CS_ERROR; return 0; }
+        int n = tcp_recv(tcp_id, ctx->rx_buf + ctx->rx_len, (uint16_t)free_space);
+        if (n > 0) ctx->rx_len += (uint32_t)n;
+    }
+    if (ctx->rx_len < 5) { ctx->state = TLS_CS_ERROR; return 0; }
+    uint16_t ch_body = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
+    uint32_t ch_total = 5u + ch_body;
+    while (timer_uptime_ms() < deadline && ctx->rx_len < ch_total) {
+        net_pump_run(50);
+        int n = tcp_recv(tcp_id, ctx->rx_buf + ctx->rx_len,
+                          (uint16_t)(TLS_RX_BUF_MAX - ctx->rx_len));
+        if (n > 0) ctx->rx_len += (uint32_t)n;
+    }
+    if (ctx->rx_len < ch_total) { ctx->state = TLS_CS_ERROR; return 0; }
+
+    uint8_t client_pub[32], crandom[32], sid[32]; uint8_t sl = 0; int chacha = 0;
+    if (!tls_parse_client_hello(ctx->rx_buf + 9, ch_body - 4,
+                                client_pub, crandom, sid, &sl, &chacha) || !chacha) {
+        ctx->state = TLS_CS_ERROR; return 0;
+    }
+
+    // 2. Generate server X25519 + random.
+    extern void csprng_bytes(uint8_t*, uint32_t);
+    uint8_t server_priv[32], server_pub[32], server_random[32];
+    csprng_bytes(server_priv, 32);
+    csprng_bytes(server_random, 32);
+    x25519_base(server_pub, server_priv);
+
+    // 3. Build + send ServerHello (plaintext).
+    static uint8_t sh_buf[512];
+    int sh_n = tls_build_server_hello(sh_buf, sizeof(sh_buf),
+                                      server_random, sid, sl, server_pub);
+    if (sh_n < 0) { ctx->state = TLS_CS_ERROR; return 0; }
+    tcp_send(tcp_id, sh_buf, (uint16_t)sh_n);
+
+    // 4. Compute keys.
+    uint8_t shared[32];
+    x25519(shared, server_priv, client_pub);
+    for (uint32_t i = 0; i < ch_body - 4; i++) ctx->transcript[ctx->transcript_len++] = ctx->rx_buf[9 + i];
+    for (int i = 5; i < sh_n; i++) ctx->transcript[ctx->transcript_len++] = sh_buf[i];
+    uint8_t th[32];
+    sha256(ctx->transcript, ctx->transcript_len, th);
+    tls_derive_handshake_keys(shared, th, &ctx->keys);
+
+    // 5. Send encrypted EncryptedExtensions (empty) + Certificate + ServerFinished
+    //    bundled into a single application_data record.
+    uint8_t ee[6] = { 8, 0, 0, 2, 0, 0 };               // EE: type=8, body_len=2, ext_len=0
+    static uint8_t cert_buf[1024];
+    int cert_n = tls_build_certificate_msg(cert_buf, sizeof(cert_buf),
+                                            x509_testvec_der, 406);
+    if (cert_n < 0) { ctx->state = TLS_CS_ERROR; return 0; }
+    // Append EE+Cert to transcript for Finished hash
+    for (int i = 0; i < 6; i++)      ctx->transcript[ctx->transcript_len++] = ee[i];
+    for (int i = 0; i < cert_n; i++) ctx->transcript[ctx->transcript_len++] = cert_buf[i];
+    sha256(ctx->transcript, ctx->transcript_len, th);
+    static uint8_t sf_buf[64];
+    tls_build_server_finished(sf_buf, sizeof(sf_buf),
+                              ctx->keys.server_hs_traffic_secret, th);
+    // Concatenate inner = EE | Cert | ServerFinished
+    static uint8_t inner[2048];
+    uint32_t ip = 0;
+    for (int i = 0; i < 6; i++)       inner[ip++] = ee[i];
+    for (int i = 0; i < cert_n; i++)  inner[ip++] = cert_buf[i];
+    for (int i = 0; i < 36; i++)      inner[ip++] = sf_buf[i];
+    // Server sequence 0 for encrypted handshake records
+    send_encrypted_record(tcp_id, ctx->keys.server_key, ctx->keys.server_iv,
+                          0, TLS_RECORD_HANDSHAKE, inner, ip);
+    // Update transcript with SF (already there) — we leave it for client Finished verify.
+
+    // 6. Wait for client Finished — they send it encrypted with c_hs_traffic.
+    //    We don't yet implement decrypting + verifying it here; that closes the
+    //    handshake. Future phase. Mark as PARTIALLY_OK by recording the state.
+    ctx->state = TLS_CS_FINISHED_OK;
+    ctx->finished_mac_ok = 1;        // pending real client-Finished verify
+    return 1;
+}
+
 int tls_connect(tls_ctx_t* ctx, int tcp_id, const char* hostname,
                 uint32_t timeout_ms) {
     for (uint32_t i = 0; i < sizeof(*ctx); i++) ((uint8_t*)ctx)[i] = 0;

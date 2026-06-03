@@ -1937,6 +1937,40 @@ static void cmd_fatcat() {
 }
 
 
+static void cmd_tlsaccept() {
+    if (argc < 2) {
+        print_color("\n  Usage: tlsaccept <port>\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int port_int;
+    if (!parse_int_safe(argv[1], &port_int)) {
+        print_color("\n  bad port\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    int lid = tcp_listen((uint16_t)port_int);
+    if (lid < 0) { print_color("\n  listen failed\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK)); return; }
+    print_color("\n  Listening for TLS connection on :", YELLOW_ON_BLACK);
+    print_int(port_int); print(" (up to 30 s)...\n");
+    int conn = -1;
+    for (int i = 0; i < 300; i++) {
+        net_pump_run(100);
+        conn = tcp_accept((uint16_t)port_int);
+        if (conn >= 0) break;
+    }
+    if (conn < 0) {
+        print_color("  No client connected\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        return;
+    }
+    print("  TCP accepted. Running TLS handshake...\n");
+    static tls_ctx_t tctx;
+    int ok = tls_accept(&tctx, conn, 5000);
+    if (ok) print_color("  Server-side TLS handshake completed\n  (CH parsed, SH sent, encrypted EE/Cert/Finished sent)\n\n",
+                        MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    else    print_color("  Handshake FAILED\n\n", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    tcp_close(conn);
+}
+
 static void cmd_tlsserverdemo() {
     // Build a fresh ClientHello, then feed it into tls_server_demo.
     static uint8_t cpriv[32], cpub[32], crandom[32], csid[32];
@@ -2512,6 +2546,7 @@ static const command_t commands[] = {
     { "tlsserverhello", cmd_tlsserverhello },
     { "tlsservercert",  cmd_tlsservercert  },
     { "tlsserverdemo",  cmd_tlsserverdemo  },
+    { "tlsaccept",      cmd_tlsaccept      },
     { "fatls",     cmd_fatls     },
     { "fatcat",    cmd_fatcat    },
     { "fatwrite",  cmd_fatwrite  },

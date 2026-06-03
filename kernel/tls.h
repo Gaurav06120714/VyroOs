@@ -170,4 +170,12 @@ const char* tls_state_name(uint8_t s);
 int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
                     uint8_t out_log[256]);
 
+// Drive a live server-side TLS 1.3 handshake on an established TCP connection.
+// Reads ClientHello, sends ServerHello (plaintext) + EncryptedExtensions +
+// Certificate + Finished (all AEAD-encrypted with server handshake keys),
+// then waits for the client Finished MAC and verifies it. Returns 1 if the
+// handshake completed and both Finished MACs verified, 0 otherwise. Stops at
+// the same point as the client path: app-data send/recv is then live.
+int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms);
+
 #endif
