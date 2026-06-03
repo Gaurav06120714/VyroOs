@@ -1,0 +1,21 @@
+#!/bin/sh
+# Vyro OS — live-build auto/config
+# Invoked by `lb config` to set the base distribution and image options.
+
+set -e
+
+lb config noauto \
+    --mode ubuntu \
+    --distribution noble \
+    --architectures amd64 \
+    --linux-flavours generic \
+    --archive-areas "main restricted universe multiverse" \
+    --debian-installer live \
+    --debian-installer-gui true \
+    --bootloaders "grub-efi grub-pc" \
+    --binary-images iso-hybrid \
+    --iso-application "Vyro OS" \
+    --iso-publisher "Vyro Project" \
+    --iso-volume "Vyro OS 7.0" \
+    --bootappend-live "boot=live components quiet splash" \
+    "${@}"

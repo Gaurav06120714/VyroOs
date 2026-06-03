@@ -1,0 +1,50 @@
+# Vyro OS — package selection (chroot)
+# Drives `lb build`'s apt step. Anything here ends up in the live system
+# and on the installed system.
+
+# --- Desktop base ---
+ubuntu-desktop-minimal
+gnome-shell-extensions
+gnome-tweaks
+
+# --- Browser (rebranded post-install via hooks) ---
+firefox
+
+# --- Terminal, editor, file manager (Vyro-themed via /etc/skel) ---
+gnome-terminal
+gedit
+nautilus
+
+# --- Calculator, clock, system monitor ---
+gnome-calculator
+gnome-clocks
+gnome-system-monitor
+
+# --- Networking ---
+network-manager
+network-manager-gnome
+wpasupplicant
+
+# --- Audio ---
+pipewire
+pipewire-pulse
+wireplumber
+
+# --- Plymouth (boot splash) ---
+plymouth
+plymouth-themes
+
+# --- Installer ---
+calamares
+calamares-settings-ubuntu
+
+# --- Fonts ---
+fonts-inter
+fonts-jetbrains-mono
+
+# --- Utilities ---
+curl
+wget
+git
+htop
+neofetch
