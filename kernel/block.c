@@ -136,3 +136,12 @@ int block_write(uint32_t idx, uint64_t lba, uint32_t count, const void *buf) {
     if (!bd || !bd->write) return 0;
     return bd->write(bd, lba, count, buf);
 }
+
+/* vC.6.10.1: hotfix — block_register implementation that vC.6.10 declared
+ * in the header but did not land in this .c (the Edit silently failed).
+ * Without this, parttab.c's extern call would fail at link time. */
+int block_register(block_device_t *src) {
+    if (!src || g_count >= BLOCK_MAX_DEVICES) return -1;
+    g_devs[g_count] = *src;
+    return g_count++;
+}
