@@ -305,6 +305,7 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-drive file=$(BUILD)/disk.img,format=raw,if=ide,index=1,media=disk \
 		-m 256M \
 		-smp 4 \
+		-cpu max \
 		-name "Vyro OS" \
 		-display cocoa,show-cursor=on,full-screen=on \
 		-vga std \
