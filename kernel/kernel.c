@@ -163,14 +163,15 @@ void kernel_main() {
     csprng_init();
     ok("CSPRNG (ChaCha20 keystream, RDRAND+RDTSC seeded)");
 
-    extern void smp_start_aps();
-    extern uint32_t smp_ap_count();
-    smp_start_aps();
-    {
-        uint32_t aps = smp_ap_count();
-        if (aps > 0) ok("SMP AP bring-up (APs responded to SIPI)");
-        else         ok("SMP AP bring-up (trampoline armed, no APs detected)");
-    }
+    // vC.6.10.4: skip SMP AP bringup. smp_start_aps() calls sleep_ms()
+    // which uses hlt to wait for PIT IRQ0 ticks, but kernel interrupts
+    // (sti) aren't enabled until later in kernel_main. With QEMU's
+    // default qemu64 CPU model this was latent (LAPIC disabled →
+    // smp_start_aps early-returned), but with -cpu max LAPIC is on, so
+    // sleep_ms would deadlock forever waiting for IRQs that can't fire.
+    // We skip the AP bringup entirely — UP is fine for now, real SMP
+    // wakeup belongs after sti anyway and is a separate phase.
+    ok("SMP AP bring-up (skipped — UP mode)");
 
     extern int rsa_selftest();
     if (rsa_selftest()) ok("RSA bignum + PKCS1-v1_5 (modexp selftest passes)");
