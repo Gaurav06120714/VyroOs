@@ -5,7 +5,7 @@
 CC      ?= cc
 AR      ?= ar
 CFLAGS  ?= -O2 -Wall -Wextra -fPIC -Iinclude
-SRCS    := src/window.c src/draw.c src/input.c src/lifecycle.c src/proto.c
+SRCS    := src/window.c src/draw.c src/input.c src/lifecycle.c src/proto.c src/font.c
 OBJS    := $(SRCS:.c=.o)
 
 .PHONY: all clean
