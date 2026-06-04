@@ -1,0 +1,13 @@
+# Vyro OS APT source — distributes Vyro-native .deb packages
+# (vyro-compositor, vyro-calculator, vyro-files, hello-vyro, future apps)
+# from a GitHub Pages-hosted Debian archive.
+#
+# Disabled by default in the live ISO. To enable, set Enabled: yes here
+# OR install the vyro-apt-source .deb which flips this bit.
+Types: deb
+URIs: https://gaurav06120714.github.io/VyroOs/apt
+Suites: noble
+Components: main
+Architectures: amd64 arm64
+Signed-By: /usr/share/keyrings/vyro-apt-keyring.gpg
+Enabled: no

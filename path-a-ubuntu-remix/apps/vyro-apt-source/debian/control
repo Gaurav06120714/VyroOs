@@ -1,0 +1,15 @@
+Source: vyro-apt-source
+Section: misc
+Priority: optional
+Maintainer: Gaurav <gauravganeshteegulla@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/Gaurav06120714/VyroOs
+
+Package: vyro-apt-source
+Architecture: all
+Depends: ${misc:Depends}
+Description: Enable the Vyro OS APT source
+ Installs and enables /etc/apt/sources.list.d/vyro.sources so apt-get
+ update pulls Vyro-native packages from the GitHub Pages-hosted
+ Debian repository.
