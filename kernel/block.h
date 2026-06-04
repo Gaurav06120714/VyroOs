@@ -46,4 +46,9 @@ int             block_count(void);
 int block_read (uint32_t idx, uint64_t lba, uint32_t count, void *buf);
 int block_write(uint32_t idx, uint64_t lba, uint32_t count, const void *buf);
 
+// vC.6.10: append a pre-filled block_device_t into the array (for the
+// partition-window shim and other future composite transports). Returns
+// the new index, or -1 if full.
+int block_register(block_device_t *src);
+
 #endif
