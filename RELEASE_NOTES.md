@@ -1,5 +1,67 @@
 # Release Notes
 
+## v7.3 — Distribution + apps
+
+The third quarterly meta-release. v7.2 closed the internal stacks; v7.3
+gets Vyro OS into a shape users can actually install, update, and use.
+
+### Path A — Ubuntu remix (vA.7.13 → vA.7.15)
+- **Path B binaries packaged as Path A `.deb`s** — `vyro-compositor`,
+  `vyro-calculator`, `vyro-files` now build directly from the canonical
+  Path B sources into Ubuntu packages. The "Vyro Compositor
+  (experimental)" GDM session from vA.7.12 has real binaries to launch.
+- **APT repo source** — `/etc/apt/sources.list.d/vyro.sources` ships in
+  the live system (disabled by default), `scripts/build-apt-repo.sh`
+  assembles a publishable flat Debian archive from any `.deb` set, and
+  `vyro-apt-source` is a tiny opt-in package that flips the source on.
+- **CI publish workflow** — `.github/workflows/publish-apt.yml` chains
+  off the ISO build, downloads its `.deb` artifacts, runs the repo
+  builder, and `rsync`s into the `gh-pages` branch with a styled
+  landing page. End-to-end "tag a release → users get updates via apt"
+  is now wired.
+
+### Path B — Linux + Vyro userland (vB.0.10 → vB.0.11)
+- **TextEdit** — third concurrent client, full keyboard event dispatch
+  with shift+ctrl modifier tracking, blinking caret, line-aware up/down
+  cursor movement, Ctrl+S save. First app to validate the full
+  character-set scancode path.
+- **Terminal** — fourth concurrent client. `forkpty` + `/bin/sh -i`
+  subprocess, poll-driven byte stream from the PTY master interleaved
+  with IPC events, 80×24 grid with `\r\n\t\b` handling. First app to
+  exercise byte-streams-flowing-in alongside events-flowing-out.
+
+### Path C — Microkernel (vC.6.8 → vC.6.9, with `vC.6.8.1` hotfix)
+- **FAT32 over `block_read`** — filesystem code is now transport-
+  agnostic. Same FAT32 implementation mounts SATA via AHCI or NVMe via
+  NVMe through the block-device dispatch.
+- **`vC.6.8.1` hotfix** — `fat32_mount_block`/`fat32_use_block`
+  prototypes were missing from the header in `vC.6.8`. Real shipping
+  fix, not cosmetic.
+- **4K-LBA NVMe scatter adapter** — `lba_xlate.{h,c}` slots into the
+  block dispatch and presents a 512-byte LBA view of 4096-byte-native
+  NVMe devices, with read-modify-write for unaligned writes. Path C
+  now genuinely mounts FAT32 on modern 4K-native NVMe SSDs.
+
+### What v7.3 deliberately does *not* claim
+- The APT repo publish workflow is wired up but has not yet produced
+  a single signed release. The first push to `vA.*` post-merge will
+  prove it — or surface gaps for `vA.7.16`.
+- The Vyro Compositor (experimental) GDM session is now backed by real
+  binaries, but has still not been booted end-to-end on real hardware
+  inside the Path A ISO. The first hardware boot demo is the v7.4
+  milestone.
+- Path B Terminal does not yet handle VT100 escape sequences (most
+  programs that produce colored output will show stray bytes). Real
+  VT100 lands when libvyro grows a font rasterizer, in `vB.0.12`.
+- 4K-LBA xlate is single-device for now; a system with two 4K-native
+  disks would need the per-slot native function-pointer extension.
+
+### Stats this cycle
+9 new tags landed this cycle (3× vA, 2× vB, 2× vC + 1 hotfix, plus this
+v7.3 meta). Repo is now at 127 tags total.
+
+---
+
 ## v7.2 — Stack closure
 
 The second quarterly meta-release. v7.1 had three working stacks with
