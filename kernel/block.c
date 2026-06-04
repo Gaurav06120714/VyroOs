@@ -1,6 +1,7 @@
 #include "block.h"
 #include "ahci.h"
 #include "nvme.h"
+#include "lba_xlate.h"
 
 static block_device_t g_devs[BLOCK_MAX_DEVICES];
 static int g_count = 0;
@@ -101,7 +102,17 @@ int block_probe(void) {
 
     /* NVMe: ns1 only for now (multi-namespace lands with vC.6.8) */
     if (g_count < BLOCK_MAX_DEVICES && nvme_init()) {
-        register_nvme_ns1();
+        int before = g_count;
+        if (register_nvme_ns1() && g_count > before) {
+            /* vC.6.9: if the just-registered device is 4 KiB-native,
+             * install the LBA-size translation adapter so FAT32 sees
+             * 512-byte logical blocks. */
+            uint32_t idx = (uint32_t)(g_count - 1);
+            block_device_t *bd = block_get(idx);
+            if (bd && bd->logical_block_size != 512) {
+                lba_xlate_register(idx);
+            }
+        }
     }
 
     return g_count;
