@@ -1,7 +1,28 @@
 #include "fat32.h"
 #include "ata.h"
+#include "block.h"
 
 #define SECTOR_SIZE 512
+
+// vC.6.8: transport-agnostic sector read.
+//   g_use_block = 0  → legacy ata_read_sector (BIOS-boot ATA disk)
+//   g_use_block = 1  → block_read(g_block_idx, lba, 1, buf) — picks up
+//                      whichever AHCI port or NVMe namespace the caller
+//                      passed to fat32_mount_block().
+static int      g_use_block  = 0;
+static uint32_t g_block_idx  = 0;
+
+static int fat32_read_sector(uint32_t lba, void *buf) {
+    if (g_use_block) return block_read(g_block_idx, lba, 1, buf);
+    return ata_read_sector(lba, buf);
+}
+static int fat32_write_sector(uint32_t lba, const void *buf) {
+    if (g_use_block) return block_write(g_block_idx, lba, 1, buf);
+    return ata_write_sector(lba, buf);
+}
+
+#define ata_read_sector(lba, buf)  fat32_read_sector((lba), (buf))
+#define ata_write_sector(lba, buf) fat32_write_sector((lba), (buf))
 
 static int      mounted = 0;
 static uint16_t bytes_per_sector = 0;
