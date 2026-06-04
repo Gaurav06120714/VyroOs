@@ -143,39 +143,67 @@ prefix scheme so the three product lines can move at independent cadence.
 
 ```
 .
-├── path-a-ubuntu-remix/    # Path A: Ubuntu 24.04 LTS remix
+├── README.md               # this file
+├── RELEASE_NOTES.md        # per-release changelog
+├── Makefile                # Path C build entry
+├── link.ld                 # Path C linker script
+│
+├── path-a-ubuntu-remix/    # Path A — Ubuntu 24.04 LTS remix
 │   ├── PHASES.md
-│   ├── live-build/
-│   ├── theme/
-│   ├── branding/
+│   ├── apps/               # in-tree .deb packages
+│   ├── branding/           # Plymouth, GDM, Calamares, wallpapers, logos
+│   ├── live-build/         # live-build configuration
+│   ├── pages/              # gh-pages landing site
+│   ├── scripts/            # build helpers
+│   ├── theme/              # GNOME + GTK4 glassmorphism theme
 │   └── build.sh
-├── path-b-linux-core/      # Path B: Linux kernel + Vyro userland
+│
+├── path-b-linux-core/      # Path B — Linux kernel + Vyro userland
 │   ├── PHASES.md
-│   ├── buildroot/
-│   ├── compositor-drm/
-│   ├── libvyro-linux/
+│   ├── apps/               # native Vyro desktop apps
+│   ├── buildroot/          # Buildroot config + Vyro packages
+│   ├── compositor-drm/     # DRM/KMS display server
+│   ├── init/               # vyro-init (PID 1)
+│   ├── libvyro-linux/      # client library + IPC + font
 │   └── Makefile
-├── boot/                   # Path C: original from-scratch bootloader (BIOS + UEFI)
-├── kernel/                 # Path C: original 64-bit kernel
-├── drivers/                # Path C: original drivers
-├── user/                   # Path C: original userland
-├── docs/                   # cross-path documentation
-├── ROADMAP.md              # legacy roadmap (Path C)
-├── ROADMAP_V6.md           # Path C real-hardware roadmap
-├── ROADMAP_V7.md           # tri-path roadmap (this release)
-├── AUDIT.md                # honest gap analysis (Path C)
-└── README.md
+│
+├── path-c-microkernel/     # Path C — from-scratch microkernel (pointer)
+│   └── README.md           # points at root-level boot/, kernel/, drivers/...
+│
+├── boot/                   # Path C: bootloaders (BIOS + UEFI)
+├── kernel/                 # Path C: 64-bit kernel + subsystems
+├── drivers/                # Path C: hardware drivers
+├── include/                # Path C: shared headers
+├── user/                   # Path C: sample userland
+│
+├── docs/                   # shared documentation
+│   ├── ARCHITECTURE.md
+│   ├── CHANGELOG.md
+│   ├── CROSS_PATH.md
+│   ├── DESIGN.md / DESIGN-2.0.md
+│   ├── PROJECT_STATE.md
+│   ├── ROADMAP_V7.md
+│   ├── USB_INSTALL.md
+│   ├── projects_guide.md
+│   └── path-c/             # Path C-specific docs
+│       ├── AUDIT.md
+│       ├── ROADMAP.md
+│       └── ROADMAP_V6.md
+│
+└── .github/workflows/      # CI (ISO build, APT publish)
 ```
 
 ---
 
 ## Documentation
 
-- [ROADMAP_V7.md](ROADMAP_V7.md) — full tri-path roadmap with phase-by-phase plan
+- [docs/ROADMAP_V7.md](docs/ROADMAP_V7.md) — full tri-path roadmap with phase-by-phase plan
+- [docs/CROSS_PATH.md](docs/CROSS_PATH.md) — what's shared and what isn't across the three paths
 - [path-a-ubuntu-remix/PHASES.md](path-a-ubuntu-remix/PHASES.md) — Path A delivery plan
 - [path-b-linux-core/PHASES.md](path-b-linux-core/PHASES.md) — Path B delivery plan
-- [AUDIT.md](AUDIT.md) — honest technical audit of the microkernel (Path C)
-- [ROADMAP_V6.md](ROADMAP_V6.md) — Path C real-hardware roadmap (4 tracks, ~116 PM)
+- [path-c-microkernel/README.md](path-c-microkernel/README.md) — Path C pointer to root-level sources
+- [docs/path-c/AUDIT.md](docs/path-c/AUDIT.md) — honest technical audit of the microkernel (Path C)
+- [docs/path-c/ROADMAP_V6.md](docs/path-c/ROADMAP_V6.md) — Path C real-hardware roadmap (4 tracks, ~116 PM)
 - [docs/USB_INSTALL.md](docs/USB_INSTALL.md) — installing the Path C microkernel from USB
 
 ## License
