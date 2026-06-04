@@ -1,0 +1,19 @@
+# Jekyll config for the GitHub Pages site.
+# We don't use Jekyll's templating — every page is static HTML — but
+# Pages requires a _config.yml to recognize the site, and we use it to
+# set the site title/description that crawlers and social cards read.
+
+title: Vyro OS
+description: A small, honest desktop OS built three ways — Ubuntu remix, Linux+Vyro userland, and a from-scratch microkernel.
+url: https://gaurav06120714.github.io/VyroOs
+
+# Disable Jekyll processing on every file (we ship pre-built HTML).
+plugins: []
+include: ["apt"]
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+theme: null
+markdown: kramdown

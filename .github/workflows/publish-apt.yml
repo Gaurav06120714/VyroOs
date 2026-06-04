@@ -83,19 +83,11 @@ jobs:
           mkdir -p pages-tree/apt
           rsync -a --delete apt-out/ pages-tree/apt/
 
-          # Stash a marker file so GitHub Pages serves a real index page
-          cat > pages-tree/index.html <<'EOF'
-          <!doctype html>
-          <meta charset="utf-8">
-          <title>Vyro OS APT Repository</title>
-          <body style="font-family:Inter,sans-serif;background:#0B0B12;color:#E8E9F1;padding:48px;max-width:720px;margin:0 auto;">
-            <h1 style="color:#B388FF;">Vyro OS APT Repository</h1>
-            <p>This site hosts the Vyro OS Debian package repository.</p>
-            <p>To use, install the <code>vyro-apt-source</code> package on a Vyro OS Path A install, or add manually:</p>
-            <pre style="background:#141620;padding:16px;border-radius:14px;">deb https://gaurav06120714.github.io/VyroOs/apt noble main</pre>
-            <p><a href="https://github.com/Gaurav06120714/VyroOs" style="color:#B388FF;">github.com/Gaurav06120714/VyroOs</a></p>
-          </body>
-          EOF
+          # vA.7.16: sync the proper site assets from path-a-ubuntu-remix/pages/
+          # (index.html, style.css, favicon.svg, _config.yml) instead of
+          # heredoc-stamping an inline page.
+          rsync -a path-a-ubuntu-remix/pages/ pages-tree/ \
+              --exclude README.md
 
           ( cd pages-tree && \
             git add -A && \
