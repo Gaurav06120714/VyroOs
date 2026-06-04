@@ -68,6 +68,10 @@ OBJS = $(BUILD)/kernel_entry.o \
        $(BUILD)/tls.o       \
        $(BUILD)/sched.o     \
        $(BUILD)/fat32.o     \
+       $(BUILD)/memmap.o    \
+       $(BUILD)/block.o     \
+       $(BUILD)/parttab.o   \
+       $(BUILD)/lba_xlate.o \
        $(BUILD)/lapic.o     \
        $(BUILD)/csprng.o    \
        $(BUILD)/smp_boot.o  \
@@ -168,6 +172,18 @@ $(BUILD)/sched.o: kernel/sched.c
 	$(CC) $(CFLAGS) kernel/sched.c -o $(BUILD)/sched.o
 $(BUILD)/fat32.o: kernel/fat32.c
 	$(CC) $(CFLAGS) kernel/fat32.c -o $(BUILD)/fat32.o
+
+$(BUILD)/memmap.o: kernel/memmap.c
+	$(CC) $(CFLAGS) kernel/memmap.c -o $(BUILD)/memmap.o
+
+$(BUILD)/block.o: kernel/block.c
+	$(CC) $(CFLAGS) kernel/block.c -o $(BUILD)/block.o
+
+$(BUILD)/parttab.o: kernel/parttab.c
+	$(CC) $(CFLAGS) kernel/parttab.c -o $(BUILD)/parttab.o
+
+$(BUILD)/lba_xlate.o: kernel/lba_xlate.c
+	$(CC) $(CFLAGS) kernel/lba_xlate.c -o $(BUILD)/lba_xlate.o
 $(BUILD)/lapic.o: kernel/lapic.c
 	$(CC) $(CFLAGS) kernel/lapic.c -o $(BUILD)/lapic.o
 $(BUILD)/csprng.o: kernel/csprng.c
@@ -270,8 +286,18 @@ $(BUILD)/app_disk.o: kernel/apps/disk.c
 $(BUILD)/apps_reg.o: kernel/apps/apps.c
 	$(CC) $(CFLAGS) kernel/apps/apps.c -o $(BUILD)/apps_reg.o
 
+# vC.6.10.2: ensure $(BUILD) exists before any object compile
+$(OBJS): | $(BUILD)
+$(BUILD):
+	@mkdir -p $(BUILD)
+
 # ───────────────────────────────────────────────
-# Default: build + run
+# Default goal — make with no args builds the image
+# ───────────────────────────────────────────────
+.DEFAULT_GOAL := build
+
+# ───────────────────────────────────────────────
+# Build + run target
 # ───────────────────────────────────────────────
 all: $(BUILD)/vyro.img $(BUILD)/disk.img
 	qemu-system-x86_64 \
