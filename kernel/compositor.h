@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────
 
 int  comp_init();                    // returns 1 on success
+void comp_revalidate(void);          // vC.6.12: heal backbuf if OOB-corrupted
 void comp_clear(uint32_t color);
 void comp_pixel(uint32_t x, uint32_t y, uint32_t color);
 void comp_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
