@@ -2,9 +2,16 @@
 #include "heap.h"
 #include "../drivers/framebuffer.h"
 
-// Back buffer: 1024 * 768 * 3 = 2.25 MB, allocated from kernel heap.
-// We hold packed BGR pixels just like the framebuffer for fast blit.
-static uint8_t* backbuf = 0;
+// Back buffer: 1024 * 768 * 3 = 2.36 MB.
+// vC.6.12.3: parked at a FIXED PHYSICAL ADDRESS (16 MB) and the pointer
+// is declared static const so it lives in .rodata — the bytes inside
+// the .rodata can never be written from C, so the OOB BSS writer that
+// kept corrupting backbuf to -1 cannot touch the pointer itself. The
+// 2.36 MB at 0x1000000 sits ABOVE the kernel heap (0x500000-0xD00000)
+// and is identity-mapped by the bootloader's 0-4GB page tables, so we
+// can write pixels into it freely without going through kmalloc.
+#define BACKBUF_PHYS 0x1000000UL
+static uint8_t* const backbuf = (uint8_t*)BACKBUF_PHYS;
 static uint8_t* font    = (uint8_t*)0x80000;
 
 #define BB_W  FB_WIDTH
@@ -15,22 +22,14 @@ static uint8_t* font    = (uint8_t*)0x80000;
 // Initialize the back buffer
 // ─────────────────────────────────────────────────
 int comp_init() {
-    // vC.6.12: always re-allocate if backbuf isn't currently sane.
-    // The static "if (backbuf) return 1" short-circuit was preserving a
-    // corrupted-to-0xFFFFFFFFFFFFFFFF pointer from a previous run /
-    // earlier subsystem; checking sanity instead means a fresh kmalloc
-    // happens whenever the existing pointer is bad.
-    if ((uint64_t)backbuf >= 0x500000ULL && (uint64_t)backbuf < 0xD00000ULL) return 1;
-    backbuf = (uint8_t*) kmalloc(BB_PITCH * BB_H);
-    return backbuf ? 1 : 0;
+    // vC.6.12.3: backbuf is a fixed-address const pointer now — nothing
+    // to allocate, just confirm the address is non-zero (compile-time
+    // guarantee, but kept for sanity).
+    return backbuf != 0;
 }
 
-// vC.6.12: callable from the render loop to recover from in-flight
-// corruption of the backbuf global by some OOB writer elsewhere in BSS.
 void comp_revalidate(void) {
-    if ((uint64_t)backbuf < 0x500000ULL || (uint64_t)backbuf >= 0xD00000ULL) {
-        backbuf = (uint8_t*) kmalloc(BB_PITCH * BB_H);
-    }
+    // No-op now — the pointer is const, can't be corrupted.
 }
 
 uint32_t comp_width()  { return BB_W; }
@@ -48,8 +47,10 @@ uint32_t comp_height() { return BB_H; }
 // stops the kernel taking a page fault and lets the GUI render-loop
 // keep going (it just paints nothing that frame, which is acceptable).
 static inline int backbuf_sane(void) {
-    uint64_t p = (uint64_t)backbuf;
-    return p >= 0x500000ULL && p < 0xD00000ULL;
+    // vC.6.12.3: backbuf is a const-pointer at a fixed physical address,
+    // always sane. Keeping the function so call-sites don't need to
+    // change shape.
+    return 1;
 }
 
 static inline void put(uint32_t x, uint32_t y, uint32_t color) {
@@ -284,7 +285,11 @@ void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 // ─────────────────────────────────────────────────
 extern uint8_t fb_available(void);
 void comp_present() {
-    if (!backbuf_sane() || !fb_available()) return;
+    if (!fb_available()) return;
+    // vC.6.12.2: heal AT the blit so even if backbuf got corrupted during
+    // the render pass, we have a valid pointer for the present.
+    comp_revalidate();
+    if (!backbuf_sane()) return;
     // We don't have direct fb pointer access — copy pixel by pixel.
     // This is the one place that matters for performance; for now,
     // straight-line copy is fine on QEMU.
