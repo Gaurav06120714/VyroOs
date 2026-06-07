@@ -163,14 +163,7 @@ void kernel_main() {
     csprng_init();
     ok("CSPRNG (ChaCha20 keystream, RDRAND+RDTSC seeded)");
 
-    // vC.6.10.4: skip SMP AP bringup. smp_start_aps() calls sleep_ms()
-    // which uses hlt to wait for PIT IRQ0 ticks, but kernel interrupts
-    // (sti) aren't enabled until later in kernel_main. With QEMU's
-    // default qemu64 CPU model this was latent (LAPIC disabled →
-    // smp_start_aps early-returned), but with -cpu max LAPIC is on, so
-    // sleep_ms would deadlock forever waiting for IRQs that can't fire.
-    // We skip the AP bringup entirely — UP is fine for now, real SMP
-    // wakeup belongs after sti anyway and is a separate phase.
+    // SMP bringup deferred — see notes in vC.6.10.4
     ok("SMP AP bring-up (skipped — UP mode)");
 
     extern int rsa_selftest();
@@ -198,9 +191,7 @@ void kernel_main() {
     trust_add(globalsign_mock_der,   globalsign_mock_der_len);
     ok("Trust anchor store (5 built-in: ECDSA test + Vyro Root + 3 mock CAs)");
 
-    extern void tunes_play_boot();
-    tunes_play_boot();
-    ok("Boot chime (5-note arpeggio)");
+    ok("Boot chime (skipped)");
 
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
@@ -252,6 +243,9 @@ void kernel_main() {
 
     __asm__ volatile("sti");
 
+    // vC.6.10.5: boot straight into the GUI desktop instead of the shell.
+    // Shell remains available via the Terminal app inside the GUI.
     shell_init();
-    shell_run();
+    extern void gui_run();
+    gui_run();
 }
