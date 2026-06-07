@@ -26,13 +26,23 @@ uint32_t comp_height() { return BB_H; }
 // ─────────────────────────────────────────────────
 // Pixel ops on the back buffer
 // ─────────────────────────────────────────────────
+// vC.6.11.1: validate backbuf is in the kernel heap range. CR2 capture
+// in vC.6.11.0 revealed that something was corrupting the backbuf
+// pointer to 0xFFFFFFFFFFFFFFFF — same value an int -1 sign-extends to
+// when read as a pointer. The corruption source is still unknown
+// (probably an out-of-bounds write nearby in BSS), but rejecting any
+// backbuf outside the heap range [HEAP_START, HEAP_START+HEAP_SIZE]
+// stops the kernel taking a page fault and lets the GUI render-loop
+// keep going (it just paints nothing that frame, which is acceptable).
+static inline int backbuf_sane(void) {
+    uint64_t p = (uint64_t)backbuf;
+    return p >= 0x500000ULL && p < 0xD00000ULL;
+}
+
 static inline void put(uint32_t x, uint32_t y, uint32_t color) {
-    if (x >= BB_W || y >= BB_H || !backbuf) return;
+    if (x >= BB_W || y >= BB_H) return;
+    if (!backbuf_sane()) return;
     uint32_t off = y * BB_PITCH + x * 3;
-    // vC.6.10.7: belt-and-braces — compositor was page-faulting at offset
-    // ~2.36 MB during wallpaper render under -cpu max + heap layout.
-    // The hard cap stops us writing past the kmalloc'd back buffer if
-    // anything else corrupts the pixel arithmetic.
     if (off + 2 >= (uint32_t)(BB_PITCH * BB_H)) return;
     backbuf[off + 0] = (uint8_t)(color & 0xFF);
     backbuf[off + 1] = (uint8_t)((color >> 8) & 0xFF);
@@ -42,7 +52,7 @@ static inline void put(uint32_t x, uint32_t y, uint32_t color) {
 void comp_pixel(uint32_t x, uint32_t y, uint32_t color) { put(x, y, color); }
 
 void comp_clear(uint32_t color) {
-    if (!backbuf) return;
+    if (!backbuf_sane()) return;
     uint8_t b = color & 0xFF, g = (color >> 8) & 0xFF, r = (color >> 16) & 0xFF;
     for (uint32_t y = 0; y < BB_H; y++) {
         uint8_t* row = backbuf + y * BB_PITCH;
@@ -129,14 +139,14 @@ void comp_gradient_v(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 // ─────────────────────────────────────────────────
 
 static inline void get_bgr(uint32_t x, uint32_t y, uint8_t out[3]) {
-    if (x >= BB_W || y >= BB_H || !backbuf) { out[0]=out[1]=out[2]=0; return; }
+    if (x >= BB_W || y >= BB_H || !backbuf_sane()) { out[0]=out[1]=out[2]=0; return; }
     uint32_t off = y * BB_PITCH + x * 3;
     out[0] = backbuf[off + 0];
     out[1] = backbuf[off + 1];
     out[2] = backbuf[off + 2];
 }
 static inline void put_bgr(uint32_t x, uint32_t y, uint8_t b, uint8_t g, uint8_t r) {
-    if (x >= BB_W || y >= BB_H || !backbuf) return;
+    if (x >= BB_W || y >= BB_H || !backbuf_sane()) return;
     uint32_t off = y * BB_PITCH + x * 3;
     backbuf[off + 0] = b;
     backbuf[off + 1] = g;
@@ -261,7 +271,7 @@ void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 // ─────────────────────────────────────────────────
 extern uint8_t fb_available(void);
 void comp_present() {
-    if (!backbuf || !fb_available()) return;
+    if (!backbuf_sane() || !fb_available()) return;
     // We don't have direct fb pointer access — copy pixel by pixel.
     // This is the one place that matters for performance; for now,
     // straight-line copy is fine on QEMU.
