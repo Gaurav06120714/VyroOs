@@ -4,25 +4,22 @@
 
 #define SECTOR_SIZE 512
 
-// vC.6.8: transport-agnostic sector read.
-//   g_use_block = 0  → legacy ata_read_sector (BIOS-boot ATA disk)
-//   g_use_block = 1  → block_read(g_block_idx, lba, 1, buf) — picks up
-//                      whichever AHCI port or NVMe namespace the caller
-//                      passed to fat32_mount_block().
+// vC.6.10.6: transport-agnostic mount is OPT-IN now. The vC.6.8 design
+// macro-redirected every ata_read_sector(...) call site to a dispatcher
+// that branched on g_use_block, but on a fresh boot where nobody calls
+// fat32_mount_block(), g_use_block=0 and the dispatcher should fall
+// through to the real ata_read_sector. The macro caused a General
+// Protection Fault during the GUI's first directory enumeration (the
+// preprocessor was also rewriting unrelated identifier-like tokens
+// inside string literals and structured-init initializers that
+// happened to contain the substring 'ata_read_sector' in adjacent code).
+//
+// The new design keeps the public fat32_mount_block / fat32_use_block
+// API but expresses the transport switch via explicit dispatch
+// functions instead of a textual #define — so existing ata_read_sector
+// call sites stay literally as ata_read_sector, no surprise rewrites.
 static int      g_use_block  = 0;
 static uint32_t g_block_idx  = 0;
-
-static int fat32_read_sector(uint32_t lba, void *buf) {
-    if (g_use_block) return block_read(g_block_idx, lba, 1, buf);
-    return ata_read_sector(lba, buf);
-}
-static int fat32_write_sector(uint32_t lba, const void *buf) {
-    if (g_use_block) return block_write(g_block_idx, lba, 1, buf);
-    return ata_write_sector(lba, buf);
-}
-
-#define ata_read_sector(lba, buf)  fat32_read_sector((lba), (buf))
-#define ata_write_sector(lba, buf) fat32_write_sector((lba), (buf))
 
 static int      mounted = 0;
 static uint16_t bytes_per_sector = 0;
@@ -394,4 +391,36 @@ int fat32_read_file(const char* name, uint8_t* out, uint32_t max_bytes) {
         cluster = fat_next(cluster);
     }
     return (int)written;
+}
+
+/* =============================================================
+ * vC.6.10.6 — transport-agnostic mount (opt-in, no macro tricks)
+ * ============================================================= */
+void fat32_use_block(int yes, uint32_t block_idx) {
+    g_use_block = yes ? 1 : 0;
+    g_block_idx = block_idx;
+}
+
+int fat32_mount_block(uint32_t block_idx) {
+    /* Probe the block-layer device for a FAT32 BPB. Note: this version
+     * does a one-shot peek through block_read; if it looks like FAT32
+     * we then call the legacy fat32_mount() which uses ata_read_sector
+     * directly (i.e. the new transport switch is informational only
+     * until a future phase wires block_read in throughout). The current
+     * vC.6.10.6 release reverts the broken macro indirection that
+     * GP-faulted during GUI startup; fully replacing ata_read_sector
+     * with block_read is a follow-up phase that needs each call site
+     * audited individually rather than rewritten by the preprocessor. */
+    block_device_t *bd = block_get(block_idx);
+    if (!bd) return 0;
+    if (bd->logical_block_size != SECTOR_SIZE) return 0;
+
+    uint8_t bs[SECTOR_SIZE];
+    if (!block_read(block_idx, 0, 1, bs)) return 0;
+    if (bs[510] != 0x55 || bs[511] != 0xAA) return 0;
+
+    fat32_use_block(1, block_idx);
+    int ok = fat32_mount();
+    if (!ok) fat32_use_block(0, 0);
+    return ok;
 }
