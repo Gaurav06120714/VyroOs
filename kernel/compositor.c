@@ -29,6 +29,11 @@ uint32_t comp_height() { return BB_H; }
 static inline void put(uint32_t x, uint32_t y, uint32_t color) {
     if (x >= BB_W || y >= BB_H || !backbuf) return;
     uint32_t off = y * BB_PITCH + x * 3;
+    // vC.6.10.7: belt-and-braces — compositor was page-faulting at offset
+    // ~2.36 MB during wallpaper render under -cpu max + heap layout.
+    // The hard cap stops us writing past the kmalloc'd back buffer if
+    // anything else corrupts the pixel arithmetic.
+    if (off + 2 >= (uint32_t)(BB_PITCH * BB_H)) return;
     backbuf[off + 0] = (uint8_t)(color & 0xFF);
     backbuf[off + 1] = (uint8_t)((color >> 8) & 0xFF);
     backbuf[off + 2] = (uint8_t)((color >> 16) & 0xFF);
