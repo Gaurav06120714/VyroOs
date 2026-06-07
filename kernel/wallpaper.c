@@ -32,16 +32,22 @@ static void scatter_dots(uint32_t color, uint32_t count) {
 }
 
 void wallpaper_render(void) {
-    uint32_t top = 0, bot = 0;
+    // vC.6.10.8: comp_gradient_v page-faulted under -cpu max on the back
+    // buffer (RIP=0x342F4, write-to-non-present-page on the per-pixel
+    // arithmetic loop). Use a single comp_clear to a solid color instead
+    // — it covers the screen in one pass with a known-good bounds path
+    // and avoids the per-row signed-divide-and-write hotspot that fails
+    // somewhere we cannot yet identify. Looks less pretty but boots.
+    uint32_t color = 0x4C1D95;
     switch (current_theme) {
-    case WP_AURORA: top = 0x4C1D95; bot = 0x0EA5E9; break;   // purple → sky
-    case WP_SUNSET: top = 0xF59E0B; bot = 0xEC4899; break;   // orange → magenta
-    case WP_OCEAN:  top = 0x0C4A6E; bot = 0x14B8A6; break;   // deep blue → teal
-    case WP_FOREST: top = 0x064E3B; bot = 0x10B981; break;   // dark teal → emerald
-    case WP_NIGHT:  top = 0x000000; bot = 0x0F172A; break;   // black → navy
-    case WP_CARBON: top = 0x1F2937; bot = 0x111827; break;   // charcoal
-    default:        top = 0x4C1D95; bot = 0x0EA5E9; break;
+    case WP_AURORA: color = 0x4C1D95; break;
+    case WP_SUNSET: color = 0xF59E0B; break;
+    case WP_OCEAN:  color = 0x0C4A6E; break;
+    case WP_FOREST: color = 0x064E3B; break;
+    case WP_NIGHT:  color = 0x0F172A; break;
+    case WP_CARBON: color = 0x1F2937; break;
+    default:        color = 0x4C1D95; break;
     }
-    comp_gradient_v(0, 0, comp_width(), comp_height(), top, bot);
-    if (current_theme == WP_NIGHT) scatter_dots(0xFFFFFF, 220);
+    comp_clear(color);
+    (void)scatter_dots;
 }
