@@ -148,6 +148,15 @@ const char* vfs_read(vfs_node_t* file) {
 // vfs_full_path: build absolute path string for a node
 // ─────────────────────────────────────────────────
 void vfs_full_path(vfs_node_t* node, char* buf, int buf_size) {
+    // vC.6.10.6: guard against NULL node and corrupted parent chains.
+    // Without these the function GP-faults during boot when shell_init
+    // calls print_prompt before fs_ensure has chance to defer to root,
+    // or when an app calls vfs_full_path with a node whose parent has
+    // been freed / not yet wired up.
+    if (!node || !root) {
+        vstrcpy(buf, "/", buf_size);
+        return;
+    }
     if (node == root) {
         vstrcpy(buf, "/", buf_size);
         return;
@@ -158,11 +167,13 @@ void vfs_full_path(vfs_node_t* node, char* buf, int buf_size) {
     int  pos = 0;
     temp[0] = '\0';
 
-    // Build reversed path segments
+    // Build reversed path segments. Loop terminates on: reached root,
+    // hit a NULL parent (defensive — should not happen but cheaper than
+    // a GPF if it does), or depth cap hit.
     vfs_node_t* stack[32];
     int depth = 0;
     vfs_node_t* cur = node;
-    while (cur != root && depth < 32) {
+    while (cur && cur != root && depth < 32) {
         stack[depth++] = cur;
         cur = cur->parent;
     }
