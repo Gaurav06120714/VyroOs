@@ -243,11 +243,12 @@ void kernel_main() {
 
     __asm__ volatile("sti");
 
-    // vC.6.11.1: try GUI again now that compositor's backbuf access is
-    // range-validated against the heap [0x500000, 0xD00000). If backbuf
-    // is corrupted to 0xFFFFFFFFFFFFFFFF or any other out-of-range
-    // value, the renders silently no-op instead of page-faulting.
+    // vC.6.11.2: try GUI first, fall back to shell when gui_run returns
+    // (which it does silently if fb_available()==0 or comp_init failed
+    // or — after the vC.6.11.1 backbuf_sane guard — if the render loop
+    // exited normally). Either way the user gets a usable terminal.
     shell_init();
     extern void gui_run();
     gui_run();
+    shell_run();
 }
