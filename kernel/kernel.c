@@ -243,8 +243,8 @@ void kernel_main() {
 
     __asm__ volatile("sti");
 
-    // vC.6.10.5: boot straight into the GUI desktop instead of the shell.
-    // Shell remains available via the Terminal app inside the GUI.
+    // vC.6.10.6: boot straight into the GUI desktop (the user's requested
+    // behaviour). Shell is still available via the Terminal app inside the GUI.
     shell_init();
     extern void gui_run();
     gui_run();
