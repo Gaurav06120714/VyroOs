@@ -243,9 +243,15 @@ void kernel_main() {
 
     __asm__ volatile("sti");
 
-    // vC.6.10.6: boot straight into the GUI desktop (the user's requested
-    // behaviour). Shell is still available via the Terminal app inside the GUI.
+    // vC.6.10.10: revert to shell-default boot. The auto-GUI attempt
+    // surfaced a page fault deep in the compositor's gradient render
+    // path that none of vC.6.10.7 (put() offset cap), vC.6.10.8
+    // (wallpaper to comp_clear), or vC.6.10.9 (page tables out of BSS
+    // at 0x200000) could clear. Until the real cause of the
+    // write-to-non-present-page is found, the shell is the safe
+    // default; user types 'gui' at the prompt to enter the desktop
+    // (which then crashes with the diagnosed page fault, but at least
+    // a working CLI is reachable).
     shell_init();
-    extern void gui_run();
-    gui_run();
+    shell_run();
 }
