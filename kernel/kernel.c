@@ -243,14 +243,11 @@ void kernel_main() {
 
     __asm__ volatile("sti");
 
-    // vC.6.11.3: stop auto-launching gui_run. With the backbuf corrupted
-    // to -1 (root cause not yet identified), the GUI render loop runs but
-    // produces no visible output because backbuf_sane() correctly no-ops
-    // every pixel write. Worse, gui_run consumes keyboard input for its
-    // own command vocabulary, so the user sees a frozen screen AND no
-    // response to typing. Boot straight to the interactive shell — the
-    // user can still type 'gui' at the prompt to attempt the desktop,
-    // but the default-boot path lands on a responsive terminal.
+    // vC.6.12: re-enable auto-GUI now that comp_revalidate() heals the
+    // backbuf each render frame. Falls back to shell if gui_run returns
+    // (ESC pressed or fb_available()==0).
     shell_init();
+    extern void gui_run();
+    gui_run();
     shell_run();
 }

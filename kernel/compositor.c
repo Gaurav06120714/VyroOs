@@ -15,9 +15,22 @@ static uint8_t* font    = (uint8_t*)0x80000;
 // Initialize the back buffer
 // ─────────────────────────────────────────────────
 int comp_init() {
-    if (backbuf) return 1;
+    // vC.6.12: always re-allocate if backbuf isn't currently sane.
+    // The static "if (backbuf) return 1" short-circuit was preserving a
+    // corrupted-to-0xFFFFFFFFFFFFFFFF pointer from a previous run /
+    // earlier subsystem; checking sanity instead means a fresh kmalloc
+    // happens whenever the existing pointer is bad.
+    if ((uint64_t)backbuf >= 0x500000ULL && (uint64_t)backbuf < 0xD00000ULL) return 1;
     backbuf = (uint8_t*) kmalloc(BB_PITCH * BB_H);
     return backbuf ? 1 : 0;
+}
+
+// vC.6.12: callable from the render loop to recover from in-flight
+// corruption of the backbuf global by some OOB writer elsewhere in BSS.
+void comp_revalidate(void) {
+    if ((uint64_t)backbuf < 0x500000ULL || (uint64_t)backbuf >= 0xD00000ULL) {
+        backbuf = (uint8_t*) kmalloc(BB_PITCH * BB_H);
+    }
 }
 
 uint32_t comp_width()  { return BB_W; }

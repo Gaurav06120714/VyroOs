@@ -553,6 +553,13 @@ void gui_run() {
     launcher_set_callback(on_launch);
     ctxmenu_clear(&menu);
 
+    // vC.6.12: after apps_register_all + ctxmenu_clear, the backbuf may
+    // have been clobbered by OOB writes in those init paths; re-validate
+    // and re-allocate if so before entering the render loop. Defends
+    // against the still-unidentified BSS corruption that puts -1 into
+    // the backbuf global.
+    comp_revalidate();
+
     notify_post("Welcome to Vyro OS 2.0", "Right-click anywhere for actions");
 
     int dragging = -1, resizing = -1;
@@ -560,6 +567,7 @@ void gui_run() {
     uint8_t prev_btn = 0;
 
     while (1) {
+        comp_revalidate();   // vC.6.12: heal corrupted backbuf each frame
         int last_key = 0;
         if (keyboard_has_input()) {
             char c = keyboard_getchar();
