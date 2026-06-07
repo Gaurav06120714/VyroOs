@@ -182,10 +182,18 @@ pm32:
     ; This guarantees the VBE framebuffer (wherever QEMU places it,
     ; e.g. 0xFD000000) is always mapped — no fragile per-LFB math.
     ;
+    ; vC.6.10.9: page directories moved from 0x70000..0x73FFF up to
+    ; 0x200000..0x203FFF (the "physical RAM under PMM" region 2-5 MB)
+    ; because the kernel BSS grew past 0x70000 as new subsystems
+    ; were added (memmap, block, parttab, lba_xlate from vC.6.5-10),
+    ; and BSS zeroing was wiping out page-table entries causing
+    ; eventual page faults on heap allocations whose translations
+    ; happened to live in the clobbered PDE pages.
+    ;
     ; Layout:
-    ;   0x1000 = PML4
-    ;   0x2000 = PDPT (4 entries → 4 PDs covering 4GB)
-    ;   0x70000..0x73FFF = 4 Page Directories (2048 x 2MB entries)
+    ;   0x1000   = PML4
+    ;   0x2000   = PDPT (4 entries → 4 PDs covering 4GB)
+    ;   0x200000 = 4 Page Directories (2048 × 2MB entries, 16 KB total)
     ; ──────────────────────────────────────────
 
     ; Zero PML4 + PDPT (0x1000–0x2FFF)
@@ -194,8 +202,8 @@ pm32:
     xor eax, eax
     rep stosd
 
-    ; Zero the 4 page directories (0x70000–0x73FFF)
-    mov edi, 0x70000
+    ; Zero the 4 page directories (0x200000–0x203FFF)
+    mov edi, 0x200000
     mov ecx, 0x1000         ; 4096 dwords = 16KB
     xor eax, eax
     rep stosd
@@ -203,15 +211,15 @@ pm32:
     ; PML4[0] → PDPT  (User bit set so ring 3 can walk the tables)
     mov dword [0x1000], 0x2007
 
-    ; PDPT[0..3] → the 4 page directories (present+writable+user)
-    mov dword [0x2000 + 0],  0x70007
-    mov dword [0x2000 + 8],  0x71007
-    mov dword [0x2000 + 16], 0x72007
-    mov dword [0x2000 + 24], 0x73007
+    ; PDPT[0..3] → the 4 page directories at 0x200000+
+    mov dword [0x2000 + 0],  0x200007
+    mov dword [0x2000 + 8],  0x201007
+    mov dword [0x2000 + 16], 0x202007
+    mov dword [0x2000 + 24], 0x203007
 
-    ; Fill 2048 contiguous 2MB page entries (0x70000 as one flat array)
+    ; Fill 2048 contiguous 2MB page entries (0x200000 as one flat array)
     ; entry[j] = (j * 2MB) | 0x87  (present | writable | user | huge)
-    mov edi, 0x70000
+    mov edi, 0x200000
     xor ecx, ecx            ; j = 0
 .map_4gb:
     mov eax, ecx
