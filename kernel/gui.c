@@ -570,6 +570,7 @@ void gui_run() {
         comp_revalidate();   // vC.6.12: heal corrupted backbuf each frame
         // vC.6.14: check BSS canaries; dump which sentinel was stomped if tripped
         if (!comp_canary_ok()) comp_canary_dump();
+        mouse_poll();        // vC.6.18: pull VMware absolute coords before reading pos
         int last_key = 0;
         if (keyboard_has_input()) {
             char c = keyboard_getchar();

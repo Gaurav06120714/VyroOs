@@ -12,6 +12,7 @@
 #define MOUSE_BTN_RIGHT  2
 
 void   mouse_init();
+void   mouse_poll(void);    // vC.6.18: call each GUI frame — pulls VMware backdoor data
 int    mouse_x();
 int    mouse_y();
 uint8_t mouse_buttons();
