@@ -1,8 +1,5 @@
 #include "x25519.h"
 
-// Curve25519 field arithmetic with 5 × 51-bit limbs (donna-64 style).
-// Field is GF(2^255 - 19). Each fe is uint64_t[5], each limb in [0, 2^51+epsilon).
-
 typedef uint64_t fe[5];
 typedef unsigned __int128 u128;
 
@@ -14,12 +11,10 @@ static void fe_add(fe r, const fe a, const fe b) {
     for (int i = 0; i < 5; i++) r[i] = a[i] + b[i];
 }
 
-// r = a - b in unreduced form. We add 4*p (treated additively, each limb is
-// 4 * p_limb_i ≈ 2^53) so r remains positive even when a, b are unreduced.
 static void fe_sub(fe r, const fe a, const fe b) {
     static const uint64_t four_p[5] = {
-        0x1FFFFFFFFFFFB4ULL,    // 4*(2^51 - 19) = 2^53 - 76
-        0x1FFFFFFFFFFFFCULL,    // 4*(2^51 - 1)  = 2^53 - 4
+        0x1FFFFFFFFFFFB4ULL,
+        0x1FFFFFFFFFFFFCULL,
         0x1FFFFFFFFFFFFCULL,
         0x1FFFFFFFFFFFFCULL,
         0x1FFFFFFFFFFFFCULL
@@ -27,7 +22,6 @@ static void fe_sub(fe r, const fe a, const fe b) {
     for (int i = 0; i < 5; i++) r[i] = a[i] + four_p[i] - b[i];
 }
 
-// Reduce a 5-limb element so every limb fits in 51 bits.
 static void fe_carry(fe r) {
     uint64_t c;
     c = r[0] >> 51; r[0] &= 0x7FFFFFFFFFFFFULL; r[1] += c;
@@ -63,7 +57,6 @@ static void fe_mul(fe r, const fe a, const fe b) {
 
 static void fe_sq(fe r, const fe a) { fe_mul(r, a, a); }
 
-// Multiply by a small integer (used for *121665 in the ladder).
 static void fe_mul121665(fe r, const fe a) {
     u128 t0 = (u128)a[0]*121665;
     u128 t1 = (u128)a[1]*121665;
@@ -103,20 +96,19 @@ static void fe_from_bytes(fe r, const uint8_t b[32]) {
     r[0] = t0; r[1] = t1; r[2] = t2; r[3] = t3; r[4] = t4;
 }
 
-// Fully reduce and serialize little-endian.
 static void fe_to_bytes(uint8_t out[32], const fe a_in) {
     fe a;
     fe_copy(a, a_in);
     fe_carry(a);
     fe_carry(a);
-    // Conditionally subtract p = 2^255 - 19. If a >= p, subtract.
+
     uint64_t t0 = a[0] + 19;
     uint64_t c = t0 >> 51;
     uint64_t t1 = a[1] + c; c = t1 >> 51;
     uint64_t t2 = a[2] + c; c = t2 >> 51;
     uint64_t t3 = a[3] + c; c = t3 >> 51;
     uint64_t t4 = a[4] + c;
-    // If t4 has bit 51 set, a >= p — use the reduced form (a + 19) mod 2^255.
+
     uint64_t mask = -(uint64_t)((t4 >> 51) & 1);
     t4 &= 0x7FFFFFFFFFFFFULL;
     a[0] = (a[0] & ~mask) | ((t0 & 0x7FFFFFFFFFFFFULL) & mask);
@@ -144,30 +136,29 @@ static void fe_cswap(fe a, fe b, uint64_t swap) {
     }
 }
 
-// Field inversion: r = a^(p-2) via the standard 2^255 - 21 addition chain.
 static void fe_inv(fe r, const fe z) {
     fe z2, z9, z11, z2_5_0, z2_10_0, z2_20_0, z2_50_0, z2_100_0, t;
-    fe_sq(z2, z);                                            // z^2
-    fe_sq(t, z2); fe_sq(t, t);                                // z^8
-    fe_mul(z9, t, z);                                         // z^9
-    fe_mul(z11, z9, z2);                                      // z^11
-    fe_sq(t, z11); fe_mul(z2_5_0, t, z9);                     // z^(2^5 - 1)
+    fe_sq(z2, z);
+    fe_sq(t, z2); fe_sq(t, t);
+    fe_mul(z9, t, z);
+    fe_mul(z11, z9, z2);
+    fe_sq(t, z11); fe_mul(z2_5_0, t, z9);
     fe_sq(t, z2_5_0); for (int i = 1; i < 5; i++) fe_sq(t, t);
-    fe_mul(z2_10_0, t, z2_5_0);                               // z^(2^10 - 1)
+    fe_mul(z2_10_0, t, z2_5_0);
     fe_sq(t, z2_10_0); for (int i = 1; i < 10; i++) fe_sq(t, t);
-    fe_mul(z2_20_0, t, z2_10_0);                              // z^(2^20 - 1)
+    fe_mul(z2_20_0, t, z2_10_0);
     fe_sq(t, z2_20_0); for (int i = 1; i < 20; i++) fe_sq(t, t);
-    fe_mul(t, t, z2_20_0);                                    // z^(2^40 - 1)
+    fe_mul(t, t, z2_20_0);
     for (int i = 0; i < 10; i++) fe_sq(t, t);
-    fe_mul(z2_50_0, t, z2_10_0);                              // z^(2^50 - 1)
+    fe_mul(z2_50_0, t, z2_10_0);
     fe_sq(t, z2_50_0); for (int i = 1; i < 50; i++) fe_sq(t, t);
-    fe_mul(z2_100_0, t, z2_50_0);                             // z^(2^100 - 1)
+    fe_mul(z2_100_0, t, z2_50_0);
     fe_sq(t, z2_100_0); for (int i = 1; i < 100; i++) fe_sq(t, t);
-    fe_mul(t, t, z2_100_0);                                   // z^(2^200 - 1)
+    fe_mul(t, t, z2_100_0);
     for (int i = 0; i < 50; i++) fe_sq(t, t);
-    fe_mul(t, t, z2_50_0);                                    // z^(2^250 - 1)
+    fe_mul(t, t, z2_50_0);
     fe_sq(t, t); fe_sq(t, t); fe_sq(t, t); fe_sq(t, t); fe_sq(t, t);
-    fe_mul(r, t, z11);                                        // z^(2^255 - 21)
+    fe_mul(r, t, z11);
 }
 
 void x25519(uint8_t out[32], const uint8_t scalar[32], const uint8_t u_in[32]) {
@@ -197,25 +188,25 @@ void x25519(uint8_t out[32], const uint8_t scalar[32], const uint8_t u_in[32]) {
         fe_cswap(z2, z3, swap);
         swap = k_t;
 
-        // RFC 7748 ladder step
-        fe_add(A,  x2, z2);            // A  = x2 + z2
-        fe_sq (AA, A);                 // AA = A^2
-        fe_sub(B,  x2, z2);            // B  = x2 - z2
-        fe_sq (BB, B);                 // BB = B^2
-        fe_sub(E,  AA, BB);            // E  = AA - BB
-        fe_add(C,  x3, z3);            // C  = x3 + z3
-        fe_sub(D,  x3, z3);            // D  = x3 - z3
-        fe_mul(DA, D, A);              // DA = D * A
-        fe_mul(CB, C, B);              // CB = C * B
+
+        fe_add(A,  x2, z2);
+        fe_sq (AA, A);
+        fe_sub(B,  x2, z2);
+        fe_sq (BB, B);
+        fe_sub(E,  AA, BB);
+        fe_add(C,  x3, z3);
+        fe_sub(D,  x3, z3);
+        fe_mul(DA, D, A);
+        fe_mul(CB, C, B);
         fe_add(t1, DA, CB);
-        fe_sq (x3, t1);                // x3 = (DA + CB)^2
+        fe_sq (x3, t1);
         fe_sub(t1, DA, CB);
-        fe_sq (t2, t1);                // t2 = (DA - CB)^2
-        fe_mul(z3, x1, t2);            // z3 = x1 * (DA - CB)^2
-        fe_mul(x2, AA, BB);            // x2 = AA * BB
-        fe_mul121665(t1, E);           // t1 = 121665 * E
-        fe_add(t2, AA, t1);            // t2 = AA + 121665 * E
-        fe_mul(z2, E, t2);             // z2 = E * (AA + 121665 * E)
+        fe_sq (t2, t1);
+        fe_mul(z3, x1, t2);
+        fe_mul(x2, AA, BB);
+        fe_mul121665(t1, E);
+        fe_add(t2, AA, t1);
+        fe_mul(z2, E, t2);
     }
     fe_cswap(x2, x3, swap);
     fe_cswap(z2, z3, swap);
@@ -230,14 +221,13 @@ void x25519_base(uint8_t out[32], const uint8_t scalar[32]) {
     x25519(out, scalar, bp);
 }
 
-// RFC 7748 §5.2 known-answer tests.
 static int bytes_eq(const uint8_t* a, const uint8_t* b, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) if (a[i] != b[i]) return 0;
     return 1;
 }
 
 int x25519_selftest(void) {
-    // KAT 1
+
     {
         const uint8_t k[32] = {
             0xa5,0x46,0xe3,0x6b,0xf0,0x52,0x7c,0x9d,
@@ -261,7 +251,7 @@ int x25519_selftest(void) {
         x25519(out, k, u);
         if (!bytes_eq(out, exp, 32)) return 0;
     }
-    // KAT 2
+
     {
         const uint8_t k[32] = {
             0x4b,0x66,0xe9,0xd4,0xd1,0xb4,0x67,0x3c,
