@@ -4,20 +4,6 @@
 
 #define SECTOR_SIZE 512
 
-// vC.6.10.6: transport-agnostic mount is OPT-IN now. The vC.6.8 design
-// macro-redirected every ata_read_sector(...) call site to a dispatcher
-// that branched on g_use_block, but on a fresh boot where nobody calls
-// fat32_mount_block(), g_use_block=0 and the dispatcher should fall
-// through to the real ata_read_sector. The macro caused a General
-// Protection Fault during the GUI's first directory enumeration (the
-// preprocessor was also rewriting unrelated identifier-like tokens
-// inside string literals and structured-init initializers that
-// happened to contain the substring 'ata_read_sector' in adjacent code).
-//
-// The new design keeps the public fat32_mount_block / fat32_use_block
-// API but expresses the transport switch via explicit dispatch
-// functions instead of a textual #define — so existing ata_read_sector
-// call sites stay literally as ata_read_sector, no surprise rewrites.
 static int      g_use_block  = 0;
 static uint32_t g_block_idx  = 0;
 
@@ -26,7 +12,7 @@ static uint16_t bytes_per_sector = 0;
 static uint8_t  sectors_per_cluster = 0;
 static uint16_t reserved_sectors = 0;
 static uint8_t  num_fats = 0;
-static uint32_t fat_size = 0;            // sectors per FAT
+static uint32_t fat_size = 0;
 static uint32_t root_cluster = 0;
 static uint32_t fat_start_lba = 0;
 static uint32_t data_start_lba = 0;
@@ -42,15 +28,15 @@ int fat32_is_mounted(void) { return mounted; }
 int fat32_mount(void) {
     uint8_t bs[SECTOR_SIZE];
     if (!ata_read_sector(0, bs)) return 0;
-    // BPB lives at offset 0 of LBA 0 for non-partitioned disks.
-    // 0x55 0xAA signature at 510 / 511
+
+
     if (bs[510] != 0x55 || bs[511] != 0xAA) return 0;
     bytes_per_sector    = le16(bs + 0x0B);
     sectors_per_cluster = bs[0x0D];
     reserved_sectors    = le16(bs + 0x0E);
     num_fats            = bs[0x10];
-    fat_size            = le32(bs + 0x24);     // BPB_FATSz32
-    root_cluster        = le32(bs + 0x2C);     // BPB_RootClus
+    fat_size            = le32(bs + 0x24);
+    root_cluster        = le32(bs + 0x2C);
     if (bytes_per_sector != SECTOR_SIZE) return 0;
     if (sectors_per_cluster == 0) return 0;
     if (fat_size == 0) return 0;
@@ -65,7 +51,7 @@ static uint32_t cluster_to_lba(uint32_t cluster) {
 }
 
 static uint32_t fat_next(uint32_t cluster) {
-    // FAT32 entry at FAT[cluster] is the next cluster; 0x0FFFFFFF means EOC.
+
     uint32_t fat_offset = cluster * 4;
     uint32_t fat_lba    = fat_start_lba + fat_offset / SECTOR_SIZE;
     uint32_t off_in_sec = fat_offset % SECTOR_SIZE;
@@ -75,7 +61,7 @@ static uint32_t fat_next(uint32_t cluster) {
 }
 
 static void fmt83(const uint8_t* raw, char* out) {
-    // raw[0..7] = name, raw[8..10] = ext. Trim trailing spaces, add dot.
+
     int p = 0;
     for (int i = 0; i < 8; i++) {
         if (raw[i] != ' ') out[p++] = (char)raw[i];
@@ -97,10 +83,10 @@ static int dir_walk(uint32_t cluster,
             if (!ata_read_sector(lba + s, sec)) return 0;
             for (int o = 0; o < SECTOR_SIZE; o += 32) {
                 uint8_t first = sec[o];
-                if (first == 0x00) return 1;                // end of dir
-                if (first == 0xE5) continue;                // deleted
-                if (sec[o + 11] == 0x0F) continue;          // LFN entry
-                if (sec[o + 11] & 0x08) continue;           // volume label
+                if (first == 0x00) return 1;
+                if (first == 0xE5) continue;
+                if (sec[o + 11] == 0x0F) continue;
+                if (sec[o + 11] & 0x08) continue;
                 fat32_dirent_t e;
                 fmt83(sec + o, e.name);
                 e.attr = sec[o + 11];
@@ -109,7 +95,7 @@ static int dir_walk(uint32_t cluster,
                 e.first_cluster = ((uint32_t)hi << 16) | lo;
                 e.size = le32(sec + o + 28);
                 int rc = cb(&e, user);
-                if (rc == 0) return 1;                      // caller said stop
+                if (rc == 0) return 1;
             }
         }
         cluster = fat_next(cluster);
@@ -165,7 +151,7 @@ int fat32_path_lookup(const char* path, fat32_dirent_t* out_e) {
     uint32_t cluster = root_cluster;
     if (*path == '/') path++;
     if (*path == 0) {
-        // Path is just "/" — return a synthetic root dirent.
+
         for (int i = 0; i < 12; i++) out_e->name[i] = 0;
         out_e->name[0] = '/';
         out_e->attr = 0x10;
@@ -174,12 +160,12 @@ int fat32_path_lookup(const char* path, fat32_dirent_t* out_e) {
         return 1;
     }
     while (1) {
-        // Slice next component
+
         char comp[13]; int cp = 0;
         while (*path && *path != '/' && cp < 12) comp[cp++] = *path++;
         comp[cp] = 0;
         if (cp == 0) return 0;
-        // Find comp in current dir
+
         find_ctx_t fc = { comp, {0}, 0 };
         dir_walk(cluster, find_cb, &fc);
         if (!fc.ok) return 0;
@@ -187,17 +173,13 @@ int fat32_path_lookup(const char* path, fat32_dirent_t* out_e) {
             *out_e = fc.found;
             return 1;
         }
-        // Must be a directory to descend
+
         if (!(fc.found.attr & 0x10)) return 0;
         cluster = fc.found.first_cluster;
         if (cluster == 0) cluster = root_cluster;
         if (*path == '/') path++;
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// Writes
-// ─────────────────────────────────────────────────────────────────────
 
 static void fat_write_entry(uint32_t cluster, uint32_t value) {
     uint32_t fat_offset = cluster * 4;
@@ -211,14 +193,14 @@ static void fat_write_entry(uint32_t cluster, uint32_t value) {
     sec[off_in_sec + 1] = (v >> 8) & 0xFF;
     sec[off_in_sec + 2] = (v >> 16) & 0xFF;
     sec[off_in_sec + 3] = (v >> 24) & 0xFF;
-    // Write to all FAT copies
+
     for (uint32_t f = 0; f < num_fats; f++) {
         ata_write_sector(fat_lba + f * fat_size, sec);
     }
 }
 
 static uint32_t alloc_cluster(void) {
-    // Walk FAT looking for a 0 entry. Start from cluster 2.
+
     uint8_t sec[SECTOR_SIZE];
     uint32_t entries_per_sec = SECTOR_SIZE / 4;
     for (uint32_t i = 0; i < fat_size; i++) {
@@ -236,7 +218,6 @@ static uint32_t alloc_cluster(void) {
     return 0;
 }
 
-// Format an 8.3 filename into the 11-byte raw directory format.
 static int fmt83_raw(const char* name, uint8_t out[11]) {
     for (int i = 0; i < 11; i++) out[i] = ' ';
     int p = 0;
@@ -255,8 +236,6 @@ static int fmt83_raw(const char* name, uint8_t out[11]) {
     return 1;
 }
 
-// Find an existing root-dir entry by 8.3 name; returns 1 with (lba, off) of
-// the 32-byte dir record. Or finds a free slot if create==1.
 static int find_or_alloc_dirslot(const char* name, uint32_t* out_lba,
                                   uint32_t* out_off, int create) {
     uint8_t raw[11];
@@ -296,7 +275,7 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
     uint8_t raw[11];
     fmt83_raw(name, raw);
 
-    // Find or create the directory entry
+
     uint32_t slot_lba, slot_off;
     int existing = find_or_alloc_dirslot(name, &slot_lba, &slot_off, 0);
     int created  = 0;
@@ -305,7 +284,7 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
         created = 1;
     }
 
-    // Allocate cluster(s) — compute how many are needed
+
     uint32_t cluster_size = (uint32_t)sectors_per_cluster * SECTOR_SIZE;
     uint32_t clusters_needed = (len + cluster_size - 1) / cluster_size;
     if (clusters_needed == 0) clusters_needed = 1;
@@ -314,8 +293,8 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
     for (uint32_t i = 0; i < clusters_needed; i++) {
         uint32_t cl = alloc_cluster();
         if (cl == 0) {
-            // Roll back: walk the chain we built and zero each FAT entry so
-            // the clusters aren't left orphaned in the FAT (persistent corruption).
+
+
             uint32_t c = first_cl;
             while (c >= 2 && c < 0x0FFFFFF8) {
                 uint32_t next = fat_next(c);
@@ -329,10 +308,10 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
         if (prev_cl)  fat_write_entry(prev_cl, cl);
         prev_cl = cl;
     }
-    // Terminate chain
+
     fat_write_entry(prev_cl, 0x0FFFFFFF);
 
-    // Write the data clusters
+
     uint32_t off = 0;
     uint32_t cl = first_cl;
     uint8_t sec[SECTOR_SIZE];
@@ -349,11 +328,11 @@ int fat32_write_file(const char* name, const uint8_t* data, uint32_t len) {
         cl = fat_next(cl);
     }
 
-    // Update directory entry
+
     if (!ata_read_sector(slot_lba, sec)) return -1;
     uint8_t* d = sec + slot_off;
     for (int i = 0; i < 11; i++) d[i] = raw[i];
-    d[11] = 0x20;                                          // attr = archive
+    d[11] = 0x20;
     for (int i = 12; i < 20; i++) d[i] = 0;
     d[20] = (uint8_t)(first_cl >> 16);
     d[21] = (uint8_t)(first_cl >> 24);
@@ -393,24 +372,13 @@ int fat32_read_file(const char* name, uint8_t* out, uint32_t max_bytes) {
     return (int)written;
 }
 
-/* =============================================================
- * vC.6.10.6 — transport-agnostic mount (opt-in, no macro tricks)
- * ============================================================= */
 void fat32_use_block(int yes, uint32_t block_idx) {
     g_use_block = yes ? 1 : 0;
     g_block_idx = block_idx;
 }
 
 int fat32_mount_block(uint32_t block_idx) {
-    /* Probe the block-layer device for a FAT32 BPB. Note: this version
-     * does a one-shot peek through block_read; if it looks like FAT32
-     * we then call the legacy fat32_mount() which uses ata_read_sector
-     * directly (i.e. the new transport switch is informational only
-     * until a future phase wires block_read in throughout). The current
-     * vC.6.10.6 release reverts the broken macro indirection that
-     * GP-faulted during GUI startup; fully replacing ata_read_sector
-     * with block_read is a follow-up phase that needs each call site
-     * audited individually rather than rewritten by the preprocessor. */
+
     block_device_t *bd = block_get(block_idx);
     if (!bd) return 0;
     if (bd->logical_block_size != SECTOR_SIZE) return 0;
