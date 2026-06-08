@@ -6,11 +6,6 @@
 #include "../drivers/rtl8139.h"
 #include "../drivers/timer.h"
 
-// Compile-time switch: when defined, falls back to the pre-v3.1 direct
-// net_io_poll path. Kept as a safety net during regression testing.
-// Default OFF (use new UDP layer).
-// #define VYRO_UDP_LEGACY 1
-
 #define DHCP_MAGIC 0x63825363
 
 static uint8_t got_ip[4]  = {0,0,0,0};
@@ -24,7 +19,6 @@ static uint32_t make_xid() {
     return 0xA0B0C0D0 ^ (uint32_t)timer_ticks();
 }
 
-// Parse a DHCP payload (UDP body, starting at BOOTP op byte).
 static int parse_dhcp_payload(const uint8_t* dhcp, uint16_t dhcp_len, uint32_t xid) {
     if (dhcp_len < 240) return 0;
     if (dhcp[0] != 2) return 0;
