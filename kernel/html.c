@@ -10,13 +10,11 @@
 #define LINK_COL  FB_COLOR(20, 90, 200)
 #define BAR_BG    FB_COLOR(40, 50, 80)
 
-// Rendering cursor state
 static uint32_t cx, cy;
 static uint32_t cur_color;
-static int      scale;      // 1 = normal, 2 = heading (drawn bigger via spacing)
+static int      scale;
 static int      bold;
 
-// Compare a tag at p against name (case-insensitive-ish)
 static int tag_is(const char* p, const char* name) {
     int i = 0;
     while (name[i]) {
@@ -25,23 +23,22 @@ static int tag_is(const char* p, const char* name) {
         if (a != b) return 0;
         i++;
     }
-    // next char must end the tag name
+
     char e = p[i];
     return e == '>' || e == ' ' || e == '/';
 }
 
-// Draw one character with current style, advancing the cursor
 static void emit_char(char c) {
     if (c == '\n') { cx = 40; cy += 20 * scale; return; }
-    if (cx > FB_WIDTH - 40) { cx = 40; cy += 18; }   // word wrap-ish
+    if (cx > FB_WIDTH - 40) { cx = 40; cy += 18; }
     uint32_t col = bold ? FB_COLOR(0,0,0) : cur_color;
     fb_draw_glyph(cx, cy, c, col, PAGE_BG);
-    cx += (scale == 2) ? 11 : 8;   // headings get wider letter spacing
+    cx += (scale == 2) ? 11 : 8;
 }
 
 static void emit_text(const char* s, int len) {
     for (int i = 0; i < len; i++) {
-        // collapse whitespace runs to single space
+
         if (s[i] == '\n' || s[i] == '\t') { emit_char(' '); }
         else emit_char(s[i]);
     }
@@ -51,7 +48,7 @@ void html_render(const char* html) {
     if (!fb_available()) return;
 
     fb_clear(PAGE_BG);
-    // address bar
+
     fb_fill_rect(0, 0, FB_WIDTH, 26, BAR_BG);
     fb_draw_text(8, 5, "VyroBrowser  -  vyro://home  (ESC to exit)", FB_WHITE, BAR_BG);
 
@@ -72,11 +69,11 @@ void html_render(const char* html) {
             else if (tag_is(p, "a"))  { if (!closing) cur_color=LINK_COL; else cur_color=TEXT_COL; }
             else if (tag_is(p, "li")) { if (!closing) { cx=40; cy+=18; emit_text("  - ", 4); } }
             else if (tag_is(p, "br")) { cx=40; cy+=18; }
-            // skip to end of tag
+
             while (*p && *p != '>') p++;
             if (*p == '>') p++;
         } else {
-            // run of text until next tag
+
             const char* start = p;
             while (*p && *p != '<') p++;
             emit_text(start, (int)(p - start));
@@ -84,7 +81,7 @@ void html_render(const char* html) {
         if (cy > FB_HEIGHT - 20) break;
     }
 
-    // Wait for ESC
+
     while (1) {
         if (keyboard_has_input() && keyboard_getchar() == 0x1B) break;
         sleep_ms(10);
