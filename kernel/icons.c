@@ -3,10 +3,8 @@
 
 #define RGB(r,g,b) (((uint32_t)(r)<<16)|((uint32_t)(g)<<8)|(b))
 
-// Helper macro to define 16x16 bitmaps as binary literals (two bytes per row)
 #define R(a,b)  0b##a, 0b##b
 
-// Folder icon (Finder)
 const icon_t ICON_FINDER = {
     "Finder", 'F', RGB(80, 160, 255),
     {
@@ -29,7 +27,6 @@ const icon_t ICON_FINDER = {
     }
 };
 
-// Terminal icon — chevron prompt
 const icon_t ICON_TERMINAL = {
     "Terminal", '>', RGB(40, 50, 70),
     {
@@ -52,7 +49,6 @@ const icon_t ICON_TERMINAL = {
     }
 };
 
-// Settings icon — gear (simplified)
 const icon_t ICON_SETTINGS = {
     "Settings", 'S', RGB(150, 150, 160),
     {
@@ -75,7 +71,6 @@ const icon_t ICON_SETTINGS = {
     }
 };
 
-// Browser icon — globe
 const icon_t ICON_BROWSER = {
     "Browser", 'W', RGB(60, 180, 220),
     {
@@ -98,7 +93,6 @@ const icon_t ICON_BROWSER = {
     }
 };
 
-// Apps grid icon
 const icon_t ICON_APPS = {
     "Apps", 'A', RGB(100, 200, 130),
     {
@@ -121,7 +115,6 @@ const icon_t ICON_APPS = {
     }
 };
 
-// Trash icon
 const icon_t ICON_TRASH = {
     "Trash", 'T', RGB(200, 200, 210),
     {
@@ -144,9 +137,6 @@ const icon_t ICON_TRASH = {
     }
 };
 
-// ─────────────────────────────────────────────────
-// icon_draw: render the bitmap, scaled to `size` pixels square
-// ─────────────────────────────────────────────────
 void icon_draw(const icon_t* ic, uint32_t x, uint32_t y, uint32_t size) {
     if (!ic) return;
     uint32_t step = size / 16;
