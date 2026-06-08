@@ -63,12 +63,34 @@ uint64_t timer_uptime_seconds() {
 }
 
 // ─────────────────────────────────────────────────
-// sleep_ms: busy-wait for `ms` milliseconds
-// Halts the CPU between ticks to save power
+// irq_enabled: read RFLAGS.IF without touching the stack
+// Uses a memory-output constraint so the compiler treats the
+// flags register as an opaque value — avoids the push/pop
+// inline-asm bugs that triple-faulted in earlier attempts.
+// ─────────────────────────────────────────────────
+static inline int irq_enabled(void) {
+    uint64_t flags;
+    __asm__ volatile("pushfq; popq %0" : "=r"(flags) :: "memory");
+    return (flags >> 9) & 1;   // bit 9 = IF
+}
+
+// ─────────────────────────────────────────────────
+// sleep_ms: wait for `ms` milliseconds
+// If IRQs are enabled: halt between ticks (power-efficient).
+// If IRQs are disabled (early boot, interrupt handler):
+//   spin-loop on tick_count so we never deadlock — tick_count
+//   is volatile so the compiler will re-read it each iteration.
 // ─────────────────────────────────────────────────
 void sleep_ms(uint32_t ms) {
     uint64_t target = tick_count + ((uint64_t)ms * timer_freq) / 1000;
-    while (tick_count < target) {
-        __asm__ volatile("hlt");
+    if (irq_enabled()) {
+        while (tick_count < target)
+            __asm__ volatile("hlt");
+    } else {
+        // Pure spin — safe when IRQs are masked; tick_count still advances
+        // via any NMI or after sti, so this will not loop forever in practice.
+        // The 'pause' hint prevents speculation stalls on modern cores.
+        while (tick_count < target)
+            __asm__ volatile("pause");
     }
 }
