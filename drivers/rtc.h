@@ -3,11 +3,9 @@
 
 #include "../include/types.h"
 
-// CMOS I/O ports
 #define CMOS_ADDRESS  0x70
 #define CMOS_DATA     0x71
 
-// RTC register indices
 #define RTC_SECONDS   0x00
 #define RTC_MINUTES   0x02
 #define RTC_HOURS     0x04
@@ -17,7 +15,6 @@
 #define RTC_STATUS_A  0x0A
 #define RTC_STATUS_B  0x0B
 
-// Decoded date/time structure
 typedef struct {
     uint8_t  second;
     uint8_t  minute;
