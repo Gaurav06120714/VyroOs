@@ -16,7 +16,6 @@ static uint64_t le64(const uint8_t *p) {
     return  (uint64_t)le32(p) | ((uint64_t)le32(p + 4) << 32);
 }
 
-/* ---- MBR (DOS) ---- */
 static int parse_mbr(uint32_t idx, parttab_t *out) {
     uint8_t bs[SECTOR];
     if (!read_sector(idx, 0, bs)) return 0;
@@ -42,11 +41,10 @@ static int parse_mbr(uint32_t idx, parttab_t *out) {
     return 1;
 }
 
-/* ---- GPT ---- */
 static int parse_gpt(uint32_t idx, parttab_t *out) {
     uint8_t hdr[SECTOR];
     if (!read_sector(idx, 1, hdr)) return 0;
-    /* Signature "EFI PART" */
+
     static const uint8_t SIG[8] = {'E','F','I',' ','P','A','R','T'};
     for (int i = 0; i < 8; i++) if (hdr[i] != SIG[i]) return 0;
 
@@ -68,7 +66,7 @@ static int parse_gpt(uint32_t idx, parttab_t *out) {
         }
         const uint8_t *e = sec + (i % per_sector) * pe_size;
 
-        /* Skip zero-GUID entries (unused slots) */
+
         int empty = 1;
         for (int b = 0; b < 16; b++) if (e[b]) { empty = 0; break; }
         if (empty) continue;
@@ -80,13 +78,11 @@ static int parse_gpt(uint32_t idx, parttab_t *out) {
         if (out->count >= PARTTAB_MAX) break;
         parttab_entry_t *p = &out->entries[out->count++];
         p->in_use     = 1;
-        p->type_id    = e[0];   /* first byte of type GUID — enough to spot Microsoft Basic Data */
+        p->type_id    = e[0];
         p->start_lba  = first_lba;
         p->length_lba = last_lba - first_lba + 1;
 
-        /* Name lives in UTF-16LE at offset 56 (72 bytes = 36 chars). Take
-         * the low byte of each codepoint as a poor-man's ASCII so we get
-         * something printable without a full UTF-16 decoder. */
+
         for (int c = 0; c < 35; c++) {
             uint8_t lo = e[56 + c*2];
             p->name[c] = (lo >= 0x20 && lo <= 0x7E) ? (char)lo : '\0';
@@ -102,14 +98,11 @@ int parttab_probe(uint32_t idx, parttab_t *out) {
     if (!out) return 0;
     for (uint32_t i = 0; i < sizeof(*out); i++) ((uint8_t *)out)[i] = 0;
 
-    /* Try GPT first (a protective MBR will also pass MBR parsing but
-     * we want the real GPT layout when one exists). */
+
     if (parse_gpt(idx, out)) return 1;
     if (parse_mbr(idx, out)) return 1;
     return 0;
 }
-
-/* ---- partition window block-device shim ---- */
 
 typedef struct {
     uint32_t parent;
@@ -132,10 +125,6 @@ static int win_write(block_device_t *bd, uint64_t lba, uint32_t count, const voi
     return block_write(w->parent, w->start + lba, count, buf);
 }
 
-/* block.c exposes internals via a couple of helpers we need: appending a
- * new device and reading the array length. The minimal-surface contract
- * is two functions; if the kernel's block.c doesn't expose them yet we
- * fall back to refusing the registration. */
 extern int block_register(block_device_t *bd);
 
 int parttab_register_partition(uint32_t parent_idx, uint64_t start_lba,
