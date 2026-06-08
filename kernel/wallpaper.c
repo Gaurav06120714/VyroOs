@@ -19,7 +19,7 @@ const char* wallpaper_name(uint8_t theme) {
 }
 
 static void scatter_dots(uint32_t color, uint32_t count) {
-    // Simple LCG so the dot layout is stable across redraws.
+
     uint32_t s = 0x12345678;
     uint32_t w = comp_width(), h = comp_height();
     for (uint32_t i = 0; i < count; i++) {
@@ -32,12 +32,12 @@ static void scatter_dots(uint32_t color, uint32_t count) {
 }
 
 void wallpaper_render(void) {
-    // vC.6.10.8: comp_gradient_v page-faulted under -cpu max on the back
-    // buffer (RIP=0x342F4, write-to-non-present-page on the per-pixel
-    // arithmetic loop). Use a single comp_clear to a solid color instead
-    // — it covers the screen in one pass with a known-good bounds path
-    // and avoids the per-row signed-divide-and-write hotspot that fails
-    // somewhere we cannot yet identify. Looks less pretty but boots.
+
+
+
+
+
+
     uint32_t color = 0x4C1D95;
     switch (current_theme) {
     case WP_AURORA: color = 0x4C1D95; break;
