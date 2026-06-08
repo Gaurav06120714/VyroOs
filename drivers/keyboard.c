@@ -156,9 +156,28 @@ void keyboard_handler(registers_t* regs) {
 }
 
 // ─────────────────────────────────────────────────
-// keyboard_init: register IRQ1 handler and unmask
+// keyboard_init: drain residual i8042 output buffer,
+// then register IRQ1 handler and unmask.
+//
+// The i8042 controller latches whatever byte was in
+// its output register at power-on (often a self-test
+// result, a stale scan code, or 0xAA).  If we don't
+// drain it before unmasking IRQ1 the very first real
+// keypress fires IRQ1 twice — once for the residual
+// byte and once for the real scan code — so the first
+// character the user types is silently swallowed.
+// Draining: poll bit 0 of status port (OBF = output
+// buffer full) and discard bytes until the controller
+// reports empty.  Up to 16 bytes to handle stuck
+// multi-byte sequences; bail early once OBF is clear.
 // ─────────────────────────────────────────────────
 void keyboard_init() {
+    // Drain any stale bytes sitting in the i8042 output buffer
+    for (int i = 0; i < 16; i++) {
+        if (!(inb(KEYBOARD_STATUS_PORT) & 0x01)) break;
+        (void)inb(KEYBOARD_DATA_PORT);   // discard the byte
+    }
+
     irq_register(1, keyboard_handler);   // IRQ1 = keyboard
     pic_unmask_irq(1);                   // Enable keyboard interrupts
 }
