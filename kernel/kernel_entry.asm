@@ -3,7 +3,7 @@
 [global _start]
 
 _start:
-    mov rsp, 0x90000    ; Stack at 576KB — safe, nothing there
+    mov rsp, 0x90000
     xor rbp, rbp
     call kernel_main
 
