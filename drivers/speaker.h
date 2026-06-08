@@ -3,7 +3,6 @@
 
 #include "../include/types.h"
 
-// Musical note frequencies (Hz)
 #define NOTE_C4  262
 #define NOTE_D4  294
 #define NOTE_E4  330
