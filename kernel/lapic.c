@@ -19,19 +19,19 @@ static inline void mmio_w32(uint64_t addr, uint32_t v) {
 }
 
 int lapic_init(void) {
-    // Read IA32_APIC_BASE (MSR 0x1B). Bit 11 = global enable, bits 12..51 = base.
+
     uint64_t apic_base_msr = rdmsr(0x1B);
     base = apic_base_msr & 0xFFFFFFFFFF000ULL;
     if (base == 0) base = LAPIC_DEFAULT_BASE;
 
-    // Ensure global enable bit is set.
+
     wrmsr(0x1B, apic_base_msr | (1ULL << 11));
 
-    // Set the Spurious Interrupt Vector Register: enable bit 8, vector 0xFF.
+
     uint32_t svr = mmio_r32(base + LAPIC_REG_SVR);
     mmio_w32(base + LAPIC_REG_SVR, (svr & ~0xFFu) | 0xFF | (1u << 8));
 
-    // Clear TPR so all interrupt priorities can deliver.
+
     mmio_w32(base + LAPIC_REG_TPR, 0);
 
     enabled = 1;
@@ -54,7 +54,7 @@ void lapic_send_ipi(uint32_t dest_apic_id, uint32_t icr_lo) {
     if (!enabled) return;
     mmio_w32(base + LAPIC_REG_ICR_HI, dest_apic_id << 24);
     mmio_w32(base + LAPIC_REG_ICR_LO, icr_lo);
-    // Wait for delivery (bit 12 of ICR low clears).
+
     for (int i = 0; i < 1000000; i++) {
         if (!(mmio_r32(base + LAPIC_REG_ICR_LO) & (1u << 12))) break;
     }
