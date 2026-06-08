@@ -1,13 +1,8 @@
-// ─────────────────────────────────────────────────
-// libvyro — the Vyro OS application framework
-// User programs include this header and call these
-// functions, which wrap the kernel syscall ABI (int 0x80).
-// This is the stable interface between apps and the OS.
-// ─────────────────────────────────────────────────
+
+
 #ifndef LIBVYRO_H
 #define LIBVYRO_H
 
-// Syscall numbers (must match kernel/syscall.h)
 #define SYS_WRITE    1
 #define SYS_GETPID   2
 #define SYS_SLEEP    3
@@ -25,7 +20,6 @@ static inline long _syscall(long n, long a) {
     return r;
 }
 
-// ── Public application API ──
 static inline void  vyro_print(const char* s)  { _syscall(SYS_WRITE, (long)s); }
 static inline void  vyro_putc(char c)          { _syscall(SYS_PUTCHAR, c); }
 static inline void  vyro_clear(void)           { _syscall(SYS_CLEAR, 0); }
@@ -35,8 +29,6 @@ static inline long  vyro_ticks(void)           { return _syscall(SYS_TICKS, 0); 
 static inline long  vyro_rand(void)            { return _syscall(SYS_RAND, 0); }
 static inline void  vyro_sleep(long ms)        { _syscall(SYS_SLEEP, ms); }
 static inline void  vyro_exit(void)            { _syscall(SYS_EXIT, 0); }
-
-// ── Userspace utilities (no syscalls; pure user code) ──
 
 static inline unsigned long vyro_strlen(const char* s) {
     unsigned long n = 0;
