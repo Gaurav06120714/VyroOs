@@ -1,6 +1,5 @@
 #include "../include/types.h"
 
-// Assembled binary of smp_trampoline.asm, brought in via the linker.
 __asm__(
     ".section .rodata\n"
     ".global smp_trampoline_blob\n"
