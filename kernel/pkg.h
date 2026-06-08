@@ -11,13 +11,13 @@ typedef struct {
     const char* name;
     const char* version;
     const char* desc;
-    const char* deps[PKG_MAX_DEPS];   // NULL-terminated list
+    const char* deps[PKG_MAX_DEPS];
     uint8_t     installed;
 } package_t;
 
 void pkg_init();
-int  pkg_install(const char* name);   // returns # newly installed, -1 not found
-int  pkg_remove(const char* name);    // returns 0 ok, -1 not found/installed
+int  pkg_install(const char* name);
+int  pkg_remove(const char* name);
 package_t* pkg_repo(int* count);
 package_t* pkg_find(const char* name);
 
