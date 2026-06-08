@@ -39,9 +39,9 @@ static void pending(const char* msg) {
 }
 
 void kernel_main() {
-    // Read LFB address stored by bootloader at physical 0x0500.
-    // Use inline asm to prevent the optimizer from treating 0x0500 as
-    // a NULL-region dereference (which triggers a spurious Warray-bounds).
+
+
+
     uint32_t lfb32 = 0;
     __asm__ volatile("movl (0x500), %0" : "=r"(lfb32));
     uint64_t lfb = (uint64_t)lfb32;
@@ -164,7 +164,7 @@ void kernel_main() {
     csprng_init();
     ok("CSPRNG (ChaCha20 keystream, RDRAND+RDTSC seeded)");
 
-    // SMP bringup deferred — see notes in vC.6.10.4
+
     ok("SMP AP bring-up (skipped — UP mode)");
 
     extern int rsa_selftest();
@@ -242,12 +242,12 @@ void kernel_main() {
                 MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     __asm__ volatile("sti");
 
-    // vC.6.17: verify the framebuffer is truly mapped before launching GUI.
-    // fb_probe() writes a pixel and reads it back — if the round-trip fails,
-    // re-read the LFB address the bootloader stored at 0x0500 and retry once.
-    // This covers the race where fb_init ran before the bootloader finished
-    // writing the address. If both attempts fail, fall through to shell with
-    // an honest message rather than silently dropping the user there.
+
+
+
+
+
+
     extern void gui_run();
     if (!fb_available() || !fb_probe()) {
         uint32_t lfb_retry = 0;
@@ -262,7 +262,7 @@ void kernel_main() {
         print_color("  Launching Vyro OS 2.0 desktop...\n\n",
                     MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
         gui_run();
-        // gui_run returns only on ESC or compositor failure — drop to shell
+
         print_color("  Desktop exited. Shell mode.\n\n",
                     MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
     } else {
