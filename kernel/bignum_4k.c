@@ -111,7 +111,6 @@ void bn4k_modexp(bn4k_t r, const bn4k_t base, const bn4k_t exp, const bn4k_t m) 
     copy(r, result);
 }
 
-// Same PKCS1-v1_5 SHA-256 DigestInfo prefix as rsa.c.
 static const uint8_t SHA256_PREFIX[19] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09,
     0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
