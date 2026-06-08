@@ -3,15 +3,11 @@
 
 #include "../include/types.h"
 
-// VGA text mode constants
 #define VGA_ADDRESS    0xb8000
-// When framebuffer is active these match 1024x768 / 8x16 font (128x48 cells).
-// When VGA text fallback is used, only the first 80 cols / 50 rows are valid,
-// but we keep the same macros so the rest of the code is uniform.
+
 #define VGA_COLS       128
 #define VGA_ROWS       48
 
-// Color attributes (foreground | background << 4)
 #define COLOR_BLACK        0x0
 #define COLOR_BLUE         0x1
 #define COLOR_GREEN        0x2
@@ -35,7 +31,6 @@
 #define YELLOW_ON_BLACK    MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK)
 #define CYAN_ON_BLACK      MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK)
 
-// Public API
 void screen_init();
 void screen_clear(uint8_t color);
 void screen_set_color(uint8_t color);
