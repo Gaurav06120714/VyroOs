@@ -3,14 +3,13 @@
 
 #include "../include/types.h"
 
-// DHCP message types
 #define DHCPDISCOVER 1
 #define DHCPOFFER    2
 #define DHCPREQUEST  3
 #define DHCPACK      5
 
 typedef struct {
-    uint8_t  op;             // 1=request 2=reply
+    uint8_t  op;
     uint8_t  htype;
     uint8_t  hlen;
     uint8_t  hops;
@@ -18,13 +17,13 @@ typedef struct {
     uint16_t secs;
     uint16_t flags;
     uint8_t  ciaddr[4];
-    uint8_t  yiaddr[4];      // your (offered) address
-    uint8_t  siaddr[4];      // server address
+    uint8_t  yiaddr[4];
+    uint8_t  siaddr[4];
     uint8_t  giaddr[4];
     uint8_t  chaddr[16];
     uint8_t  sname[64];
     uint8_t  file[128];
-    uint32_t magic;          // 0x63825363
+    uint32_t magic;
 } __attribute__((packed)) dhcp_packet_t;
 
 void dhcp_init();
