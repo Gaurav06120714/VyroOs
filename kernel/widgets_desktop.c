@@ -21,13 +21,12 @@ static int days_in_month(int month, int year) {
     return d[month - 1];
 }
 
-// Zeller's congruence — Sunday=0, Saturday=6
 static int day_of_week(int y, int m, int d) {
     if (m < 3) { m += 12; y -= 1; }
     int K = y % 100;
     int J = y / 100;
     int h = (d + 13 * (m + 1) / 5 + K + K/4 + J/4 + 5*J) % 7;
-    return (h + 6) % 7;     // shift to Sunday=0
+    return (h + 6) % 7;
 }
 
 void widget_clock_render(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
@@ -63,7 +62,7 @@ void widget_calendar_render(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     int month = t.month;
     int today = t.day;
 
-    // Header
+
     char hdr[24]; int p = 0;
     const char* mn = MONTH[(month - 1) % 12];
     hdr[p++] = mn[0]; hdr[p++] = mn[1]; hdr[p++] = mn[2];
@@ -73,10 +72,10 @@ void widget_calendar_render(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     hdr[p] = 0;
     comp_text(x + 12, y + 8, hdr, 0xFFFFFF, 0x000000);
 
-    // Day labels
+
     comp_text(x + 12, y + 28, "Su Mo Tu We Th Fr Sa", 0xCBD5E1, 0x000000);
 
-    // Grid
+
     int dow = day_of_week(year, month, 1);
     int dim = days_in_month(month, year);
     int row = 0, col = dow;
@@ -97,7 +96,7 @@ void widget_weather_render(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     comp_text(x + 16, y + 10, "Weather",  0xFFFFFF, 0x000000);
     comp_text(x + 16, y + 30, "22 C",     0xFFFFFF, 0x000000);
     comp_text(x + 16, y + 50, "Partly cloudy", 0xE5E7EB, 0x000000);
-    // (Real fetch needs HTTPS GET — see v3.24 / v3.27 for the building blocks.)
+
 }
 
 void widgets_desktop_render(void) {
