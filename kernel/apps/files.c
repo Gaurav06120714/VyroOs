@@ -6,7 +6,7 @@
 #include "../fat32.h"
 
 static vfs_node_t* cwd_node = 0;
-static int show_fat = 0;        // 0 = VyFS, 1 = FAT32 root listing
+static int show_fat = 0;
 
 static void breadcrumb(int x, int y, vfs_node_t* node) {
     if (!node) return;
@@ -23,7 +23,7 @@ static void render_files(app_ctx_t* c) {
     if (!cwd_node) cwd_node = vfs_root();
     const theme_t* t = theme();
 
-    // Toolbar
+
     comp_rect(c->origin_x, c->origin_y, c->width, 36, t->win_title);
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
 
@@ -45,7 +45,7 @@ static void render_files(app_ctx_t* c) {
         breadcrumb(c->origin_x + 226, c->origin_y + 12, cwd_node);
     }
 
-    // File list
+
     comp_rect(c->origin_x, c->origin_y + 36, c->width, c->height - 36, t->win_body);
     int y = c->origin_y + 44;
     int item_count = 0;
@@ -83,7 +83,7 @@ static void render_files(app_ctx_t* c) {
         }
     }
 
-    // Status bar
+
     int sy = c->origin_y + c->height - 22;
     comp_rect(c->origin_x, sy, c->width, 22, t->dock_bg);
     int n = item_count;
