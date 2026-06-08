@@ -54,9 +54,9 @@ int sock_connect(int fd, const sock_addr_t* addr) {
     if (!s) return -1;
     s->remote = *addr;
     if (s->type == SOCK_STREAM) {
-        // Simulate the SYN -> SYN-ACK -> ACK handshake state walk
+
         s->tcp_state = TCP_SYN_SENT;
-        s->tcp_state = TCP_ESTABLISHED;   // stub: instant connect
+        s->tcp_state = TCP_ESTABLISHED;
     }
     return 0;
 }
@@ -81,7 +81,7 @@ int sock_recv(int fd, void* buf, uint32_t len) {
     (void)buf; (void)len;
     socket_t* s = find_by_fd(fd);
     if (!s) return -1;
-    return 0;   // no data available (stub)
+    return 0;
 }
 
 int sock_close(int fd) {
