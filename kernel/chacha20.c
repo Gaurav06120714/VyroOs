@@ -29,10 +29,10 @@ static inline void store32_le(uint8_t* p, uint32_t v) {
 void chacha20_block(const uint8_t key[32], uint32_t counter,
                     const uint8_t nonce[12], uint8_t out[64]) {
     uint32_t s[16];
-    s[ 0] = 0x61707865u;          // "expa"
-    s[ 1] = 0x3320646eu;          // "nd 3"
-    s[ 2] = 0x79622d32u;          // "2-by"
-    s[ 3] = 0x6b206574u;          // "te k"
+    s[ 0] = 0x61707865u;
+    s[ 1] = 0x3320646eu;
+    s[ 2] = 0x79622d32u;
+    s[ 3] = 0x6b206574u;
     for (int i = 0; i < 8; i++) s[4 + i] = load32_le(key + i * 4);
     s[12] = counter;
     s[13] = load32_le(nonce + 0);
@@ -43,12 +43,12 @@ void chacha20_block(const uint8_t key[32], uint32_t counter,
     for (int i = 0; i < 16; i++) w[i] = s[i];
 
     for (int r = 0; r < 10; r++) {
-        // Column rounds
+
         QR(w[0], w[4], w[ 8], w[12]);
         QR(w[1], w[5], w[ 9], w[13]);
         QR(w[2], w[6], w[10], w[14]);
         QR(w[3], w[7], w[11], w[15]);
-        // Diagonal rounds
+
         QR(w[0], w[5], w[10], w[15]);
         QR(w[1], w[6], w[11], w[12]);
         QR(w[2], w[7], w[ 8], w[13]);
