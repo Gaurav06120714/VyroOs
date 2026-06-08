@@ -14,7 +14,7 @@ static void render_disk(app_ctx_t* c) {
     comp_rect(c->origin_x, c->origin_y, c->width, c->height, t->win_body);
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
 
-    // Sidebar with drives
+
     int sw = 180;
     comp_rect(c->origin_x, c->origin_y, sw, c->height, t->dock_bg);
     comp_text(c->origin_x + 12, c->origin_y + 12, "Devices", t->accent_hi, t->dock_bg);
@@ -25,7 +25,7 @@ static void render_disk(app_ctx_t* c) {
             sel_drive = i;
     }
 
-    // Details
+
     int dx = c->origin_x + sw + 16, dy = c->origin_y + 16;
     comp_text(dx, dy, "Drive Info", t->accent_hi, t->win_body); dy += 24;
     w_separator(dx, dy, c->width - sw - 32); dy += 12;
@@ -42,7 +42,7 @@ static void render_disk(app_ctx_t* c) {
         comp_text(dx, dy, "Persists across reboots", t->success, t->win_body); dy += 30;
     }
 
-    // Storage usage
+
     comp_text(dx, dy, "RAM Usage", t->text, t->win_body); dy += 22;
     uint32_t up = pmm_used_pages(), tp = pmm_total_pages();
     int pct = tp ? (int)((uint64_t)up * 100 / tp) : 0;
