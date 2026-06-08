@@ -1,4 +1,4 @@
-// Second user program — proves Vyro can load and run more than one ring-3 ELF.
+
 #include "libvyro.h"
 
 void _start() {
