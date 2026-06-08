@@ -11,7 +11,7 @@ void hmac_sha256(const uint8_t* key, uint32_t key_len,
     for (int i = 0; i < BLOCK_SIZE; i++) k[i] = 0;
 
     if (key_len > BLOCK_SIZE) {
-        sha256(key, key_len, k);                   // first 32 bytes; rest already zero
+        sha256(key, key_len, k);
     } else {
         for (uint32_t i = 0; i < key_len; i++) k[i] = key[i];
     }
@@ -22,11 +22,11 @@ void hmac_sha256(const uint8_t* key, uint32_t key_len,
         opad[i] = k[i] ^ 0x5c;
     }
 
-    // inner = SHA256(ipad || msg)
-    static uint8_t buf[16 * 1024];                 // capped, see below
+
+    static uint8_t buf[16 * 1024];
     if (BLOCK_SIZE + msg_len > sizeof(buf)) {
-        // Defensive cap. Zero the output so callers don't read uninitialized
-        // memory and mistake an unhashable input for a real MAC.
+
+
         for (int i = 0; i < 32; i++) out[i] = 0;
         return;
     }
@@ -35,7 +35,7 @@ void hmac_sha256(const uint8_t* key, uint32_t key_len,
     uint8_t inner[DIGEST];
     sha256(buf, BLOCK_SIZE + msg_len, inner);
 
-    // outer = SHA256(opad || inner)
+
     uint8_t outer_in[BLOCK_SIZE + DIGEST];
     for (int i = 0; i < BLOCK_SIZE; i++) outer_in[i] = opad[i];
     for (int i = 0; i < DIGEST; i++)     outer_in[BLOCK_SIZE + i] = inner[i];
@@ -62,7 +62,7 @@ void hkdf_expand(const uint8_t prk[32],
     uint32_t off = 0;
     uint8_t counter = 1;
 
-    // First block: T(1) = HMAC(PRK, info || 0x01)
+
     static uint8_t hmac_in[8192];
     while (off < out_len) {
         uint32_t pos = 0;
@@ -90,12 +90,12 @@ void tls13_hkdf_expand_label(const uint8_t prk[32],
                              const char* label_suffix,
                              const uint8_t* ctx, uint32_t ctx_len,
                              uint8_t* out, uint32_t out_len) {
-    // label = "tls13 " || label_suffix
+
     const char prefix[] = "tls13 ";
     uint32_t suffix_len = mini_strlen(label_suffix);
-    uint32_t label_len  = 6 + suffix_len;     // strlen("tls13 ") == 6
+    uint32_t label_len  = 6 + suffix_len;
 
-    // HkdfLabel = length(2) || label_len(1) || label || ctx_len(1) || ctx
+
     uint8_t info[2 + 1 + 255 + 1 + 255];
     uint32_t p = 0;
     info[p++] = (uint8_t)(out_len >> 8);
@@ -118,17 +118,13 @@ void tls13_derive_secret(const uint8_t prk[32],
     tls13_hkdf_expand_label(prk, label_suffix, mhash, 32, out, 32);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Selftests against RFC 4231 (HMAC) and RFC 5869 (HKDF) test vectors.
-// ─────────────────────────────────────────────────────────────────────
-
 static int bytes_eq(const uint8_t* a, const uint8_t* b, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) if (a[i] != b[i]) return 0;
     return 1;
 }
 
 int hkdf_selftest(void) {
-    // RFC 4231 §4.2 Test Case 1: key=20 × 0x0b, data="Hi There"
+
     {
         uint8_t key[20]; for (int i = 0; i < 20; i++) key[i] = 0x0b;
         const uint8_t msg[] = { 'H','i',' ','T','h','e','r','e' };
@@ -143,13 +139,13 @@ int hkdf_selftest(void) {
         if (!bytes_eq(out, exp, 32)) return 0;
     }
 
-    // RFC 5869 §A.1 Test Case 1: HKDF-SHA256
-    //   IKM  = 22 × 0x0b
-    //   salt = 0x000102030405060708090a0b0c
-    //   info = 0xf0f1f2f3f4f5f6f7f8f9
-    //   L    = 42
-    //   PRK  = 077709362c2e32df0ddc3f0dc47bba63...90cd1f3f
-    //   OKM  = 3cb25f25faacd57a90434f64d0362f2a...34007208d5b887185865
+
+
+
+
+
+
+
     {
         uint8_t ikm[22]; for (int i = 0; i < 22; i++) ikm[i] = 0x0b;
         const uint8_t salt[13] = {
