@@ -1,6 +1,7 @@
 #include "compositor.h"
 #include "heap.h"
 #include "../drivers/framebuffer.h"
+#include "../drivers/screen.h"
 
 // Back buffer: 1024 * 768 * 3 = 2.36 MB.
 // vC.6.12.3: parked at a FIXED PHYSICAL ADDRESS (16 MB) and the pointer
@@ -13,6 +14,19 @@
 #define BACKBUF_PHYS 0x1000000UL
 static uint8_t* const backbuf = (uint8_t*)BACKBUF_PHYS;
 static uint8_t* font    = (uint8_t*)0x80000;
+
+// vC.6.14: BSS canary instrumentation.
+// Two 64-bit sentinels sit in BSS immediately before and after an 8-byte
+// guard zone that straddles the region other globals occupy. If any OOB
+// write that previously corrupted backbuf also walks through these sentinels
+// we will catch the frame it happens and print the corrupted value so the
+// guilty writer can be identified. The canary value 0xDEADC0DEDEADC0DE
+// is chosen to be obviously synthetic — any other value means corruption.
+#define CANARY_VAL  0xDEADC0DEDEADC0DEULL
+static volatile uint64_t canary_before = CANARY_VAL;
+static volatile uint8_t  canary_pad[8];   // guard zone between canaries
+static volatile uint64_t canary_after  = CANARY_VAL;
+static int canary_tripped = 0;
 
 #define BB_W  FB_WIDTH
 #define BB_H  FB_HEIGHT
@@ -30,6 +44,33 @@ int comp_init() {
 
 void comp_revalidate(void) {
     // No-op now — the pointer is const, can't be corrupted.
+}
+
+// vC.6.14: check both BSS canaries and return 0 if either was stomped.
+int comp_canary_ok(void) {
+    return (canary_before == CANARY_VAL) && (canary_after == CANARY_VAL);
+}
+
+// vC.6.14: dump canary state to the VGA text console.
+// Called once when a trip is first detected so the bad value (and which
+// sentinel was hit) is visible even if the GUI render loop crashes next.
+void comp_canary_dump(void) {
+    if (!canary_tripped) {
+        print_color("[CANARY] BSS sentinel corruption detected!\n",
+                    MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        if (canary_before != CANARY_VAL) {
+            print_color("[CANARY] canary_BEFORE stomped — OOB write below compositor globals\n",
+                        MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        }
+        if (canary_after != CANARY_VAL) {
+            print_color("[CANARY] canary_AFTER stomped — OOB write above compositor globals\n",
+                        MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+        }
+        // Reset sentinels so we can detect subsequent frames independently
+        canary_before = CANARY_VAL;
+        canary_after  = CANARY_VAL;
+        canary_tripped = 1;
+    }
 }
 
 uint32_t comp_width()  { return BB_W; }
