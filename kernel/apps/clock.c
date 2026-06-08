@@ -16,14 +16,14 @@ static void render_clock(app_ctx_t* c) {
     char clk[12] = "00:00:00";
     d2(clk, rt.hour); d2(clk+3, rt.minute); d2(clk+6, rt.second);
 
-    // Big clock — draw each char 3x size
+
     int cx = c->origin_x + 40, cy = c->origin_y + 60;
     for (int i = 0; i < 8; i++) {
         for (int dy = 0; dy < 3; dy++)
             for (int dx = 0; dx < 3; dx++)
                 comp_glyph(cx + i * 28 + dx, cy + dy, clk[i], t->accent_hi, t->win_body);
     }
-    // Date below
+
     char dt[32] = "Mon Jan 01 2026";
     const char* mo = (rt.month >= 1 && rt.month <= 12) ? months[rt.month] : "???";
     int p = 0;
