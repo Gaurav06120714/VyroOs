@@ -6,11 +6,6 @@
 
 static const uint8_t OID_RSA_PSS[] = { 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0x0A };
 
-// Minimal DER reader + X.509 v3 parser. Extracts the identity-relevant fields
-// only: Subject CN, Issuer CN, validity period, SubjectAltName DNS entries,
-// signature and public-key algorithm OIDs. No signature verification — that
-// belongs to the next phase along with the TLS handshake.
-
 #define TAG_BOOLEAN        0x01
 #define TAG_INTEGER        0x02
 #define TAG_BITSTRING      0x03
@@ -24,16 +19,14 @@ static const uint8_t OID_RSA_PSS[] = { 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0
 #define TAG_IA5STRING      0x16
 #define TAG_UTCTIME        0x17
 #define TAG_GENTIME        0x18
-#define TAG_CTX_CONSTRUCT  0xA0    // [0] EXPLICIT
-#define TAG_CTX3           0xA3    // [3] EXPLICIT (extensions)
+#define TAG_CTX_CONSTRUCT  0xA0
+#define TAG_CTX3           0xA3
 
 typedef struct {
     const uint8_t* p;
     const uint8_t* end;
 } der_t;
 
-// Read TLV. Returns 1 on success and fills *tag, *val (start of value), *vlen.
-// Advances d->p past the value.
 static int der_tlv(der_t* d, uint8_t* tag, const uint8_t** val, uint32_t* vlen) {
     if (d->p >= d->end) return 0;
     *tag = *d->p++;
@@ -53,7 +46,6 @@ static int der_tlv(der_t* d, uint8_t* tag, const uint8_t** val, uint32_t* vlen) 
     return 1;
 }
 
-// Read TLV; require a specific expected tag.
 static int der_expect(der_t* d, uint8_t expected, const uint8_t** val, uint32_t* vlen) {
     uint8_t t;
     if (!der_tlv(d, &t, val, vlen)) return 0;
@@ -65,7 +57,6 @@ static int bytes_eq(const uint8_t* a, const uint8_t* b, uint32_t n) {
     return 1;
 }
 
-// OID values (DER content bytes, excluding the tag/length).
 static const uint8_t OID_CN[]              = { 0x55, 0x04, 0x03 };
 static const uint8_t OID_SAN[]             = { 0x55, 0x1D, 0x11 };
 static const uint8_t OID_RSA[]             = { 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x01,0x01 };
@@ -96,7 +87,6 @@ static uint8_t map_pkey_alg(const uint8_t* oid, uint32_t len) {
     return X509_PKEY_UNKNOWN;
 }
 
-// Walk a Name (SEQUENCE OF RDN) and extract the first CN string we encounter.
 static void extract_cn_from_name(const uint8_t* name, uint32_t name_len, char* out, uint32_t out_max) {
     out[0] = 0;
     der_t d = { name, name + name_len };
@@ -126,7 +116,6 @@ static void extract_cn_from_name(const uint8_t* name, uint32_t name_len, char* o
     }
 }
 
-// Walk Extensions sequence, find SAN, extract dNSName entries.
 static void extract_san(const uint8_t* ext_seq, uint32_t ext_len, x509_cert_t* out) {
     out->san_count = 0;
     der_t d = { ext_seq, ext_seq + ext_len };
@@ -137,7 +126,7 @@ static void extract_san(const uint8_t* ext_seq, uint32_t ext_len, x509_cert_t* o
         const uint8_t* oid; uint32_t oid_len;
         if (!der_expect(&e, TAG_OID, &oid, &oid_len)) continue;
 
-        // Optional critical BOOLEAN
+
         if (e.p < e.end && *e.p == TAG_BOOLEAN) {
             uint8_t t; const uint8_t* v; uint32_t vl;
             der_tlv(&e, &t, &v, &vl);
@@ -146,7 +135,7 @@ static void extract_san(const uint8_t* ext_seq, uint32_t ext_len, x509_cert_t* o
         if (!der_expect(&e, TAG_OCTETSTRING, &ext_val, &ext_val_len)) continue;
         if (!oid_eq(oid, oid_len, OID_SAN, sizeof(OID_SAN))) continue;
 
-        // ext_val is itself a SEQUENCE OF GeneralName
+
         der_t inner_w = { ext_val, ext_val + ext_val_len };
         const uint8_t* san_seq; uint32_t san_seq_len;
         if (!der_expect(&inner_w, TAG_SEQUENCE, &san_seq, &san_seq_len)) return;
@@ -154,7 +143,7 @@ static void extract_san(const uint8_t* ext_seq, uint32_t ext_len, x509_cert_t* o
         while (names.p < names.end && out->san_count < X509_SAN_MAX) {
             uint8_t t; const uint8_t* gv; uint32_t gv_len;
             if (!der_tlv(&names, &t, &gv, &gv_len)) return;
-            // dNSName is [2] IMPLICIT IA5String → tag 0x82
+
             if (t == 0x82) {
                 uint32_t n = gv_len < X509_SAN_LEN_MAX - 1 ? gv_len : X509_SAN_LEN_MAX - 1;
                 for (uint32_t i = 0; i < n; i++) out->san[out->san_count][i] = (char)gv[i];
@@ -174,18 +163,18 @@ static void copy_time(const uint8_t* src, uint32_t len, char* dst) {
 
 int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
     if (!der || !out || len < 8) return 0;
-    // Zero output
+
     for (uint32_t i = 0; i < sizeof(*out); i++) ((uint8_t*)out)[i] = 0;
 
     der_t d = { der, der + len };
 
-    // outer Certificate SEQUENCE
+
     const uint8_t* cert; uint32_t cert_len;
     if (!der_expect(&d, TAG_SEQUENCE, &cert, &cert_len)) return 0;
     der_t c = { cert, cert + cert_len };
 
-    // tbsCertificate SEQUENCE — remember the start (including its tag+length
-    // header) so signature verification can hash the exact bytes.
+
+
     const uint8_t* tbs_after_header_p = c.p;
     const uint8_t* tbs; uint32_t tbs_len;
     if (!der_expect(&c, TAG_SEQUENCE, &tbs, &tbs_len)) return 0;
@@ -193,25 +182,25 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
     out->tbs_len = (uint32_t)((tbs + tbs_len) - tbs_after_header_p);
     der_t t = { tbs, tbs + tbs_len };
 
-    // optional [0] version
+
     if (t.p < t.end && *t.p == TAG_CTX_CONSTRUCT) {
         uint8_t tg; const uint8_t* v; uint32_t vl;
         if (!der_tlv(&t, &tg, &v, &vl)) return 0;
     }
-    // serialNumber INTEGER
+
     { uint8_t tg; const uint8_t* v; uint32_t vl;
       if (!der_tlv(&t, &tg, &v, &vl) || tg != TAG_INTEGER) return 0; }
 
-    // inner signature AlgorithmIdentifier (we read outer one below; this must match)
+
     { const uint8_t* alg; uint32_t alg_len;
       if (!der_expect(&t, TAG_SEQUENCE, &alg, &alg_len)) return 0; }
 
-    // issuer Name
+
     { const uint8_t* name; uint32_t nl;
       if (!der_expect(&t, TAG_SEQUENCE, &name, &nl)) return 0;
       extract_cn_from_name(name, nl, out->issuer_cn, X509_CN_MAX); }
 
-    // validity SEQUENCE { Time notBefore, Time notAfter }
+
     { const uint8_t* val; uint32_t vlen;
       if (!der_expect(&t, TAG_SEQUENCE, &val, &vlen)) return 0;
       der_t v = { val, val + vlen };
@@ -224,12 +213,12 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       copy_time(tv, tlen, out->not_after);
     }
 
-    // subject Name
+
     { const uint8_t* name; uint32_t nl;
       if (!der_expect(&t, TAG_SEQUENCE, &name, &nl)) return 0;
       extract_cn_from_name(name, nl, out->subject_cn, X509_CN_MAX); }
 
-    // subjectPublicKeyInfo SEQUENCE { AlgorithmIdentifier, BIT STRING }
+
     { const uint8_t* spki; uint32_t spki_len;
       if (!der_expect(&t, TAG_SEQUENCE, &spki, &spki_len)) return 0;
       der_t s = { spki, spki + spki_len };
@@ -240,12 +229,12 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       if (!der_expect(&a, TAG_OID, &oid, &oid_len)) return 0;
       out->pkey_alg = map_pkey_alg(oid, oid_len);
 
-      // Public key BIT STRING. First byte is "unused bits" (always 0 here).
+
       const uint8_t* bs; uint32_t bs_len;
       if (der_expect(&s, TAG_BITSTRING, &bs, &bs_len) && bs_len > 1 && bs[0] == 0
           && out->pkey_alg == X509_PKEY_RSA) {
-          // bs+1 .. bs+bs_len-1 contains DER-encoded RSAPublicKey:
-          //   SEQUENCE { INTEGER n, INTEGER e }
+
+
           der_t k = { bs + 1, bs + bs_len };
           const uint8_t* rsa; uint32_t rsa_len;
           if (der_expect(&k, TAG_SEQUENCE, &rsa, &rsa_len)) {
@@ -254,7 +243,7 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
               const uint8_t* ev; uint32_t el;
               if (der_expect(&r, TAG_INTEGER, &nv, &nl) &&
                   der_expect(&r, TAG_INTEGER, &ev, &el)) {
-                  // Skip any leading zero used to keep INTEGER positive.
+
                   if (nl > 0 && nv[0] == 0x00) { nv++; nl--; }
                   if (el > 0 && ev[0] == 0x00) { ev++; el--; }
                   if (nl > X509_PUBKEY_N_MAX) nl = X509_PUBKEY_N_MAX;
@@ -267,7 +256,7 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
           }
       } else if (der_expect(&s, TAG_BITSTRING, &bs, &bs_len) && bs_len >= 1
                  && bs[0] == 0 && out->pkey_alg == X509_PKEY_EC) {
-          // EC uncompressed point: 0x00 (unused) || 0x04 || X(32) || Y(32)
+
           if (bs_len == 1 + 1 + 64 && bs[1] == 0x04) {
               for (int i = 0; i < 32; i++) out->pubkey_ec_x[i] = bs[2 + i];
               for (int i = 0; i < 32; i++) out->pubkey_ec_y[i] = bs[2 + 32 + i];
@@ -276,12 +265,12 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       }
     }
 
-    // optional [1] issuerUniqueID, [2] subjectUniqueID, [3] extensions
+
     while (t.p < t.end) {
         if (*t.p == TAG_CTX3) {
             uint8_t tg; const uint8_t* ext_outer; uint32_t ext_outer_len;
             if (!der_tlv(&t, &tg, &ext_outer, &ext_outer_len)) return 0;
-            // [3] EXPLICIT wraps a SEQUENCE
+
             der_t w = { ext_outer, ext_outer + ext_outer_len };
             const uint8_t* exts; uint32_t exts_len;
             if (!der_expect(&w, TAG_SEQUENCE, &exts, &exts_len)) return 0;
@@ -293,7 +282,7 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
         }
     }
 
-    // outer signatureAlgorithm
+
     { const uint8_t* alg; uint32_t alg_len;
       if (!der_expect(&c, TAG_SEQUENCE, &alg, &alg_len)) return 0;
       der_t a = { alg, alg + alg_len };
@@ -302,7 +291,7 @@ int x509_parse(const uint8_t* der, uint32_t len, x509_cert_t* out) {
       out->sig_alg = map_sig_alg(oid, oid_len);
     }
 
-    // outer signatureValue BIT STRING
+
     { const uint8_t* bs; uint32_t bs_len;
       if (der_expect(&c, TAG_BITSTRING, &bs, &bs_len) && bs_len > 1 && bs[0] == 0) {
           out->sig_off = (uint32_t)((bs + 1) - der);
@@ -323,8 +312,8 @@ int x509_verify_signature(const uint8_t* child_der, uint32_t child_der_len,
     uint32_t tbs_l    = child->tbs_len;
     if (child->sig_alg == X509_SIG_SHA256_RSA &&
         parent->pkey_alg == X509_PKEY_RSA && parent->pubkey_n_len > 0) {
-        // Dispatch by modulus width: ≤256 bytes uses the 2048-bit bignum
-        // (faster), >256 bytes uses bignum_4k (handles RSA-3072/4096 roots).
+
+
         if (parent->pubkey_n_len <= 256) {
             return rsa_pkcs1_v15_sha256_verify(
                 parent->pubkey_n, parent->pubkey_n_len,
