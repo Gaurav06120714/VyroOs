@@ -6,7 +6,6 @@
 #define HLEN 32
 #define SLEN 32
 
-// MGF1(seed, len) using SHA-256.
 static void mgf1_sha256(const uint8_t* seed, uint32_t seed_len,
                         uint8_t* out, uint32_t out_len) {
     uint8_t buf[256];
@@ -36,27 +35,27 @@ static int pss_em_verify(const uint8_t* em, uint32_t em_len,
     const uint8_t* maskedDB = em;
     const uint8_t* H = em + db_len;
 
-    // dbMask = MGF1(H, db_len)
+
     static uint8_t dbMask[512];
     if (db_len > sizeof(dbMask)) return 0;
     mgf1_sha256(H, HLEN, dbMask, db_len);
 
     static uint8_t DB[512];
     for (uint32_t i = 0; i < db_len; i++) DB[i] = maskedDB[i] ^ dbMask[i];
-    // Per RFC 8017: zero the leftmost 8*em_len - emBits bits of DB[0].
-    // emBits = 8*em_len - 1 (PSS), so we clear the topmost bit.
+
+
     DB[0] &= 0x7F;
 
-    // DB layout: PS (zeros) || 0x01 || salt
+
     uint32_t ps_len = db_len - SLEN - 1;
     for (uint32_t i = 0; i < ps_len; i++) if (DB[i] != 0) return 0;
     if (DB[ps_len] != 0x01) return 0;
     const uint8_t* salt = DB + ps_len + 1;
 
-    // M' = (8 zeros) || mHash || salt;  H' = SHA-256(M')
+
     uint8_t mhash[32];
     sha256(msg, msg_len, mhash);
-    uint8_t mprime[8 + 32 + 64];          // SLEN ≤ 64 typical
+    uint8_t mprime[8 + 32 + 64];
     for (int i = 0; i < 8; i++)   mprime[i]     = 0;
     for (int i = 0; i < 32; i++)  mprime[8 + i] = mhash[i];
     for (int i = 0; i < SLEN; i++) mprime[40 + i] = salt[i];
