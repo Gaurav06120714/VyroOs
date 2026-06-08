@@ -2,9 +2,6 @@
 #include "vfs.h"
 #include "../drivers/screen.h"
 
-// ─────────────────────────────────────────────────
-// The vyropkg repository (static catalog)
-// ─────────────────────────────────────────────────
 static package_t repo[PKG_REPO_MAX] = {
     { "libc",     "1.0", "Vyro C runtime library",        {0},                  0 },
     { "libtext",  "1.2", "Text rendering library",        {"libc", 0},          0 },
@@ -34,33 +31,29 @@ package_t* pkg_find(const char* name) {
     return 0;
 }
 
-// ─────────────────────────────────────────────────
-// install_rec: recursively install dependencies first
-// Returns number of packages newly installed
-// ─────────────────────────────────────────────────
 static int install_rec(package_t* p) {
     if (p->installed) return 0;
 
     int count = 0;
 
-    // Install dependencies first
+
     for (int i = 0; i < PKG_MAX_DEPS && p->deps[i]; i++) {
         package_t* dep = pkg_find(p->deps[i]);
         if (dep) count += install_rec(dep);
     }
 
-    // Install this package
+
     p->installed = 1;
     count++;
 
-    // Report + create a file in /bin via VyFS
+
     print_color("  installing ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
     print(p->name);
     print(" v");
     print(p->version);
     print_char('\n');
 
-    // Place an entry in /bin
+
     vfs_node_t* root = vfs_root();
     vfs_node_t* bin  = vfs_find(root, "bin");
     if (!bin) bin = vfs_create(root, "bin", VFS_DIRECTORY);
@@ -79,15 +72,12 @@ int pkg_install(const char* name) {
     return install_rec(p);
 }
 
-// ─────────────────────────────────────────────────
-// pkg_remove: uninstall (does not cascade dependents)
-// ─────────────────────────────────────────────────
 int pkg_remove(const char* name) {
     package_t* p = pkg_find(name);
     if (!p || !p->installed) return -1;
     p->installed = 0;
 
-    // Remove from /bin
+
     vfs_node_t* bin = vfs_find(vfs_root(), "bin");
     if (bin) vfs_remove(bin, name);
     return 0;
