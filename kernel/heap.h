@@ -3,8 +3,8 @@
 
 #include "../include/types.h"
 
-#define HEAP_START  0x500000    // Heap begins at 5MB
-#define HEAP_SIZE   0x800000    // 8MB heap
+#define HEAP_START  0x500000
+#define HEAP_SIZE   0x800000
 
 void  heap_init();
 void* kmalloc(size_t size);
