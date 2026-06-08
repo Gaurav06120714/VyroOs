@@ -3,14 +3,8 @@
 
 #include "../include/types.h"
 
-// ─────────────────────────────────────────────────
-// Vyro OS Sockets API (Phase 46)
-// Berkeley-style socket interface. Backend is a stub
-// transport layer; the API and state machines are real.
-// ─────────────────────────────────────────────────
-
-#define SOCK_DGRAM   1     // UDP
-#define SOCK_STREAM  2     // TCP
+#define SOCK_DGRAM   1
+#define SOCK_STREAM  2
 
 #define AF_INET      2
 
@@ -25,7 +19,6 @@ typedef struct {
     uint8_t  addr[4];
 } sock_addr_t;
 
-// TCP state machine states (RFC 793)
 typedef enum {
     TCP_CLOSED,
     TCP_LISTEN,
@@ -43,10 +36,10 @@ typedef enum {
 typedef struct {
     int          fd;
     uint8_t      in_use;
-    uint8_t      type;          // SOCK_DGRAM or SOCK_STREAM
+    uint8_t      type;
     uint16_t     local_port;
     sock_addr_t  remote;
-    tcp_state_t  tcp_state;     // only for SOCK_STREAM
+    tcp_state_t  tcp_state;
     uint64_t     bytes_tx;
     uint64_t     bytes_rx;
 } socket_t;
@@ -59,7 +52,6 @@ int  sock_send(int fd, const void* buf, uint32_t len);
 int  sock_recv(int fd, void* buf, uint32_t len);
 int  sock_close(int fd);
 
-// Inspection
 int  sock_count();
 socket_t* sock_get(int i);
 const char* tcp_state_name(tcp_state_t s);
