@@ -33,7 +33,7 @@ typedef struct {
     uint8_t visible;
     uint8_t minimized;
     uint8_t maximized;
-    uint8_t desktop;       // virtual desktop index
+    uint8_t desktop;
     uint64_t opened_at;
     int last_key;
 } window_t;
@@ -43,7 +43,6 @@ static int      win_count = 0;
 static int      hovered_dock = -1;
 static int      current_desktop = 0;
 
-// UI state
 static ctxmenu_t menu;
 static int       show_power_menu = 0;
 static int       show_quick_settings = 0;
@@ -52,13 +51,11 @@ static char      pw_buf[32];
 static int       pw_len = 0;
 static int       pw_wrong = 0;
 
-// Context source — what was right-clicked (for action dispatch)
 typedef enum { CTX_NONE, CTX_DESKTOP, CTX_WINDOW, CTX_DOCK } ctx_source_t;
 static ctx_source_t ctx_source = CTX_NONE;
 static int          ctx_window_idx = -1;
 static int          ctx_dock_idx = -1;
 
-// Action IDs
 #define ACT_NEW_FOLDER      100
 #define ACT_CHANGE_WALL     101
 #define ACT_TOGGLE_THEME    102
@@ -90,13 +87,12 @@ static const icon_t* dock_icons[DOCK_ITEMS] = {
     &ICON_FINDER, &ICON_TERMINAL, &ICON_SETTINGS, &ICON_BROWSER, &ICON_APPS, &ICON_TRASH
 };
 
-// Wallpaper presets (gradient pairs)
 static uint32_t wallpapers[][2] = {
-    { 0x161C2C, 0x0C101C },     // default dark blue
-    { 0x2A1530, 0x16081A },     // purple
-    { 0x102822, 0x081410 },     // forest
-    { 0x301010, 0x180808 },     // sunset red
-    { 0xDDE4F0, 0xC0CCDE },     // light
+    { 0x161C2C, 0x0C101C },
+    { 0x2A1530, 0x16081A },
+    { 0x102822, 0x081410 },
+    { 0x301010, 0x180808 },
+    { 0xDDE4F0, 0xC0CCDE },
 };
 #define NUM_WALLPAPERS 5
 static int current_wall = 0;
@@ -161,7 +157,6 @@ static void maximize_window(window_t* w) {
     }
 }
 
-// ─── Render functions ───
 static void draw_window(window_t* w, int focused, int mx, int my, int clicked) {
     const theme_t* t = theme();
     if (w->minimized || !w->visible || !w->app) return;
@@ -178,7 +173,7 @@ static void draw_window(window_t* w, int focused, int mx, int my, int clicked) {
     uint32_t tcol = focused ? t->win_title_focus : t->win_title;
     extern int gui_glass_mode(void);
     if (gui_glass_mode() && age >= 8) {
-        // Frosted title bar + body — blur sees the desktop wallpaper underneath.
+
         comp_glass_panel(rx, ry, rw, TITLE_H,
                          focused ? 0xFFFFFF : 0xC0C0C0,
                          focused ? 96 : 70, 0, t->win_border);
@@ -223,17 +218,17 @@ static void draw_topbar() {
     comp_text(12, 6, "Vyro", t->accent_hi, t->taskbar_bg);
     comp_text(48, 6, "File  View  Window  Help", t->text_dim, t->taskbar_bg);
 
-    // Right-side icons: workspace indicator + user + power
+
     char wsbuf[8] = "[ ] ";
     wsbuf[1] = '1' + current_desktop;
     comp_text(comp_width() - 300, 6, wsbuf, t->text_dim, t->taskbar_bg);
 
     comp_text(comp_width() - 250, 6, current_user(), t->text, t->taskbar_bg);
 
-    // Settings/power icon area (clickable region)
-    comp_text(comp_width() - 168, 6, "[*]", t->text, t->taskbar_bg);   // quick settings
-    comp_text(comp_width() - 140, 6, "[u]", t->text, t->taskbar_bg);   // user
-    comp_text(comp_width() - 112, 6, "[P]", t->text, t->taskbar_bg);   // power
+
+    comp_text(comp_width() - 168, 6, "[*]", t->text, t->taskbar_bg);
+    comp_text(comp_width() - 140, 6, "[u]", t->text, t->taskbar_bg);
+    comp_text(comp_width() - 112, 6, "[P]", t->text, t->taskbar_bg);
 
     rtc_time_t rt; rtc_read(&rt);
     char clock[12] = "00:00:00";
@@ -292,7 +287,7 @@ static void draw_notifications() {
         int nx = comp_width() - 320 - nw - 16;
         int ny = TOPBAR_H + 12 + row * (nh + 8);
         comp_shadow(nx, ny, nw, nh, t->win_shadow);
-        // Glassmorphism toast: blur + tint over the desktop wallpaper.
+
         comp_glass_panel(nx, ny, nw, nh, 0x000000, 140, 12, t->win_border);
         comp_rect(nx, ny, 5, nh, t->accent);
         comp_text(nx + 14, ny + 8, arr[i].title, t->text, 0x000000);
@@ -304,9 +299,9 @@ static void draw_notifications() {
 extern void wallpaper_render(void);
 extern void widgets_desktop_render(void);
 static void draw_desktop_bg() {
-    wallpaper_render();                          // unified wallpaper engine (v3.36)
-    widgets_desktop_render();                    // clock + calendar + weather widgets
-    // Workspace pager dots
+    wallpaper_render();
+    widgets_desktop_render();
+
     int cx = (comp_width() - 320) / 2;
     int cy = comp_height() - DOCK_H - 32;
     for (int i = 0; i < NUM_DESKTOPS; i++) {
@@ -334,12 +329,11 @@ static void draw_cursor(int x, int y) {
         }
 }
 
-// ─── Lock screen ───
 static void draw_lockscreen(int mx, int my) {
     (void)mx; (void)my;
     comp_gradient_v(0, 0, comp_width(), comp_height(), 0x0A0E18, 0x000000);
     const theme_t* t = theme();
-    // Clock big-centre
+
     rtc_time_t rt; rtc_read(&rt);
     char clk[6]; d2(clk, rt.hour); clk[2] = ':'; d2(clk+3, rt.minute); clk[5] = 0;
     int cx = comp_width()/2 - 90, cy = 140;
@@ -350,7 +344,7 @@ static void draw_lockscreen(int mx, int my) {
     }
     comp_text(comp_width()/2 - 40, cy + 80, "Vyro OS 2.0", 0xA0B0C0, 0);
 
-    // Login panel
+
     int pw = 400, ph = 200, px = (comp_width()-pw)/2, py = comp_height()/2 + 20;
     comp_rect(px, py, pw, ph, 0x20283C);
     comp_border(px, py, pw, ph, 0x3A4258);
@@ -358,14 +352,14 @@ static void draw_lockscreen(int mx, int my) {
     comp_text(px + 20, py + 50, "User:", t->text_dim, 0x20283C);
     comp_text(px + 80, py + 50, current_user(), 0xFFFFFF, 0x20283C);
     comp_text(px + 20, py + 80, "Password:", t->text_dim, 0x20283C);
-    // Password field
+
     comp_rect(px + 20, py + 100, pw - 40, 30, 0x10141E);
     comp_border(px + 20, py + 100, pw - 40, 30, 0x3A4258);
-    // Show dots for entered chars
+
     for (int i = 0; i < pw_len && i < 30; i++) {
         comp_rect(px + 28 + i * 12, py + 112, 8, 8, 0xFFFFFF);
     }
-    // Hint
+
     if (pw_wrong)
         comp_text(px + 20, py + 140, "Wrong password. Try again.", 0xFF7070, 0x20283C);
     else
@@ -376,7 +370,6 @@ static void draw_lockscreen(int mx, int my) {
     comp_present();
 }
 
-// ─── Power menu ───
 static void draw_power_menu(int mx, int my) {
     if (!show_power_menu) return;
     const theme_t* t = theme();
@@ -397,7 +390,6 @@ static void draw_power_menu(int mx, int my) {
     }
 }
 
-// ─── Quick settings ───
 static void draw_quick_settings(int mx, int my) {
     if (!show_quick_settings) return;
     const theme_t* t = theme();
@@ -417,7 +409,7 @@ static void draw_quick_settings(int mx, int my) {
         row_y += 30;
     }
 
-    // Brightness + Volume sliders
+
     comp_text(px + 16, row_y + 6, "Brightness", t->text, t->dock_bg);
     w_progress(px + 16, row_y + 24, pw - 32, 12, 80);
     row_y += 50;
@@ -442,14 +434,12 @@ static void render(int mx, int my, int clicked) {
     comp_present();
 }
 
-// Launcher callback
 extern void launcher_set_callback(void (*cb)(const char*));
 static void on_launch(const char* name) { open_app(name); }
 
-// ─── Lock screen input ───
 static void lockscreen_handle_key(char c) {
     if (c == '\n') {
-        // Try to log in with typed password
+
         pw_buf[pw_len] = '\0';
         if (auth_login(current_user(), pw_buf) == 0) {
             locked = 0; pw_len = 0; pw_buf[0] = 0; pw_wrong = 0;
@@ -464,7 +454,6 @@ static void lockscreen_handle_key(char c) {
     }
 }
 
-// ─── Build context menus ───
 static void build_desktop_menu() {
     ctxmenu_clear(&menu);
     ctxmenu_add(&menu, "New Folder",         ACT_NEW_FOLDER,    CTX_ITEM_NORMAL);
@@ -497,7 +486,6 @@ static void build_dock_menu(int idx) {
         ctxmenu_add(&menu, "Quit App",       ACT_DOCK_QUIT,  CTX_ITEM_DANGER);
 }
 
-// ─── Dispatch context menu action ───
 static void dispatch_action(int act) {
     switch (act) {
         case ACT_NEW_FOLDER:
@@ -553,11 +541,11 @@ void gui_run() {
     launcher_set_callback(on_launch);
     ctxmenu_clear(&menu);
 
-    // vC.6.12: after apps_register_all + ctxmenu_clear, the backbuf may
-    // have been clobbered by OOB writes in those init paths; re-validate
-    // and re-allocate if so before entering the render loop. Defends
-    // against the still-unidentified BSS corruption that puts -1 into
-    // the backbuf global.
+
+
+
+
+
     comp_revalidate();
 
     notify_post("Welcome to Vyro OS 2.0", "Right-click anywhere for actions");
@@ -567,10 +555,10 @@ void gui_run() {
     uint8_t prev_btn = 0;
 
     while (1) {
-        comp_revalidate();   // vC.6.12: heal corrupted backbuf each frame
-        // vC.6.14: check BSS canaries; dump which sentinel was stomped if tripped
+        comp_revalidate();
+
         if (!comp_canary_ok()) comp_canary_dump();
-        mouse_poll();        // vC.6.18: pull VMware absolute coords before reading pos
+        mouse_poll();
         int last_key = 0;
         if (keyboard_has_input()) {
             char c = keyboard_getchar();
@@ -578,7 +566,7 @@ void gui_run() {
             else {
                 if (c == 0x1B) break;
                 if (c == 't' || c == 'T') { theme_set_dark(!theme()->is_dark); }
-                // Virtual desktop switching: keys '!', '@', '#', '$' (shift+1..4)
+
                 else if (c == '1' || c == '2' || c == '3' || c == '4') {
                     current_desktop = c - '1';
                 }
@@ -599,20 +587,20 @@ void gui_run() {
             render(mx, my, 0); prev_btn = btn; sleep_ms(16); continue;
         }
 
-        // Menu handling first — close on click outside, dispatch action on item click
+
         if (menu.visible && lpress) {
             int r = ctxmenu_handle_click(&menu, mx, my);
             if (r > 0) dispatch_action(menu.last_action);
-            // swallow this click (don't fall through)
+
             lpress = 0;
         }
 
-        // Power menu / quick settings click-outside-to-close
+
         if (lpress && (show_power_menu || show_quick_settings)) {
             int hit = 0;
             if (show_power_menu && point_in(mx, my, comp_width() - 220, TOPBAR_H + 4, 200, 178)) hit = 1;
             if (show_quick_settings && point_in(mx, my, comp_width() - 300, TOPBAR_H + 4, 280, 280)) hit = 1;
-            // Power menu items
+
             if (show_power_menu && hit) {
                 int px_ = comp_width() - 220, py_ = TOPBAR_H + 4;
                 int item_actions[] = { ACT_POWER_SLEEP, ACT_POWER_LOCK, ACT_POWER_LOGOUT, ACT_POWER_RESTART, ACT_POWER_SHUTDOWN };
@@ -627,7 +615,7 @@ void gui_run() {
         }
 
         if (lpress) {
-            // Top bar power button (region around "[P]")
+
             if (point_in(mx, my, comp_width() - 116, 0, 24, TOPBAR_H)) {
                 show_power_menu = !show_power_menu; show_quick_settings = 0;
             }
@@ -657,7 +645,7 @@ void gui_run() {
             }
         }
 
-        // Right-click context menus
+
         if (rpress) {
             ctx_window_idx = -1; ctx_dock_idx = -1;
             if (hovered_dock >= 0) {
