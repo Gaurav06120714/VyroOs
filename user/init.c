@@ -1,8 +1,5 @@
-// ─────────────────────────────────────────────────
-// Vyro OS sample application — built on the libvyro
-// application framework (Phase 28). Compiled as a
-// standalone ELF64, loaded by the kernel, run in ring 3.
-// ─────────────────────────────────────────────────
+
+
 #include "libvyro.h"
 
 void _start() {
