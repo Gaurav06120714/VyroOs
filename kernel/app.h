@@ -3,19 +3,13 @@
 
 #include "../include/types.h"
 
-// ─────────────────────────────────────────────────
-// Vyro OS Application Framework v2
-// Apps register a render callback. The desktop runs
-// them inside windows with input event dispatch.
-// ─────────────────────────────────────────────────
-
 typedef struct {
-    int mx, my;          // mouse position relative to window body
-    int btn;             // mouse button state
-    int clicked;         // edge-triggered: left-click this frame
-    int key;             // last keystroke (0 if none)
-    int width, height;   // window body size
-    int origin_x, origin_y;   // window body origin in screen coords
+    int mx, my;
+    int btn;
+    int clicked;
+    int key;
+    int width, height;
+    int origin_x, origin_y;
 } app_ctx_t;
 
 typedef void (*app_render_fn)(app_ctx_t* ctx);
