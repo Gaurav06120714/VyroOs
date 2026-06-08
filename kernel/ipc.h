@@ -3,12 +3,6 @@
 
 #include "../include/types.h"
 
-// ─────────────────────────────────────────────────
-// Vyro OS IPC subsystem (Phase 49)
-// Pipes, message queues, signals — process-to-process
-// communication primitives.
-// ─────────────────────────────────────────────────
-
 #define PIPE_BUF_SIZE   1024
 #define MAX_PIPES       16
 #define MAX_MSGS        32
@@ -27,13 +21,12 @@ typedef struct {
     uint8_t  alive;
 } message_t;
 
-// Signals (POSIX-style numbers)
 #define SIGTERM   15
 #define SIGKILL    9
 #define SIGINT     2
 #define SIGUSR1   10
 
-int  pipe_create();                                      // returns pipe id
+int  pipe_create();
 int  pipe_write(int pid, const uint8_t* data, uint32_t n);
 int  pipe_read(int pid, uint8_t* out, uint32_t n);
 int  pipe_count();
