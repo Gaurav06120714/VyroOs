@@ -25,7 +25,7 @@ int http_parse_response(const uint8_t* buf, uint32_t len,
     if (!(buf[0] == 'H' && buf[1] == 'T' && buf[2] == 'T' && buf[3] == 'P' &&
           buf[4] == '/' && buf[5] == '1' && buf[6] == '.' &&
           (buf[7] == '0' || buf[7] == '1'))) return 0;
-    // Find first space, then parse status code
+
     uint32_t p = 8;
     while (p < len && buf[p] != ' ') p++;
     if (p + 4 > len) return 0;
@@ -37,21 +37,21 @@ int http_parse_response(const uint8_t* buf, uint32_t len,
     }
     if (status) *status = code;
     p += 3;
-    // Skip to end of status line (\r\n)
+
     while (p + 1 < len && !(buf[p] == '\r' && buf[p + 1] == '\n')) p++;
     if (p + 2 > len) return 0;
     p += 2;
 
     int32_t cl = -1;
-    // Walk headers until blank \r\n
+
     while (p + 2 <= len) {
         if (buf[p] == '\r' && buf[p + 1] == '\n') { p += 2; break; }
-        // Header line: name ':' value \r\n
+
         uint32_t line_start = p;
         while (p < len && buf[p] != '\r') p++;
         if (p + 2 > len) return 0;
         uint32_t line_end = p;
-        // Parse Content-Length if present
+
         const char* k = "content-length:";
         if (line_end - line_start > 15 && ci_eq_prefix(buf + line_start, k, 15)) {
             uint32_t v = line_start + 15;
@@ -62,7 +62,7 @@ int http_parse_response(const uint8_t* buf, uint32_t len,
             }
             cl = val;
         }
-        p += 2;     // skip \r\n
+        p += 2;
     }
     if (content_length) *content_length = cl;
     if (body_out)       *body_out       = buf + p;
@@ -91,7 +91,7 @@ int http_get(const uint8_t ip[4], uint16_t port,
     }
     if (tcp_state(tid) != TCP_ESTABLISHED) { tcp_close(tid); return -2; }
 
-    // Build request — GET path HTTP/1.1\r\nHost: host\r\nConnection: close\r\n\r\n
+
     static uint8_t req[1024];
     uint32_t p = 0;
     const char* prefix = "GET ";
@@ -106,7 +106,7 @@ int http_get(const uint8_t ip[4], uint16_t port,
     int sent = tcp_send(tid, req, (uint16_t)p);
     if (sent != (int)p) { tcp_close(tid); return -3; }
 
-    // Drain response until close or timeout.
+
     uint32_t read_total = 0;
     while (timer_uptime_ms() < deadline && read_total < out_max) {
         net_pump_run(100);
