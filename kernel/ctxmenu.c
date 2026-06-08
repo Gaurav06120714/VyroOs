@@ -59,7 +59,7 @@ void ctxmenu_draw(ctxmenu_t* m, int mx, int my) {
     int x = m->x;
     int y_ = m->y;
 
-    // Clamp to screen
+
     if (x + MENU_W > (int)comp_width()) x = comp_width() - MENU_W - 2;
     if (y_ + h > (int)comp_height()) y_ = comp_height() - h - 2;
 
