@@ -3,10 +3,6 @@
 
 static pci_device_t* controller = 0;
 
-// ─────────────────────────────────────────────────
-// usb_init: find a USB host controller via PCI
-// (class 0x0C, subclass 0x03)
-// ─────────────────────────────────────────────────
 int usb_init() {
     controller = pci_find_class(USB_PCI_CLASS, USB_PCI_SUBCLASS);
     return controller ? 1 : 0;
@@ -16,9 +12,6 @@ uint8_t usb_has_controller() {
     return controller ? 1 : 0;
 }
 
-// ─────────────────────────────────────────────────
-// usb_controller_type: human-readable type from prog-if
-// ─────────────────────────────────────────────────
 const char* usb_controller_type() {
     if (!controller) return "none";
     switch (controller->prog_if) {
