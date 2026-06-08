@@ -1,8 +1,5 @@
 #include "elf.h"
 
-// ─────────────────────────────────────────────────
-// memcpy / memset (freestanding, no libc)
-// ─────────────────────────────────────────────────
 static void ecopy(uint8_t* dst, const uint8_t* src, uint64_t n) {
     for (uint64_t i = 0; i < n; i++) dst[i] = src[i];
 }
@@ -10,24 +7,21 @@ static void ezero(uint8_t* dst, uint64_t n) {
     for (uint64_t i = 0; i < n; i++) dst[i] = 0;
 }
 
-// ─────────────────────────────────────────────────
-// elf_load: validate, copy PT_LOAD segments, return entry
-// ─────────────────────────────────────────────────
 uint64_t elf_load(const uint8_t* data, uint64_t size) {
     if (size < sizeof(elf64_ehdr_t)) return 0;
 
     const elf64_ehdr_t* eh = (const elf64_ehdr_t*) data;
 
-    // Verify ELF magic: 0x7F 'E' 'L' 'F'
+
     if (eh->e_ident[0] != 0x7F || eh->e_ident[1] != 'E' ||
         eh->e_ident[2] != 'L'  || eh->e_ident[3] != 'F') {
         return 0;
     }
 
-    // Verify 64-bit class (e_ident[4] == 2)
+
     if (eh->e_ident[4] != 2) return 0;
 
-    // Walk program headers and copy each PT_LOAD segment
+
     for (uint16_t i = 0; i < eh->e_phnum; i++) {
         const elf64_phdr_t* ph =
             (const elf64_phdr_t*)(data + eh->e_phoff + (uint64_t)i * eh->e_phentsize);
@@ -36,10 +30,10 @@ uint64_t elf_load(const uint8_t* data, uint64_t size) {
 
         uint8_t* dest = (uint8_t*) ph->p_vaddr;
 
-        // Copy file bytes
+
         ecopy(dest, data + ph->p_offset, ph->p_filesz);
 
-        // Zero the BSS portion (memsz > filesz)
+
         if (ph->p_memsz > ph->p_filesz) {
             ezero(dest + ph->p_filesz, ph->p_memsz - ph->p_filesz);
         }
