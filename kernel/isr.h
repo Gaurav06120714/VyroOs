@@ -3,7 +3,6 @@
 
 #include "idt.h"
 
-// Exception names for display
 __attribute__((unused)) static const char* exception_messages[] = {
     "Division By Zero",
     "Debug",
@@ -33,7 +32,6 @@ __attribute__((unused)) static const char* exception_messages[] = {
     "Reserved"
 };
 
-// IRQ handler function pointer type
 typedef void (*irq_handler_t)(registers_t* regs);
 
 void isr_handler(registers_t* regs);
