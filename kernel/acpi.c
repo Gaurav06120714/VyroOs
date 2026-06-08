@@ -23,16 +23,16 @@ static uint8_t checksum(const void* p, uint32_t n) {
 }
 
 const acpi_rsdp_t* acpi_find_rsdp(void) {
-    // Search EBDA pointer at 0x40E (segment in word), and BIOS area 0xE0000-0xFFFFF.
-    // Identity-mapped, so just walk physical addresses.
+
+
     const char SIG[8] = { 'R','S','D',' ','P','T','R',' ' };
 
-    // EBDA: 0x9FC00 typical, low memory area. Skip — narrow.
-    // BIOS area 0xE0000..0xFFFFF
+
+
     for (uint64_t addr = 0xE0000; addr < 0x100000; addr += 16) {
         const acpi_rsdp_t* r = (const acpi_rsdp_t*)(uintptr_t)addr;
         if (sig8_eq(r->signature, SIG)) {
-            // Verify checksum (first 20 bytes for v1, full length for v2)
+
             if (checksum(r, 20) == 0) return r;
         }
     }
@@ -71,14 +71,11 @@ const acpi_sdt_t* acpi_find_table(const char sig[4]) {
 
 uint32_t acpi_table_count(void) { return n_tables; }
 
-// Walk the MADT (APIC) variable-length entry list. The MADT header is the
-// standard SDT (36 bytes) + 4 bytes Local Interrupt Controller Address +
-// 4 bytes Flags. Entries that follow are (type, length, data) records.
 uint32_t acpi_walk_madt(acpi_lapic_t* lapics_out, uint32_t lapic_max,
                         acpi_ioapic_t* ioapics_out, uint32_t ioapic_max) {
     const acpi_sdt_t* madt = acpi_find_table("APIC");
     if (!madt) return 0;
-    const uint8_t* p = (const uint8_t*)madt + sizeof(acpi_sdt_t) + 8; // skip LAPIC addr + flags
+    const uint8_t* p = (const uint8_t*)madt + sizeof(acpi_sdt_t) + 8;
     const uint8_t* end = (const uint8_t*)madt + madt->length;
     uint32_t nl = 0, ni = 0;
     while (p + 2 <= end) {
