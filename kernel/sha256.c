@@ -1,7 +1,5 @@
 #include "sha256.h"
 
-// SHA-256 — FIPS 180-4. Compact implementation.
-
 static const uint32_t K[64] = {
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
     0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
@@ -21,13 +19,13 @@ void sha256(const uint8_t* data, uint64_t len, uint8_t out[32]) {
         0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19
     };
 
-    // Padded length: message + 1 (0x80) + zeros + 8-byte length, multiple of 64
+
     uint64_t bitlen = len * 8;
     uint64_t total  = len + 1;
     while (total % 64 != 56) total++;
     total += 8;
 
-    // Process in 64-byte blocks
+
     uint8_t block[64];
     for (uint64_t off = 0; off < total; off += 64) {
         for (int i = 0; i < 64; i++) {
