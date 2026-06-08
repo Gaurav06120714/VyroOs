@@ -1,7 +1,6 @@
 #include "ata.h"
-#include "../drivers/pic.h"   // inb/outb
+#include "../drivers/pic.h"
 
-// 16-bit port I/O for the data register
 static inline void outw(uint16_t port, uint16_t val) {
     __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -11,20 +10,12 @@ static inline uint16_t inw(uint16_t port) {
     return ret;
 }
 
-// Drive-select base: 0xE0 = master LBA, 0xF0 = slave LBA
 #define DRIVE_SELECT (ATA_USE_SLAVE ? 0xF0 : 0xE0)
 
-// ─────────────────────────────────────────────────
-// 400ns delay — read status port 4 times
-// ─────────────────────────────────────────────────
 static void ata_delay() {
     for (int i = 0; i < 4; i++) inb(ATA_STATUS);
 }
 
-// ─────────────────────────────────────────────────
-// Poll until not-busy and data-request ready
-// Returns 0 on success, -1 on error/timeout
-// ─────────────────────────────────────────────────
 static int ata_poll() {
     for (int i = 0; i < 100000; i++) {
         uint8_t status = inb(ATA_STATUS);
@@ -40,9 +31,6 @@ static void ata_wait_bsy() {
     }
 }
 
-// ─────────────────────────────────────────────────
-// ata_init: select drive, issue IDENTIFY, check presence
-// ─────────────────────────────────────────────────
 int ata_init() {
     ata_wait_bsy();
     outb(ATA_DRIVE, (uint8_t)DRIVE_SELECT);
@@ -55,11 +43,11 @@ int ata_init() {
     outb(ATA_COMMAND, ATA_CMD_IDENTIFY);
 
     uint8_t status = inb(ATA_STATUS);
-    if (status == 0) return 0;          // no drive
+    if (status == 0) return 0;
 
     ata_wait_bsy();
 
-    // Check it's an ATA (not ATAPI) device
+
     if (inb(ATA_LBA_MID) != 0 || inb(ATA_LBA_HI) != 0) return 0;
 
     for (int i = 0; i < 100000; i++) {
@@ -68,14 +56,11 @@ int ata_init() {
         if (status & ATA_SR_DRQ) break;
     }
 
-    // Drain the 256-word IDENTIFY data
+
     for (int i = 0; i < 256; i++) inw(ATA_DATA);
     return 1;
 }
 
-// ─────────────────────────────────────────────────
-// ata_read_sector: read one 512-byte sector at LBA
-// ─────────────────────────────────────────────────
 int ata_read_sector(uint32_t lba, uint8_t* buf) {
     ata_wait_bsy();
     outb(ATA_DRIVE, (uint8_t)(DRIVE_SELECT | ((lba >> 24) & 0x0F)));
@@ -92,9 +77,6 @@ int ata_read_sector(uint32_t lba, uint8_t* buf) {
     return 0;
 }
 
-// ─────────────────────────────────────────────────
-// ata_write_sector: write one 512-byte sector at LBA
-// ─────────────────────────────────────────────────
 int ata_write_sector(uint32_t lba, const uint8_t* buf) {
     ata_wait_bsy();
     outb(ATA_DRIVE, (uint8_t)(DRIVE_SELECT | ((lba >> 24) & 0x0F)));
@@ -109,7 +91,7 @@ int ata_write_sector(uint32_t lba, const uint8_t* buf) {
     const uint16_t* wbuf = (const uint16_t*) buf;
     for (int i = 0; i < 256; i++) outw(ATA_DATA, wbuf[i]);
 
-    // Flush cache so data hits the disk
+
     outb(ATA_COMMAND, ATA_CMD_FLUSH);
     ata_wait_bsy();
     return 0;
