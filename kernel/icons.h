@@ -3,13 +3,11 @@
 
 #include "../include/types.h"
 
-// 16x16 bitmap icons. Each icon = 16 rows × 16 bits = 32 bytes.
-// '1' bit = foreground (icon color), '0' bit = transparent.
 typedef struct {
     const char* name;
-    char        glyph;        // fallback letter
-    uint32_t    color;        // primary tint (RGB)
-    uint8_t     bitmap[32];   // 16x16 mono bitmap
+    char        glyph;
+    uint32_t    color;
+    uint8_t     bitmap[32];
 } icon_t;
 
 extern const icon_t ICON_FINDER;
