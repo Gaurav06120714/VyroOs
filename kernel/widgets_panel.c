@@ -4,28 +4,26 @@
 #include "../drivers/rtc.h"
 #include "../drivers/timer.h"
 
-// Glass panel — semi-translucent dark card with white border at low alpha
 static void glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     const theme_t* t = theme();
-    // Drop shadow
+
     comp_shadow(x, y, w, h, t->win_shadow);
-    // Card body
+
     uint32_t body = t->is_dark ? 0x202838 : 0xF0F2F8;
     comp_rect(x, y, w, h, body);
-    // Subtle top highlight (1px) to give "glass" feeling
+
     uint32_t highlight = t->is_dark ? 0x40506A : 0xFFFFFF;
     for (uint32_t i = 0; i < w; i++) comp_pixel(x + i, y, highlight);
-    // Border
+
     comp_border(x, y, w, h, t->is_dark ? 0x3A4258 : 0xC8D0DC);
 }
 
-// Ring (for battery, screen time, etc.)
 static void draw_ring(uint32_t cx, uint32_t cy, uint32_t r, uint32_t thickness,
                      int pct, uint32_t color, uint32_t bg) {
-    // Simple ring via two filled circles minus angular sweep — we approximate
-    // with a filled circle for the "bg" and overlay only pct sweep pixels.
-    // Cheap method: draw all pixels of radius r..r-thickness in 'bg', then
-    // overwrite the first (pct*360/100) degrees in 'color'.
+
+
+
+
     int filled_arc_deg = pct * 360 / 100;
     for (int dy = -(int)r; dy <= (int)r; dy++) {
         for (int dx = -(int)r; dx <= (int)r; dx++) {
@@ -34,11 +32,11 @@ static void draw_ring(uint32_t cx, uint32_t cy, uint32_t r, uint32_t thickness,
             int rin = (int)(r - thickness);
             int rin2 = rin * rin;
             if (d2 <= r2 && d2 >= rin2) {
-                // Determine angle (0° = top, clockwise)
-                // angle = atan2(dx, -dy) — use lookup-free approximation
-                // We just compare via cross-multiplied region tests for simple percentages.
+
+
+
                 int color_pixel = 0;
-                // Approximate by checking which octant the point is in
+
                 int deg;
                 if (dx == 0 && dy < 0) deg = 0;
                 else if (dx > 0 && dy < 0) deg = 45;
@@ -55,7 +53,6 @@ static void draw_ring(uint32_t cx, uint32_t cy, uint32_t r, uint32_t thickness,
     }
 }
 
-// Crisper double-size glyph: render the bitmap doubled in both axes against a known bg
 static void big_glyph(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
     uint8_t* font = (uint8_t*)0x80000;
     uint8_t gi = (uint8_t)c;
@@ -73,7 +70,7 @@ static void big_glyph(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) 
 static void big_text(uint32_t x, uint32_t y, const char* s, uint32_t color, uint32_t bg) {
     for (int i = 0; s[i]; i++) big_glyph(x + i * 18, y, s[i], color, bg);
 }
-// Triple-size for very big numbers
+
 static void huge_glyph(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
     uint8_t* font = (uint8_t*)0x80000;
     uint8_t gi = (uint8_t)c;
@@ -103,16 +100,14 @@ static int  int_to_str(uint64_t n, char* buf) {
 static const char* months[] = {"","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
 static const char* dow[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
 
-// Rough Zeller-style day-of-week (0=Sun)
 static int day_of_week(int y, int m, int d) {
     if (m < 3) { m += 12; y -= 1; }
     int K = y % 100, J = y / 100;
     int h = (d + (13*(m+1))/5 + K + K/4 + J/4 + 5*J) % 7;
-    // h: 0=Sat..6=Fri → convert to 0=Sun..6=Sat
+
     return (h + 6) % 7;
 }
 
-// ── Widget: Battery ring at 100% ──
 static void widget_battery(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
@@ -122,14 +117,13 @@ static void widget_battery(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 
     uint32_t cx = x + 46, cy = y + h/2;
     draw_ring(cx, cy, 28, 6, 100, green, bg);
-    // Center "100" text with %
+
     big_text(cx - 20, cy - 8, "100", t->text, bgc);
-    // Label
+
     comp_text_bg_alpha(x + 100, y + 18, "Battery", t->text);
     big_text(x + 100, y + 36, "100%", green, bgc);
 }
 
-// ── Widget: Clock ──
 static void widget_clock(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
@@ -141,28 +135,26 @@ static void widget_clock(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     comp_text_bg_alpha(x + 14, y + h - 22, "Clock", t->text_dim);
 }
 
-// ── Widget: Calendar ──
 static void widget_calendar(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
     uint32_t bgc = t->is_dark ? 0x202838 : 0xF0F2F8;
     rtc_time_t rt; rtc_read(&rt);
 
-    // Day-of-week header (red)
+
     int dw = day_of_week(rt.year, rt.month, rt.day);
     comp_text_bg_alpha(x + 14, y + 14, dow[dw], 0xFF6060);
-    // Month
+
     const char* mo = (rt.month >= 1 && rt.month <= 12) ? months[rt.month] : "???";
     comp_text_bg_alpha(x + 14, y + 34, mo, t->text_dim);
 
-    // Day number — huge
+
     char buf[3];
     if (rt.day >= 10) { d2(buf, rt.day); buf[2] = 0; }
     else { buf[0] = '0' + rt.day; buf[1] = 0; }
     huge_text(x + 14, y + 52, buf, t->text, bgc);
 }
 
-// ── Widget: Weather ──
 static void widget_weather(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
@@ -174,7 +166,6 @@ static void widget_weather(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     comp_text_bg_alpha(x + 14, y + h - 22, "H:36 L:27", t->text_dim);
 }
 
-// ── Widget: Activity (uptime as activity proxy) ──
 static void widget_activity(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
@@ -186,7 +177,7 @@ static void widget_activity(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     int digits = int_to_str(up_min, buf);
     huge_text(x + 14, y + 34, buf, 0xFFC040, bgc);
     comp_text_bg_alpha(x + 14 + 26 * digits + 6, y + 60, "min", t->text_dim);
-    // Bars graph (last row)
+
     int gx = x + 14, gy = y + h - 32;
     for (int b = 0; b < 18; b++) {
         int bh = 6 + ((b * 13 + 7) % 22);
@@ -194,37 +185,35 @@ static void widget_activity(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     }
 }
 
-// ── Widget: Map placeholder ──
 static void widget_map(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     glass_panel(x, y, w, h);
     const theme_t* t = theme();
-    // Fake roads
+
     uint32_t road = t->is_dark ? 0x3A4258 : 0xD0D8E4;
     for (int i = 8; i < (int)w - 8; i += 18)
         comp_rect(x + i, y + 12, 2, h - 36, road);
     for (int j = 12; j < (int)h - 24; j += 24)
         comp_rect(x + 8, y + j, w - 16, 2, road);
-    // Location dot
+
     int dx_ = x + w/2, dy_ = y + h/2 - 6;
     comp_rect(dx_ - 5, dy_ - 5, 10, 10, t->accent);
-    // Border around dot
+
     comp_border(dx_ - 6, dy_ - 6, 12, 12, 0xFFFFFF);
     comp_text_bg_alpha(x + 12, y + h - 22, "Location", t->text);
 }
 
-// ── Public entrypoint ──
 void widgets_panel_draw(uint32_t px, uint32_t py, uint32_t pw) {
     uint32_t card_w = pw - 16;
     uint32_t y = py + 10;
 
-    // Battery + Activity row (small cards)
+
     widget_battery (px + 8, y, card_w, 80);  y += 88;
     widget_activity(px + 8, y, card_w, 100); y += 108;
-    // Map
+
     widget_map     (px + 8, y, card_w, 110); y += 118;
-    // Clock
+
     widget_clock   (px + 8, y, card_w, 80);  y += 88;
-    // Calendar + Weather
+
     widget_calendar(px + 8, y, card_w / 2 - 4, 110);
     widget_weather (px + 8 + card_w/2 + 4, y, card_w / 2 - 4, 110);
     (void)big_text;
