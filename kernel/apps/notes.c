@@ -47,7 +47,7 @@ static void render_notes(app_ctx_t* c) {
     const theme_t* t = theme();
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
 
-    // Sidebar
+
     int sw = 160;
     comp_rect(c->origin_x, c->origin_y, sw, c->height, t->dock_bg);
     if (w_button(c->origin_x + 8, c->origin_y + 8, sw - 16, 26, "+ New",
@@ -68,15 +68,15 @@ static void render_notes(app_ctx_t* c) {
         row_y += 32;
     }
 
-    // Editor
+
     int ex = c->origin_x + sw, ey = c->origin_y;
     int ew = c->width - sw, eh = c->height;
     comp_rect(ex, ey, ew, eh, 0xF8F6F0);
-    // Title
+
     comp_text(ex + 12, ey + 12, notes[selected].title, 0x202020, 0xF8F6F0);
-    // Separator
+
     for (int i = 0; i < ew - 24; i++) comp_pixel(ex + 12 + i, ey + 38, 0xD0D0C0);
-    // Body
+
     int x = ex + 14, y = ey + 50;
     for (int i = 0; i < notes[selected].body_len; i++) {
         char ch = notes[selected].body[i];
@@ -85,10 +85,10 @@ static void render_notes(app_ctx_t* c) {
         comp_glyph(x, y, ch, 0x202020, 0xF8F6F0);
         x += 8;
     }
-    // Caret
+
     if (y < ey + eh - 18) comp_rect(x, y, 2, 16, 0x303030);
 
-    // Input
+
     if (c->key && notes[selected].used) {
         if (c->key == '\b' && notes[selected].body_len > 0)
             notes[selected].body[--notes[selected].body_len] = 0;
