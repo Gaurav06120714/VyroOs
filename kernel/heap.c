@@ -1,13 +1,10 @@
 #include "heap.h"
 
-// ─────────────────────────────────────────────────
-// Block header — sits before every allocation
-// ─────────────────────────────────────────────────
 typedef struct block_header {
-    size_t               size;    // Usable bytes (not including header)
-    uint8_t              free;    // 1 = free, 0 = used
-    struct block_header* next;    // Next block in linked list
-    uint32_t             magic;   // Corruption detection
+    size_t               size;
+    uint8_t              free;
+    struct block_header* next;
+    uint32_t             magic;
 } block_header_t;
 
 #define HEAP_MAGIC   0xDEADBEEF
@@ -16,9 +13,6 @@ typedef struct block_header {
 static block_header_t* heap_head = 0;
 static uint64_t        bytes_used = 0;
 
-// ─────────────────────────────────────────────────
-// heap_init: set up one large free block over heap
-// ─────────────────────────────────────────────────
 void heap_init() {
     heap_head        = (block_header_t*) HEAP_START;
     heap_head->size  = HEAP_SIZE - HEADER_SIZE;
@@ -28,10 +22,6 @@ void heap_init() {
     bytes_used       = 0;
 }
 
-// ─────────────────────────────────────────────────
-// coalesce: merge adjacent free blocks
-// Prevents fragmentation over time
-// ─────────────────────────────────────────────────
 static void coalesce() {
     block_header_t* cur = heap_head;
     while (cur && cur->next) {
@@ -44,20 +34,16 @@ static void coalesce() {
     }
 }
 
-// ─────────────────────────────────────────────────
-// kmalloc: first-fit allocation
-// Splits block if remainder is large enough
-// ─────────────────────────────────────────────────
 void* kmalloc(size_t size) {
     if (size == 0) return 0;
 
-    // Align size to 8 bytes
+
     size = (size + 7) & ~7UL;
 
     block_header_t* cur = heap_head;
     while (cur) {
         if (cur->free && cur->size >= size) {
-            // Split block if remainder fits a useful allocation
+
             if (cur->size >= size + HEADER_SIZE + 16) {
                 block_header_t* new_block = (block_header_t*)
                     ((uint8_t*)cur + HEADER_SIZE + size);
@@ -74,25 +60,19 @@ void* kmalloc(size_t size) {
         }
         cur = cur->next;
     }
-    return 0;  // Out of heap memory
+    return 0;
 }
 
-// ─────────────────────────────────────────────────
-// kfree: mark block free, then coalesce neighbors
-// ─────────────────────────────────────────────────
 void kfree(void* ptr) {
     if (!ptr) return;
     block_header_t* block = (block_header_t*)((uint8_t*)ptr - HEADER_SIZE);
-    if (block->magic != HEAP_MAGIC) return;  // Corrupted header
-    if (block->free) return;                  // Double-free guard
+    if (block->magic != HEAP_MAGIC) return;
+    if (block->free) return;
     block->free = 1;
     if (bytes_used >= block->size) bytes_used -= block->size;
     coalesce();
 }
 
-// ─────────────────────────────────────────────────
-// kmalloc_zero: allocate and zero memory
-// ─────────────────────────────────────────────────
 void* kmalloc_zero(size_t size) {
     void* ptr = kmalloc(size);
     if (!ptr) return 0;
