@@ -3,7 +3,6 @@
 #include "../theme.h"
 #include "../compositor.h"
 
-// Mini windowed browser — uses the same HTML logic conceptually but draws inline
 static const char* PAGE =
     "<h1>VyroBrowser 2</h1>"
     "<p>This is a windowed browser tab.</p>"
@@ -27,7 +26,7 @@ static int tag_is(const char* p, const char* name) {
 
 static void render_browser(app_ctx_t* c) {
     const theme_t* t = theme();
-    // Address bar
+
     comp_rect(c->origin_x, c->origin_y, c->width, 36, t->win_title);
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
     w_button(c->origin_x + 6, c->origin_y + 6, 32, 24, "<", abs_mx, abs_my, c->clicked);
@@ -35,7 +34,7 @@ static void render_browser(app_ctx_t* c) {
     w_button(c->origin_x + 78, c->origin_y + 6, 60, 24, "Reload", abs_mx, abs_my, c->clicked);
     w_input(c->origin_x + 146, c->origin_y + 6, c->width - 220, "vyro://home", 0);
 
-    // Page area
+
     comp_rect(c->origin_x, c->origin_y + 36, c->width, c->height - 36, 0xFAFAFA);
     int x0 = c->origin_x + 16, y0 = c->origin_y + 52;
     int x = x0, y = y0;
