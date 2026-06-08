@@ -29,7 +29,7 @@ void tunes_play_alert(void) {
 }
 
 void tunes_play_scale(void) {
-    // C major: C, D, E, F, G, A, B, C
+
     static const note_t s[] = {
         { 262, 120 }, { 294, 120 }, { 330, 120 }, { 349, 120 },
         { 392, 120 }, { 440, 120 }, { 494, 120 }, { 523, 200 }
