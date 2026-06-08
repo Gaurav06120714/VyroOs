@@ -7,9 +7,6 @@ static int hit(int px, int py, int x, int y, int w, int h) {
 }
 static int slen(const char* s) { int i=0; while(s[i]) i++; return i; }
 
-// ─────────────────────────────────────────────────
-// Button
-// ─────────────────────────────────────────────────
 int w_button(int x, int y, int w, int h, const char* label,
              int mx, int my, int clicked) {
     const theme_t* t = theme();
@@ -24,9 +21,6 @@ int w_button(int x, int y, int w, int h, const char* label,
     return hover && clicked;
 }
 
-// ─────────────────────────────────────────────────
-// Labels
-// ─────────────────────────────────────────────────
 void w_label(int x, int y, const char* text) {
     const theme_t* t = theme();
     comp_text_bg_alpha(x, y, text, t->text);
@@ -39,9 +33,6 @@ void w_label_color(int x, int y, const char* text, uint32_t color) {
     comp_text_bg_alpha(x, y, text, color);
 }
 
-// ─────────────────────────────────────────────────
-// Panel (card)
-// ─────────────────────────────────────────────────
 void w_panel(int x, int y, int w, int h) {
     const theme_t* t = theme();
     comp_rect(x, y, w, h, t->win_body);
@@ -56,17 +47,11 @@ void w_panel_titled(int x, int y, int w, int h, const char* title) {
     comp_text(x + 8, y + 4, title, t->text, t->win_title);
 }
 
-// ─────────────────────────────────────────────────
-// Separator
-// ─────────────────────────────────────────────────
 void w_separator(int x, int y, int w) {
     const theme_t* t = theme();
     for (int i = 0; i < w; i++) comp_pixel(x + i, y, t->win_border);
 }
 
-// ─────────────────────────────────────────────────
-// Progress bar
-// ─────────────────────────────────────────────────
 void w_progress(int x, int y, int w, int h, int pct) {
     const theme_t* t = theme();
     if (pct < 0) pct = 0; if (pct > 100) pct = 100;
@@ -75,9 +60,6 @@ void w_progress(int x, int y, int w, int h, int pct) {
     comp_border(x, y, w, h, t->win_border);
 }
 
-// ─────────────────────────────────────────────────
-// Toggle
-// ─────────────────────────────────────────────────
 int w_toggle(int x, int y, int state, int mx, int my, int clicked) {
     const theme_t* t = theme();
     int w = 40, h = 20;
@@ -90,9 +72,6 @@ int w_toggle(int x, int y, int state, int mx, int my, int clicked) {
     return state;
 }
 
-// ─────────────────────────────────────────────────
-// Input box (display)
-// ─────────────────────────────────────────────────
 void w_input(int x, int y, int w, const char* text, int focused) {
     const theme_t* t = theme();
     comp_rect(x, y, w, 24, t->win_body);
@@ -104,9 +83,6 @@ void w_input(int x, int y, int w, const char* text, int focused) {
     }
 }
 
-// ─────────────────────────────────────────────────
-// List item
-// ─────────────────────────────────────────────────
 int w_list_item(int x, int y, int w, int h, const char* text,
                 int selected, int mx, int my, int clicked) {
     const theme_t* t = theme();
@@ -118,9 +94,6 @@ int w_list_item(int x, int y, int w, int h, const char* text,
     return hover && clicked;
 }
 
-// ─────────────────────────────────────────────────
-// Icon tile
-// ─────────────────────────────────────────────────
 int w_icon_tile(int x, int y, int size, const char* label,
                 char icon_glyph, uint32_t icon_color,
                 int mx, int my, int clicked) {
@@ -129,7 +102,7 @@ int w_icon_tile(int x, int y, int size, const char* label,
     uint32_t bg = hover ? t->accent : t->win_body;
     comp_rect(x, y, size, size, bg);
     comp_border(x, y, size, size, t->win_border);
-    // Big letter as fallback icon
+
     comp_glyph(x + size/2 - 4, y + size/2 - 8,
                icon_glyph, hover ? 0xFFFFFF : icon_color, bg);
     int len = slen(label);
