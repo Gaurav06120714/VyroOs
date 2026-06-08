@@ -106,7 +106,7 @@ static void render_about(app_ctx_t* c) {
 
 static void render_settings(app_ctx_t* c) {
     const theme_t* t = theme();
-    // Sidebar
+
     comp_rect(c->origin_x, c->origin_y, 180, c->height, t->dock_bg);
     for (int i = 0; i < N_SECTIONS; i++) {
         int sx = c->origin_x + 8, sy = c->origin_y + 8 + i * 32;
@@ -115,7 +115,7 @@ static void render_settings(app_ctx_t* c) {
                          c->mx + c->origin_x, c->my + c->origin_y, c->clicked))
             sel_section = i;
     }
-    // Right pane
+
     comp_rect(c->origin_x + 180, c->origin_y, c->width - 180, c->height, t->win_body);
     switch (sel_section) {
         case 0: render_general(c); break;
