@@ -1,6 +1,5 @@
 #include "dns.h"
 
-// Tiny built-in hosts table (would be replaced by real UDP/53 query in v3)
 typedef struct { const char* host; uint8_t ip[4]; } host_entry_t;
 static host_entry_t hosts[] = {
     { "localhost",      { 127,0,0,1 } },
