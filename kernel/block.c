@@ -6,8 +6,6 @@
 static block_device_t g_devs[BLOCK_MAX_DEVICES];
 static int g_count = 0;
 
-/* ---- AHCI backend ---- */
-
 static int ahci_read_thunk(block_device_t *bd, uint64_t lba, uint32_t count, void *buf) {
     uint32_t port = (uint32_t)(uintptr_t)bd->transport;
     return ahci_port_read(port, lba, count, buf);
@@ -18,8 +16,6 @@ static int ahci_write_thunk(block_device_t *bd, uint64_t lba, uint32_t count, co
     return ahci_port_write(port, lba, count, buf);
 }
 
-/* ---- NVMe backend ---- */
-
 static int nvme_read_thunk(block_device_t *bd, uint64_t lba, uint32_t count, void *buf) {
     (void)bd;
     return nvme_read(lba, count, buf);
@@ -29,8 +25,6 @@ static int nvme_write_thunk(block_device_t *bd, uint64_t lba, uint32_t count, co
     (void)bd;
     return nvme_write(lba, count, buf);
 }
-
-/* ---- registration helpers ---- */
 
 static void copy_str(char *dst, size_t cap, const char *src) {
     size_t i = 0;
@@ -52,7 +46,7 @@ static int register_ahci_port(uint32_t port) {
     bd->read               = ahci_read_thunk;
     bd->write              = ahci_write_thunk;
 
-    /* vC.6.7: ATA IDENTIFY for real model + total LBA48 sectors */
+
     char model[48] = {0};
     uint64_t sectors = 0;
     if (ahci_port_identify(port, model, NULL, &sectors)) {
@@ -75,7 +69,7 @@ static int register_nvme_ns1(void) {
     block_device_t *bd = &g_devs[g_count];
     bd->in_use             = 1;
     bd->kind               = BLOCK_KIND_NVME;
-    bd->index              = 1;                          // NSID 1
+    bd->index              = 1;
     bd->logical_block_size = ni->ns1_lba_bytes;
     bd->total_blocks       = ni->ns1_size_blocks;
     bd->transport          = NULL;
@@ -86,13 +80,11 @@ static int register_nvme_ns1(void) {
     return 1;
 }
 
-/* ---- public API ---- */
-
 int block_probe(void) {
     g_count = 0;
     for (int i = 0; i < BLOCK_MAX_DEVICES; i++) g_devs[i].in_use = 0;
 
-    /* AHCI: walk every active port */
+
     if (ahci_init()) {
         uint32_t mask = ahci_active_ports();
         for (uint32_t p = 0; p < 32 && g_count < BLOCK_MAX_DEVICES; p++) {
@@ -100,13 +92,11 @@ int block_probe(void) {
         }
     }
 
-    /* NVMe: ns1 only for now (multi-namespace lands with vC.6.8) */
+
     if (g_count < BLOCK_MAX_DEVICES && nvme_init()) {
         int before = g_count;
         if (register_nvme_ns1() && g_count > before) {
-            /* vC.6.9: if the just-registered device is 4 KiB-native,
-             * install the LBA-size translation adapter so FAT32 sees
-             * 512-byte logical blocks. */
+
             uint32_t idx = (uint32_t)(g_count - 1);
             block_device_t *bd = block_get(idx);
             if (bd && bd->logical_block_size != 512) {
@@ -137,9 +127,6 @@ int block_write(uint32_t idx, uint64_t lba, uint32_t count, const void *buf) {
     return bd->write(bd, lba, count, buf);
 }
 
-/* vC.6.10.1: hotfix — block_register implementation that vC.6.10 declared
- * in the header but did not land in this .c (the Edit silently failed).
- * Without this, parttab.c's extern call would fail at link time. */
 int block_register(block_device_t *src) {
     if (!src || g_count >= BLOCK_MAX_DEVICES) return -1;
     g_devs[g_count] = *src;
