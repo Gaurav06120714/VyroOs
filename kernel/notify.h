@@ -13,7 +13,7 @@ typedef struct {
 } notification_t;
 
 void  notify_post(const char* title, const char* body);
-void  notify_tick();                  // expire old notifications
+void  notify_tick();
 int   notify_active(notification_t** out);
 void  notify_history(notification_t** out, int* count);
 
