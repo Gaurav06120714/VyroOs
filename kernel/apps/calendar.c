@@ -26,7 +26,7 @@ static void render_calendar(app_ctx_t* c) {
 
     rtc_time_t rt; rtc_read(&rt);
 
-    // Header: month + year
+
     comp_text(c->origin_x + 20, c->origin_y + 16,
               months[rt.month >= 1 && rt.month <= 12 ? rt.month : 1],
               t->accent_hi, t->win_body);
@@ -37,14 +37,14 @@ static void render_calendar(app_ctx_t* c) {
     ybuf[4] = 0;
     comp_text(c->origin_x + 120, c->origin_y + 16, ybuf, t->accent_hi, t->win_body);
 
-    // DoW header
+
     int cell_w = (c->width - 40) / 7;
     for (int i = 0; i < 7; i++) {
         int x = c->origin_x + 20 + i * cell_w + cell_w/2 - 4;
         comp_text(x, c->origin_y + 50, dow_short[i], t->text_dim, t->win_body);
     }
 
-    // Grid
+
     int first_dow = dow(rt.year, rt.month, 1);
     int dim = days_in_month(rt.month, rt.year);
     int row = 0;
