@@ -23,7 +23,7 @@ static void render_calc(app_ctx_t* c) {
     const theme_t* t = theme();
     comp_rect(c->origin_x, c->origin_y, c->width, c->height, t->win_body);
 
-    // Display
+
     long shown = in_input ? cur : acc;
     char buf[24];
     int neg = shown < 0; if (neg) shown = -shown;
@@ -37,13 +37,13 @@ static void render_calc(app_ctx_t* c) {
     int dx = c->origin_x + 16, dy = c->origin_y + 12;
     comp_rect(dx, dy, c->width - 32, 48, 0x1A1F2C);
     int tx = dx + c->width - 32 - 8 - p * 16;
-    // Scale up display text by drawing 2x (double width chars)
+
     for (int i = 0; i < p; i++) {
         comp_glyph(tx + i * 16, dy + 16, buf[i], 0xA8FFA8, 0x1A1F2C);
         comp_glyph(tx + i * 16 + 1, dy + 16, buf[i], 0xA8FFA8, 0x1A1F2C);
     }
 
-    // Button grid
+
     const char* keys[5][4] = {
         {"C","/","*","-"},
         {"7","8","9","+"},
