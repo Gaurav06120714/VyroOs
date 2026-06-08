@@ -23,6 +23,7 @@
 #include "pkg.h"
 #include "smp.h"
 #include "klog.h"
+#include "tunes.h"
 
 static void ok(const char* msg) {
     print_color("  [OK] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
@@ -191,7 +192,8 @@ void kernel_main() {
     trust_add(globalsign_mock_der,   globalsign_mock_der_len);
     ok("Trust anchor store (5 built-in: ECDSA test + Vyro Root + 3 mock CAs)");
 
-    ok("Boot chime (skipped)");
+    tunes_play_boot();
+    ok("Boot chime (C-E-G-C ascending, PC speaker)");
 
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");
@@ -210,7 +212,7 @@ void kernel_main() {
     ok("PC speaker driver (PIT ch2)");
 
     mouse_init();
-    ok("PS/2 mouse driver (IRQ12)");
+    ok("Mouse driver (VMware absolute backdoor + PS/2 IRQ12 fallback)");
 
     ok("Window manager (type 'gui')");
 
