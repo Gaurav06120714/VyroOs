@@ -4,10 +4,6 @@
 #include "net_io.h"
 #include "../drivers/timer.h"
 
-// Compile-time switch: when defined, falls back to the pre-v3.1 direct
-// net_io_poll path.
-// #define VYRO_UDP_LEGACY 1
-
 static volatile uint16_t pending_txid = 0;
 static volatile uint8_t  got_result   = 0;
 static uint8_t           result_ip[4] = {0,0,0,0};
