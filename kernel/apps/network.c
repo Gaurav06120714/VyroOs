@@ -10,14 +10,14 @@
 #include "../notify.h"
 
 static int wifi_on = 1, vpn_on = 0;
-static int tab = 0;   // 0=Status 1=Wi-Fi 2=Diag
+static int tab = 0;
 
 static void render_network(app_ctx_t* c) {
     const theme_t* t = theme();
     comp_rect(c->origin_x, c->origin_y, c->width, c->height, t->win_body);
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
 
-    // Tab strip
+
     const char* tabs[] = { "Status", "Wi-Fi", "Diagnostics" };
     for (int i = 0; i < 3; i++) {
         int tx = c->origin_x + 20 + i * 100;
@@ -30,7 +30,7 @@ static void render_network(app_ctx_t* c) {
 
     int y = c->origin_y + 60;
     if (tab == 0) {
-        // Status
+
         comp_text(c->origin_x + 20, y, "Wi-Fi", t->text, t->win_body);
         wifi_on = w_toggle(c->origin_x + c->width - 70, y - 2, wifi_on, abs_mx, abs_my, c->clicked);
         y += 30;
@@ -39,13 +39,13 @@ static void render_network(app_ctx_t* c) {
         y += 40;
         w_separator(c->origin_x + 20, y, c->width - 40); y += 12;
 
-        // IP / MAC / Gateway / DNS
+
         const uint8_t* ip = dhcp_offered_ip();
         const uint8_t* gw = dhcp_gateway();
         const uint8_t* dn = dhcp_dns();
         const uint8_t* mac = net_mac();
         char buf[80];
-        // IP
+
         int p = 0;
         for (int i = 0; i < 4; i++) {
             int v = ip[i]; char tmp[4]; int n = 0;
@@ -57,7 +57,7 @@ static void render_network(app_ctx_t* c) {
         comp_text(c->origin_x + 20, y, "IP", t->text_dim, t->win_body);
         comp_text(c->origin_x + 120, y, buf, t->text, t->win_body); y += 24;
 
-        // GW
+
         p = 0;
         for (int i = 0; i < 4; i++) {
             int v = gw[i]; char tmp[4]; int n = 0;
@@ -69,7 +69,7 @@ static void render_network(app_ctx_t* c) {
         comp_text(c->origin_x + 20, y, "Gateway", t->text_dim, t->win_body);
         comp_text(c->origin_x + 120, y, buf, t->text, t->win_body); y += 24;
 
-        // DNS
+
         p = 0;
         for (int i = 0; i < 4; i++) {
             int v = dn[i]; char tmp[4]; int n = 0;
@@ -81,7 +81,7 @@ static void render_network(app_ctx_t* c) {
         comp_text(c->origin_x + 20, y, "DNS", t->text_dim, t->win_body);
         comp_text(c->origin_x + 120, y, buf, t->text, t->win_body); y += 24;
 
-        // MAC
+
         const char* hx = "0123456789ABCDEF";
         p = 0;
         for (int i = 0; i < 6; i++) {
@@ -91,7 +91,7 @@ static void render_network(app_ctx_t* c) {
         comp_text(c->origin_x + 20, y, "MAC", t->text_dim, t->win_body);
         comp_text(c->origin_x + 120, y, buf, t->text, t->win_body);
     } else if (tab == 1) {
-        // Wi-Fi (simulated networks)
+
         const char* nets[] = { "Vyro-Home", "OfficeWiFi", "GuestNet", "Phone Hotspot" };
         int sig[]    = { 90, 70, 50, 30 };
         for (int i = 0; i < 4; i++) {
@@ -106,7 +106,7 @@ static void render_network(app_ctx_t* c) {
                 notify_post("Wi-Fi", nets[i]);
         }
     } else {
-        // Diagnostics
+
         comp_text(c->origin_x + 20, y, "Active sockets:", t->text, t->win_body);
         char nbuf[8]; int sn = sock_count();
         if (sn == 0) nbuf[0] = '0', nbuf[1] = 0;
