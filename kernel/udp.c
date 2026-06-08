@@ -61,14 +61,11 @@ void udp_for_each_listener(udp_listener_iter_fn fn, void* user) {
     }
 }
 
-// RFC 768 / RFC 1071 — internet checksum over a synthetic pseudo header
-// (src IP, dst IP, zero, proto, udp_len) concatenated with the UDP header
-// + data. We sum in network byte order.
 uint16_t udp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
                       const uint8_t* udp_hdr_and_data, uint16_t udp_len) {
     uint32_t sum = 0;
 
-    // Pseudo header
+
     sum += ((uint32_t)src_ip[0] << 8) | src_ip[1];
     sum += ((uint32_t)src_ip[2] << 8) | src_ip[3];
     sum += ((uint32_t)dst_ip[0] << 8) | dst_ip[1];
@@ -76,7 +73,7 @@ uint16_t udp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
     sum += UDP_PROTO;
     sum += udp_len;
 
-    // UDP header + data
+
     const uint8_t* p = udp_hdr_and_data;
     uint16_t len = udp_len;
     while (len > 1) {
@@ -87,10 +84,9 @@ uint16_t udp_checksum(const uint8_t src_ip[4], const uint8_t dst_ip[4],
 
     while (sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
     uint16_t cs = (uint16_t)(~sum);
-    return cs ? cs : 0xFFFF;   // 0 means "not computed"; substitute 0xFFFF
+    return cs ? cs : 0xFFFF;
 }
 
-// Build Eth+IPv4+UDP into `frame`. Returns total length on wire.
 static int build_udp_frame(uint8_t* frame, uint16_t frame_max,
                            const uint8_t dst_mac[6], const uint8_t src_ip[4],
                            const uint8_t dst_ip[4],
@@ -125,7 +121,7 @@ static int build_udp_frame(uint8_t* frame, uint16_t frame_max,
     uint8_t* payload = frame + 14 + 20 + 8;
     for (uint16_t i = 0; i < len; i++) payload[i] = data[i];
 
-    // Compute checksum (optional for IPv4 UDP, but we set it for correctness)
+
     uint16_t cs = udp_checksum(src_ip, dst_ip, (const uint8_t*)udp, 8 + len);
     udp->checksum = htons(cs);
 
@@ -136,7 +132,7 @@ int udp_send_to(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port,
                 const uint8_t* data, uint16_t len) {
     uint8_t dst_mac[6];
     if (!arp_resolve(dst_ip, 500, dst_mac)) {
-        for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;   // fall back to broadcast
+        for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;
     }
     static uint8_t frame[1600];
     int total = build_udp_frame(frame, sizeof(frame), dst_mac, net_ip(), dst_ip,
@@ -159,7 +155,7 @@ int udp_send_bcast(uint16_t src_port, uint16_t dst_port,
 
 int udp_input(const uint8_t* frame, uint16_t len) {
     if (len < 14 + 20 + 8) return 0;
-    // Ethertype IPv4
+
     if (!(frame[12] == 0x08 && frame[13] == 0x00)) return 0;
     const ipv4_header_t* ip = (const ipv4_header_t*)(frame + 14);
     if ((ip->ver_ihl & 0xF0) != 0x40) return 0;
@@ -175,9 +171,9 @@ int udp_input(const uint8_t* frame, uint16_t len) {
     if (udp_len < 8) return 1;
     if (14 + ihl + udp_len > len) return 1;
 
-    // Note: UDP checksum on RX is intentionally not validated. RFC 768 allows
-    // checksum=0 (not computed). Validating against real-world senders adds risk
-    // without a corresponding correctness win for our use cases.
+
+
+
 
     for (int i = 0; i < UDP_PORT_TABLE_SIZE; i++) {
         if (!listeners[i].active) continue;
