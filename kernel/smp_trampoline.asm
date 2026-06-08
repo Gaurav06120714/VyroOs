@@ -1,9 +1,4 @@
-; SMP AP trampoline: 16-bit real → 32-bit protected → 64-bit long mode → C.
-; Copied to physical 0x8000 at runtime.
-;   BSP publishes:
-;     [0x9008] = PML4 phys
-;     [0x9010] = ap_main address (8 bytes)
-;     [0x9000] = AP-online byte counter (incremented atomically by AP)
+
 
 [BITS 16]
 [ORG 0x8000]
@@ -63,22 +58,16 @@ lm64_start:
 
     lock inc byte [0x9000]
 
-    ; Read LAPIC ID (MMIO at 0xFEE00020, ID in upper 8 bits)
     mov eax, [0xFEE00020]
-    shr eax, 24                          ; eax = apic id
+    shr eax, 24
 
-    ; Per-CPU stack: top = 0x200000 + (apic_id+1) * 0x10000 - 8
-    ; Base bumped from 0x100000 to 0x200000 so APIC ID 0 (if it ever runs the
-    ; trampoline on hardware with non-contiguous IDs) does not overlap the
-    ; PMM bitmap at 0x100000-0x102000.
-    mov ecx, eax                         ; save id
+    mov ecx, eax
     inc eax
     shl rax, 16
     add rax, 0x200000
     sub rax, 8
     mov rsp, rax
 
-    ; Call ap_main(apic_id) — first arg in EDI per System V ABI
     mov edi, ecx
     mov rax, [0x9010]
     call rax
