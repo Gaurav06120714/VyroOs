@@ -4,7 +4,6 @@
 static idt_entry_t    idt[IDT_ENTRIES];
 static idt_descriptor_t idt_desc;
 
-// External ISR stubs declared in isr_stubs.asm
 extern void isr0();  extern void isr1();  extern void isr2();
 extern void isr3();  extern void isr4();  extern void isr5();
 extern void isr6();  extern void isr7();  extern void isr8();
@@ -17,7 +16,6 @@ extern void isr24(); extern void isr25(); extern void isr26();
 extern void isr27(); extern void isr28(); extern void isr29();
 extern void isr30(); extern void isr31();
 
-// IRQ stubs (mapped to vectors 32-47)
 extern void irq0();  extern void irq1();  extern void irq2();
 extern void irq3();  extern void irq4();  extern void irq5();
 extern void irq6();  extern void irq7();  extern void irq8();
@@ -25,12 +23,9 @@ extern void irq9();  extern void irq10(); extern void irq11();
 extern void irq12(); extern void irq13(); extern void irq14();
 extern void irq15();
 
-// ─────────────────────────────────────────────────
-// idt_set_gate: install one entry into the IDT
-// ─────────────────────────────────────────────────
 void idt_set_gate(uint8_t vector, uint64_t handler, uint8_t type_attr) {
     idt[vector].offset_low  = handler & 0xFFFF;
-    idt[vector].selector    = 0x08;             // kernel code segment (new GDT)
+    idt[vector].selector    = 0x08;
     idt[vector].ist         = 0;
     idt[vector].type_attr   = type_attr;
     idt[vector].offset_mid  = (handler >> 16) & 0xFFFF;
@@ -38,11 +33,8 @@ void idt_set_gate(uint8_t vector, uint64_t handler, uint8_t type_attr) {
     idt[vector].reserved    = 0;
 }
 
-// ─────────────────────────────────────────────────
-// idt_init: wire up all ISR/IRQ stubs and load IDT
-// ─────────────────────────────────────────────────
 void idt_init() {
-    // CPU exception handlers (vectors 0-31)
+
     idt_set_gate(0,  (uint64_t)isr0,  IDT_INTERRUPT_GATE);
     idt_set_gate(1,  (uint64_t)isr1,  IDT_INTERRUPT_GATE);
     idt_set_gate(2,  (uint64_t)isr2,  IDT_INTERRUPT_GATE);
@@ -76,7 +68,7 @@ void idt_init() {
     idt_set_gate(30, (uint64_t)isr30, IDT_INTERRUPT_GATE);
     idt_set_gate(31, (uint64_t)isr31, IDT_INTERRUPT_GATE);
 
-    // Hardware IRQ handlers (vectors 32-47)
+
     idt_set_gate(32, (uint64_t)irq0,  IDT_INTERRUPT_GATE);
     idt_set_gate(33, (uint64_t)irq1,  IDT_INTERRUPT_GATE);
     idt_set_gate(34, (uint64_t)irq2,  IDT_INTERRUPT_GATE);
@@ -94,7 +86,7 @@ void idt_init() {
     idt_set_gate(46, (uint64_t)irq14, IDT_INTERRUPT_GATE);
     idt_set_gate(47, (uint64_t)irq15, IDT_INTERRUPT_GATE);
 
-    // Load IDT into CPU
+
     idt_desc.limit = (sizeof(idt_entry_t) * IDT_ENTRIES) - 1;
     idt_desc.base  = (uint64_t)&idt;
 
