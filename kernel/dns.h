@@ -3,7 +3,6 @@
 
 #include "../include/types.h"
 
-// DNS header
 typedef struct {
     uint16_t id;
     uint16_t flags;
