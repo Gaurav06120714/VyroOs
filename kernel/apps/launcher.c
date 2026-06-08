@@ -3,7 +3,6 @@
 #include "../theme.h"
 #include "../compositor.h"
 
-// app launch callback set by gui.c
 static void (*launch_cb)(const char*) = 0;
 void launcher_set_callback(void (*cb)(const char*)) { launch_cb = cb; }
 
