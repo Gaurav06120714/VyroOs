@@ -3,23 +3,19 @@
 
 #include "../include/types.h"
 
-// PIC I/O ports
-#define PIC1_COMMAND  0x20    // Master PIC command port
-#define PIC1_DATA     0x21    // Master PIC data port
-#define PIC2_COMMAND  0xA0    // Slave PIC command port
-#define PIC2_DATA     0xA1    // Slave PIC data port
+#define PIC1_COMMAND  0x20
+#define PIC1_DATA     0x21
+#define PIC2_COMMAND  0xA0
+#define PIC2_DATA     0xA1
 
-// PIC commands
-#define PIC_EOI       0x20    // End-of-interrupt command
+#define PIC_EOI       0x20
 
-// Remap offsets — IRQs 0-15 mapped to vectors 32-47
-#define PIC1_OFFSET   0x20    // Master: vectors 32-39
-#define PIC2_OFFSET   0x28    // Slave:  vectors 40-47
+#define PIC1_OFFSET   0x20
+#define PIC2_OFFSET   0x28
 
-// IRQ numbers (relative to their PIC)
 #define IRQ_TIMER     0
 #define IRQ_KEYBOARD  1
-#define IRQ_CASCADE   2       // Slave PIC connection
+#define IRQ_CASCADE   2
 #define IRQ_COM2      3
 #define IRQ_COM1      4
 #define IRQ_LPT2      5
@@ -36,7 +32,6 @@ void pic_send_eoi(uint8_t irq);
 void pic_mask_irq(uint8_t irq);
 void pic_unmask_irq(uint8_t irq);
 
-// Low-level port I/O
 static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -48,7 +43,7 @@ static inline uint8_t inb(uint16_t port) {
 }
 
 static inline void io_wait() {
-    outb(0x80, 0);  // Write to unused port — ~1-4 microsecond delay
+    outb(0x80, 0);
 }
 
 #endif
