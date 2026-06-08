@@ -13,6 +13,7 @@
 
 void fb_init(uint64_t lfb_addr);
 uint8_t fb_available(void);
+uint8_t fb_probe(void);      // vC.6.17: write-read pixel test to verify LFB is truly mapped
 void fb_clear(uint32_t color);
 void fb_putchar(uint32_t col, uint32_t row, char c, uint32_t fg, uint32_t bg);
 void fb_putpixel(uint32_t x, uint32_t y, uint32_t color);

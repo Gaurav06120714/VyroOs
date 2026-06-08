@@ -238,16 +238,34 @@ void kernel_main() {
     print_char('\n');
     print_color("  *** VYRO OS 2.0 - desktop edition ***\n",
                 MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    print_color("  Type 'gui' for the graphical desktop.\n\n",
-                MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
-
     __asm__ volatile("sti");
 
-    // vC.6.12: re-enable auto-GUI now that comp_revalidate() heals the
-    // backbuf each render frame. Falls back to shell if gui_run returns
-    // (ESC pressed or fb_available()==0).
-    shell_init();
+    // vC.6.17: verify the framebuffer is truly mapped before launching GUI.
+    // fb_probe() writes a pixel and reads it back — if the round-trip fails,
+    // re-read the LFB address the bootloader stored at 0x0500 and retry once.
+    // This covers the race where fb_init ran before the bootloader finished
+    // writing the address. If both attempts fail, fall through to shell with
+    // an honest message rather than silently dropping the user there.
     extern void gui_run();
-    gui_run();
+    if (!fb_available() || !fb_probe()) {
+        uint32_t lfb_retry = 0;
+        __asm__ volatile("movl (0x500), %0" : "=r"(lfb_retry));
+        if (lfb_retry) {
+            fb_init((uint64_t)lfb_retry);
+        }
+    }
+
+    shell_init();
+    if (fb_available() && fb_probe()) {
+        print_color("  Launching Vyro OS 2.0 desktop...\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+        gui_run();
+        // gui_run returns only on ESC or compositor failure — drop to shell
+        print_color("  Desktop exited. Shell mode.\n\n",
+                    MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+    } else {
+        print_color("  Framebuffer unavailable — shell mode. Type 'gui' to retry.\n\n",
+                    MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    }
     shell_run();
 }

@@ -27,6 +27,27 @@ uint8_t fb_available(void) {
 }
 
 // ─────────────────────────────────────────────────
+// fb_probe: write a known pixel to (0,0), read it
+// back, and return 1 if the round-trip matches.
+// Called after fb_init to confirm the LFB is truly
+// mapped and writable — not just that the address
+// is non-zero. A 0 at pixel (0,0) read back after
+// writing 0x00112233 means the pointer is bad.
+// ─────────────────────────────────────────────────
+uint8_t fb_probe(void) {
+    if (!fb_ready || !fb) return 0;
+    // Save original pixel
+    uint8_t orig0 = fb[0], orig1 = fb[1], orig2 = fb[2];
+    // Write a known canary
+    fb[0] = 0x33; fb[1] = 0x22; fb[2] = 0x11;
+    // Read it back
+    uint8_t ok = (fb[0] == 0x33 && fb[1] == 0x22 && fb[2] == 0x11);
+    // Restore original pixel
+    fb[0] = orig0; fb[1] = orig1; fb[2] = orig2;
+    return ok;
+}
+
+// ─────────────────────────────────────────────────
 // fb_putpixel: draw a single pixel at (x, y)
 // color is 0x00RRGGBB; stored as BGR in memory
 // ─────────────────────────────────────────────────
