@@ -4,7 +4,7 @@
 static notification_t notes[MAX_NOTIFICATIONS];
 static notification_t history[MAX_NOTIFICATIONS * 4];
 static int            hist_count = 0;
-#define LIFETIME_TICKS 400        // ~4 seconds at 100 Hz
+#define LIFETIME_TICKS 400
 
 static void scpy(char* d, const char* s, int max) {
     int i = 0; while (s[i] && i < max - 1) { d[i] = s[i]; i++; } d[i] = '\0';
@@ -17,7 +17,7 @@ void notify_post(const char* title, const char* body) {
             scpy(notes[i].body,  body,  sizeof(notes[i].body));
             notes[i].shown_at_tick = timer_ticks();
             notes[i].alive = 1;
-            // also save to history
+
             int hi = hist_count % (MAX_NOTIFICATIONS * 4);
             history[hi] = notes[i];
             hist_count++;
