@@ -12,7 +12,8 @@ with TLS, NVMe, and three product paths.
 | [v4.md](v4.md) | **v4.0** | Polish + glassmorphism + 7 real shipping bug fixes | ✅ Done |
 | [v5.md](v5.md) | **v5.0** | Real-hardware detection (AHCI, NVMe, E1000, xHCI, ACPI, USB image) | ✅ Done |
 | [v6.md](v6.md) | **v6.0** | Honest audit — 116 PM roadmap, 4 tracks | ✅ Done |
-| [v7.md](v7.md) | **v7.0–v7.3** | Tri-path pivot + 69 sub-tags + visible desktop | ✅ Done (current) |
+| [v7.md](v7.md) | **v7.0–v7.3** | Tri-path pivot + 69 sub-tags + visible desktop | ✅ Done |
+| [v8.md](v8.md) | **v8.0** | Bug sweep — all 5 open bugs closed, boot chime + mouse clicks restored | ✅ Done (current) |
 
 ## At a glance
 
@@ -25,13 +26,14 @@ with TLS, NVMe, and three product paths.
 | v5 | Real-hardware detection |
 | v6 | Honest audit + USB image |
 | v7 | Splits into 3 paths + you can run it and see the desktop |
+| v8 | All 5 open bugs closed; boot chime plays; mouse clicks work |
 
 ## Total
 
-- **7 major versions**
-- **149 git tags**
-- **~50,000 lines of code** added cumulatively
-- **20+ real shipping bugs** identified and fixed across versions
+- **8 major versions**
+- **155 git tags**
+- **~50,500 lines of code** added cumulatively
+- **25+ real shipping bugs** identified and fixed across versions
 
 For the full rule-by-rule compliance audit, see [`docs/RULZ_COMPLIANCE.md`](../docs/RULZ_COMPLIANCE.md).
 For the source rules that Vyro is measured against, see [`rulz/`](../rulz/).
