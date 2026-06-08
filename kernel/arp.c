@@ -33,7 +33,7 @@ static void cache_insert(const uint8_t ip[4], const uint8_t mac[6]) {
             if (m) { slot = i; break; }
         } else if (slot < 0) slot = i;
     }
-    if (slot < 0) slot = 0;   // evict first slot
+    if (slot < 0) slot = 0;
     for (int j = 0; j < 4; j++) cache[slot].ip[j]  = ip[j];
     for (int j = 0; j < 6; j++) cache[slot].mac[j] = mac[j];
     cache[slot].valid = 1;
@@ -52,7 +52,7 @@ static void send_arp_request(const uint8_t target_ip[4]) {
     a->ptype = htons(ETHERTYPE_IPV4);
     a->hlen  = 6;
     a->plen  = 4;
-    a->oper  = htons(1);                                         // request
+    a->oper  = htons(1);
     for (int i = 0; i < 6; i++) a->sha[i] = net_mac()[i];
     for (int i = 0; i < 4; i++) a->spa[i] = net_ip()[i];
     for (int i = 0; i < 6; i++) a->tha[i] = 0;
@@ -74,7 +74,7 @@ static void send_arp_reply(const uint8_t their_mac[6], const uint8_t their_ip[4]
     a->ptype = htons(ETHERTYPE_IPV4);
     a->hlen  = 6;
     a->plen  = 4;
-    a->oper  = htons(2);                                         // reply
+    a->oper  = htons(2);
     for (int i = 0; i < 6; i++) a->sha[i] = net_mac()[i];
     for (int i = 0; i < 4; i++) a->spa[i] = net_ip()[i];
     for (int i = 0; i < 6; i++) a->tha[i] = their_mac[i];
@@ -91,10 +91,10 @@ int arp_input(const uint8_t* frame, uint16_t len) {
     const arp_packet_t* a = (const arp_packet_t*)(frame + 14);
     if (ntohs(a->ptype) != ETHERTYPE_IPV4 || a->hlen != 6 || a->plen != 4) return 1;
 
-    // Learn the sender's IP→MAC mapping regardless of op
+
     cache_insert(a->spa, a->sha);
 
-    // If it's a request for our IP, reply
+
     if (ntohs(a->oper) == 1) {
         int for_us = 1;
         for (int i = 0; i < 4; i++) if (a->tpa[i] != net_ip()[i]) { for_us = 0; break; }
