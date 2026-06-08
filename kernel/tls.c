@@ -14,10 +14,6 @@ static uint32_t mini_strlen(const char* s) {
     uint32_t n = 0; while (s && s[n]) n++; return n;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// ClientHello builder
-// ─────────────────────────────────────────────────────────────────────
-
 static void put16(uint8_t* p, uint16_t v) { p[0] = v >> 8; p[1] = v & 0xff; }
 static void put24(uint8_t* p, uint32_t v) { p[0] = (v >> 16) & 0xff; p[1] = (v >> 8) & 0xff; p[2] = v & 0xff; }
 
@@ -29,45 +25,45 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
     if (out_max < 256) return -1;
     uint32_t p = 0;
 
-    // Reserve record header (5) and handshake header (4) — fill later
+
     if (out_max < 9) return -1;
     p = 9;
 
-    // ─── ClientHello body ───
-    // legacy_version
+
+
     out[p++] = 0x03; out[p++] = 0x03;
-    // random[32]
+
     for (int i = 0; i < 32; i++) out[p++] = client_random[i];
-    // legacy_session_id<0..32>
+
     out[p++] = 32;
     for (int i = 0; i < 32; i++) out[p++] = session_id[i];
-    // cipher_suites<2..2^16-2>
+
     out[p++] = 0x00; out[p++] = 0x02;
     put16(out + p, TLS_CIPHER_CHACHA20_POLY1305_SHA256); p += 2;
-    // legacy_compression_methods<1..2^8-1>
+
     out[p++] = 0x01; out[p++] = 0x00;
 
-    // ─── extensions<8..2^16-1> ───
+
     uint32_t ext_len_off = p;
     p += 2;
     uint32_t ext_start = p;
 
-    // supported_versions (43 = 0x002b): list = [0x0304]
-    put16(out + p, 0x002b); p += 2;
-    put16(out + p, 3);      p += 2;       // ext length
-    out[p++] = 2;                         // list length
-    put16(out + p, 0x0304); p += 2;       // TLS 1.3
 
-    // supported_groups (10 = 0x000a): list = [x25519]
+    put16(out + p, 0x002b); p += 2;
+    put16(out + p, 3);      p += 2;
+    out[p++] = 2;
+    put16(out + p, 0x0304); p += 2;
+
+
     put16(out + p, 0x000a); p += 2;
     put16(out + p, 4);      p += 2;
-    put16(out + p, 2);      p += 2;       // list length
+    put16(out + p, 2);      p += 2;
     put16(out + p, TLS_GROUP_X25519); p += 2;
 
-    // signature_algorithms (13 = 0x000d):
-    //   ecdsa_secp256r1_sha256 = 0x0403
-    //   rsa_pss_rsae_sha256    = 0x0804
-    //   rsa_pkcs1_sha256       = 0x0401
+
+
+
+
     put16(out + p, 0x000d); p += 2;
     put16(out + p, 8);      p += 2;
     put16(out + p, 6);      p += 2;
@@ -75,15 +71,15 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
     put16(out + p, 0x0804); p += 2;
     put16(out + p, 0x0401); p += 2;
 
-    // key_share (51 = 0x0033): x25519 32-byte pubkey
+
     put16(out + p, 0x0033); p += 2;
-    put16(out + p, 4 + 32 + 2); p += 2;          // ext length = client_shares list length(2)+entry(2+2+32)
-    put16(out + p, 32 + 4);     p += 2;          // list length
+    put16(out + p, 4 + 32 + 2); p += 2;
+    put16(out + p, 32 + 4);     p += 2;
     put16(out + p, TLS_GROUP_X25519); p += 2;
     put16(out + p, 32); p += 2;
     for (int i = 0; i < 32; i++) out[p++] = client_pub_x25519[i];
 
-    // server_name (0 = 0x0000) SNI, if hostname provided
+
     uint32_t hn = mini_strlen(hostname);
     if (hn > 0 && hn < 256) {
         put16(out + p, 0x0000); p += 2;
@@ -93,7 +89,7 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
         uint32_t ext_data_len = 2 + list_len;
         put16(out + p, (uint16_t)ext_data_len); p += 2;
         put16(out + p, (uint16_t)list_len);     p += 2;
-        out[p++] = 0;                                       // host_name
+        out[p++] = 0;
         put16(out + p, (uint16_t)name_len);     p += 2;
         for (uint32_t i = 0; i < name_len; i++) out[p++] = (uint8_t)hostname[i];
     }
@@ -101,29 +97,25 @@ int tls_build_client_hello(uint8_t* out, uint32_t out_max,
     uint32_t ext_data_total = p - ext_start;
     put16(out + ext_len_off, (uint16_t)ext_data_total);
 
-    // ─── Handshake header (4 bytes at offset 5) ───
+
     uint32_t hs_body_len = p - 9;
     out[5] = TLS_HS_CLIENT_HELLO;
     put24(out + 6, hs_body_len);
 
-    // ─── Record header (5 bytes at offset 0) ───
+
     uint32_t record_body_len = p - 5;
     out[0] = TLS_RECORD_HANDSHAKE;
-    out[1] = 0x03; out[2] = 0x03;            // legacy_record_version
+    out[1] = 0x03; out[2] = 0x03;
     put16(out + 3, (uint16_t)record_body_len);
 
     return (int)p;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// ServerHello parser — extracts the server's key_share X25519 pubkey.
-// Input is the handshake body (no record header, no handshake header).
-// ─────────────────────────────────────────────────────────────────────
 int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
                     uint8_t out_log[256]) {
     int step = 0;
     if (ch_record_len < 9) { out_log[0] = step; return 0; }
-    // Skip record(5) + handshake(4) header
+
     uint8_t client_random[32], client_sid[32], client_pub[32];
     uint8_t sid_len = 0; int chacha = 0;
     if (!tls_parse_client_hello(ch_record + 9, ch_record_len - 9,
@@ -136,14 +128,14 @@ int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
     if (!chacha) { out_log[0] = step; return 0; }
     step++;
 
-    // Generate server X25519 keypair
+
     uint8_t server_priv[32], server_pub[32];
     extern void csprng_bytes(uint8_t*, uint32_t);
     csprng_bytes(server_priv, 32);
     x25519_base(server_pub, server_priv);
     step++;
 
-    // Build ServerHello
+
     uint8_t server_random[32];
     csprng_bytes(server_random, 32);
     static uint8_t sh_buf[512];
@@ -152,10 +144,10 @@ int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
     if (sh_n < 0) { out_log[0] = step; return 0; }
     step++;
 
-    // Compute shared secret + key schedule
+
     uint8_t shared[32];
     x25519(shared, server_priv, client_pub);
-    // transcript_hash(CH||SH) — over handshake bodies (no record headers)
+
     static uint8_t transcript[2048];
     uint32_t tlen = 0;
     for (uint32_t i = 5; i < ch_record_len; i++) transcript[tlen++] = ch_record[i];
@@ -166,7 +158,7 @@ int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
     tls_derive_handshake_keys(shared, th, &keys);
     step++;
 
-    // Build Certificate message
+
     extern const uint8_t x509_testvec_der[406];
     static uint8_t cert_buf[1024];
     int cert_n = tls_build_certificate_msg(cert_buf, sizeof(cert_buf),
@@ -174,7 +166,7 @@ int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
     if (cert_n < 0) { out_log[0] = step; return 0; }
     step++;
 
-    // Append Cert to transcript, then build ServerFinished
+
     for (int i = 0; i < cert_n; i++) transcript[tlen++] = cert_buf[i];
     sha256(transcript, tlen, th);
     static uint8_t sf_buf[64];
@@ -188,18 +180,18 @@ int tls_server_demo(const uint8_t* ch_record, uint32_t ch_record_len,
 
 int tls_build_certificate_msg(uint8_t* out, uint32_t out_max,
                               const uint8_t* cert_der, uint32_t cert_der_len) {
-    // Body: request_context(1) + CertificateList(3) + (cert_data(3) + DER + ext(2))
+
     uint32_t body_len = 1 + 3 + 3 + cert_der_len + 2;
     uint32_t total    = 4 + body_len;
     if (total > out_max) return -1;
-    out[0] = 11;                       // handshake type = Certificate
+    out[0] = 11;
     put24(out + 1, body_len);
     uint32_t p = 4;
-    out[p++] = 0;                      // request_context length = 0
-    put24(out + p, 3 + cert_der_len + 2); p += 3;        // CertificateList length
-    put24(out + p, cert_der_len); p += 3;                 // cert_data length
+    out[p++] = 0;
+    put24(out + p, 3 + cert_der_len + 2); p += 3;
+    put24(out + p, cert_der_len); p += 3;
     for (uint32_t i = 0; i < cert_der_len; i++) out[p++] = cert_der[i];
-    out[p++] = 0; out[p++] = 0;        // extensions length = 0
+    out[p++] = 0; out[p++] = 0;
     return (int)p;
 }
 
@@ -210,7 +202,7 @@ int tls_build_server_finished(uint8_t* out, uint32_t out_max,
     uint8_t finished_key[32];
     tls13_hkdf_expand_label(server_hs_traffic_secret, "finished",
                             (const uint8_t*)"", 0, finished_key, 32);
-    out[0] = 20;                        // handshake type = Finished
+    out[0] = 20;
     out[1] = 0; out[2] = 0; out[3] = 32;
     hmac_sha256(finished_key, 32, transcript_hash, 32, out + 4);
     return 36;
@@ -221,26 +213,26 @@ int tls_build_server_hello(uint8_t* out, uint32_t out_max,
                            const uint8_t session_id[32], uint8_t sid_len,
                            const uint8_t server_pub_x25519[32]) {
     if (out_max < 200) return -1;
-    uint32_t p = 9;                              // reserve record(5) + hs(4)
-    // legacy_version 0x0303
+    uint32_t p = 9;
+
     out[p++] = 0x03; out[p++] = 0x03;
     for (int i = 0; i < 32; i++) out[p++] = server_random[i];
     out[p++] = sid_len;
     for (int i = 0; i < sid_len; i++) out[p++] = session_id[i];
-    // cipher_suite
+
     put16(out + p, TLS_CIPHER_CHACHA20_POLY1305_SHA256); p += 2;
-    out[p++] = 0x00;                             // compression_method=null
+    out[p++] = 0x00;
 
     uint32_t ext_off = p;
     p += 2;
     uint32_t ext_start = p;
 
-    // supported_versions selected: ext_type=0x002b, body=0x0304
+
     put16(out + p, 0x002b); p += 2;
     put16(out + p, 2);      p += 2;
     put16(out + p, 0x0304); p += 2;
 
-    // key_share selected: ext_type=0x0033, body = group(2) + key_len(2) + 32 bytes
+
     put16(out + p, 0x0033); p += 2;
     put16(out + p, 4 + 32); p += 2;
     put16(out + p, TLS_GROUP_X25519); p += 2;
@@ -260,7 +252,6 @@ int tls_build_server_hello(uint8_t* out, uint32_t out_max,
     return (int)p;
 }
 
-// Parse a ClientHello handshake body (caller skipped the 4-byte handshake header).
 int tls_parse_client_hello(const uint8_t* b, uint32_t n,
                            uint8_t client_pub[32],
                            uint8_t client_random[32],
@@ -268,14 +259,14 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
                            int* out_chacha_ok) {
     if (n < 40) return 0;
     uint32_t p = 0;
-    if (b[p++] != 0x03 || b[p++] != 0x03) return 0;       // legacy_version
+    if (b[p++] != 0x03 || b[p++] != 0x03) return 0;
     for (int i = 0; i < 32; i++) client_random[i] = b[p++];
     uint8_t sl = b[p++];
     if (p + sl > n) return 0;
     if (sid_len) *sid_len = sl;
     for (int i = 0; i < sl; i++) session_id[i] = b[p + i];
     p += sl;
-    // cipher_suites
+
     if (p + 2 > n) return 0;
     uint16_t cs_len = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
     if (p + cs_len > n) return 0;
@@ -287,12 +278,12 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
     p += cs_len;
     if (out_chacha_ok) *out_chacha_ok = chacha_ok;
     if (!chacha_ok) return 0;
-    // compression_methods
+
     if (p + 1 > n) return 0;
     uint8_t comp_len = b[p++];
     if (p + comp_len > n) return 0;
     p += comp_len;
-    // extensions
+
     if (p + 2 > n) return 0;
     uint16_t ext_total = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
     if (p + ext_total > n) return 0;
@@ -304,7 +295,7 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
         uint16_t et = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
         uint16_t el = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
         if (p + el > end) return 0;
-        if (et == 0x002b) {                                // supported_versions
+        if (et == 0x002b) {
             if (el < 1) return 0;
             uint8_t list_len = b[p];
             for (uint8_t i = 1; i + 1 < el; i += 2) {
@@ -312,10 +303,10 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
                 if (v == 0x0304) { tls13_offered = 1; break; }
             }
             (void)list_len;
-        } else if (et == 0x0033) {                          // key_share
+        } else if (et == 0x0033) {
             if (el < 2) return 0;
             uint16_t list_len = ((uint16_t)b[p] << 8) | b[p + 1];
-            if (2 + (uint32_t)list_len > el) return 0;       // bounds-check
+            if (2 + (uint32_t)list_len > el) return 0;
             uint32_t kp = 2;
             while (kp + 4 <= 2 + list_len && (uint16_t)kp < el) {
                 uint16_t group = ((uint16_t)b[p + kp] << 8) | b[p + kp + 1];
@@ -337,8 +328,8 @@ int tls_parse_client_hello(const uint8_t* b, uint32_t n,
 int tls_parse_server_hello(const uint8_t* b, uint32_t n, uint8_t server_pub[32]) {
     if (n < 38) return 0;
     uint32_t p = 0;
-    if (b[p++] != 0x03 || b[p++] != 0x03) return 0;          // legacy_version
-    p += 32;                                                  // random
+    if (b[p++] != 0x03 || b[p++] != 0x03) return 0;
+    p += 32;
     if (p >= n) return 0;
     uint8_t sid_len = b[p++];
     if (p + sid_len > n) return 0;
@@ -347,7 +338,7 @@ int tls_parse_server_hello(const uint8_t* b, uint32_t n, uint8_t server_pub[32])
     uint16_t cipher = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
     if (cipher != TLS_CIPHER_CHACHA20_POLY1305_SHA256) return 0;
     if (p + 1 > n) return 0;
-    if (b[p++] != 0x00) return 0;                            // legacy_compression_method
+    if (b[p++] != 0x00) return 0;
     if (p + 2 > n) return 0;
     uint16_t ext_total = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
     if (p + ext_total > n) return 0;
@@ -357,8 +348,8 @@ int tls_parse_server_hello(const uint8_t* b, uint32_t n, uint8_t server_pub[32])
         uint16_t ext_type = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
         uint16_t ext_len  = ((uint16_t)b[p] << 8) | b[p + 1]; p += 2;
         if (p + ext_len > end) return 0;
-        if (ext_type == 0x0033) {                            // key_share
-            // Format: group(2) | key_len(2) | key bytes
+        if (ext_type == 0x0033) {
+
             if (ext_len < 4) return 0;
             uint16_t group = ((uint16_t)b[p] << 8) | b[p + 1];
             uint16_t klen  = ((uint16_t)b[p + 2] << 8) | b[p + 3];
@@ -371,27 +362,24 @@ int tls_parse_server_hello(const uint8_t* b, uint32_t n, uint8_t server_pub[32])
     return 0;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// TLS 1.3 key schedule (RFC 8446 §7.1).
-// ─────────────────────────────────────────────────────────────────────
 void tls_derive_handshake_keys(const uint8_t shared_secret[32],
                                const uint8_t ch_sh_hash[32],
                                tls_handshake_keys_t* out) {
     uint8_t zero32[32];
     for (int i = 0; i < 32; i++) zero32[i] = 0;
 
-    // early_secret = HKDF-Extract(salt=0, IKM=0)
+
     uint8_t early_secret[32];
     hkdf_extract(zero32, 32, zero32, 32, early_secret);
 
-    // derived_early = Derive-Secret(early_secret, "derived", "")
+
     uint8_t derived_early[32];
     tls13_derive_secret(early_secret, "derived", (const uint8_t*)"", 0, derived_early);
 
-    // handshake_secret = HKDF-Extract(derived_early, shared_secret)
+
     hkdf_extract(derived_early, 32, shared_secret, 32, out->handshake_secret);
 
-    // c hs traffic / s hs traffic
+
     tls13_hkdf_expand_label(out->handshake_secret, "c hs traffic",
                             ch_sh_hash, 32,
                             out->client_hs_traffic_secret, 32);
@@ -399,7 +387,7 @@ void tls_derive_handshake_keys(const uint8_t shared_secret[32],
                             ch_sh_hash, 32,
                             out->server_hs_traffic_secret, 32);
 
-    // per-direction key/iv
+
     tls13_hkdf_expand_label(out->client_hs_traffic_secret, "key",
                             (const uint8_t*)"", 0, out->client_key, 32);
     tls13_hkdf_expand_label(out->client_hs_traffic_secret, "iv",
@@ -410,16 +398,13 @@ void tls_derive_handshake_keys(const uint8_t shared_secret[32],
                             (const uint8_t*)"", 0, out->server_iv, 12);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Selftest — RFC 8448 §3 (Simple 1-RTT Handshake) known values.
-// ─────────────────────────────────────────────────────────────────────
 static int bytes_eq(const uint8_t* a, const uint8_t* b, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) if (a[i] != b[i]) return 0;
     return 1;
 }
 
 int tls_selftest(void) {
-    // RFC 8448 §3 vectors
+
     const uint8_t client_priv[32] = {
         0x49,0xaf,0x42,0xba,0x7f,0x79,0x94,0x85,
         0x2d,0x71,0x3e,0xf2,0x78,0x4b,0xcb,0xca,
@@ -451,21 +436,21 @@ int tls_selftest(void) {
         0x21,0xa9,0xf0,0xca,0x04,0x3f,0xbe,0xac
     };
 
-    // Verify client_pub from client_priv (X25519 self-derive check).
+
     uint8_t cp[32], sp[32];
     x25519_base(cp, client_priv);
     if (!bytes_eq(cp, expected_client_pub, 32)) return 0;
 
-    // server pub
+
     x25519_base(sp, server_priv);
 
-    // shared
+
     uint8_t sh[32];
     x25519(sh, client_priv, sp);
     if (!bytes_eq(sh, expected_shared, 32)) return 0;
 
-    // Key schedule: feed the published transcript hash from RFC 8448 §3
-    //   transcript-hash(CH||SH) = "860c06edc07858ee8e78f0e7428c58edd6b43f2ca3e6e95f02ed063cf0e1cad8"
+
+
     const uint8_t ch_sh_hash[32] = {
         0x86,0x0c,0x06,0xed,0xc0,0x78,0x58,0xee,
         0x8e,0x78,0xf0,0xe7,0x42,0x8c,0x58,0xed,
@@ -476,8 +461,8 @@ int tls_selftest(void) {
     tls_derive_handshake_keys(sh, ch_sh_hash, &keys);
     if (!bytes_eq(keys.handshake_secret, expected_handshake_secret, 32)) return 0;
 
-    // ClientHello sanity: build one and verify the record/handshake headers
-    // and a sampling of the bytes (cipher suite, x25519 pubkey).
+
+
     static uint8_t ch[512];
     uint8_t random[32];
     for (int i = 0; i < 32; i++) random[i] = (uint8_t)(0xA0 + i);
@@ -487,7 +472,7 @@ int tls_selftest(void) {
     if (n < 60) return 0;
     if (ch[0] != TLS_RECORD_HANDSHAKE) return 0;
     if (ch[5] != TLS_HS_CLIENT_HELLO)  return 0;
-    // Round-trip: search for the pubkey bytes in the buffer; they must appear.
+
     int found = 0;
     for (int i = 0; i + 32 <= n && !found; i++) {
         if (bytes_eq(ch + i, expected_client_pub, 32)) found = 1;
@@ -496,10 +481,6 @@ int tls_selftest(void) {
 
     return 1;
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// TLS connect state machine (v3.11)
-// ─────────────────────────────────────────────────────────────────────
 
 static inline uint64_t rdtsc(void) {
     uint32_t lo, hi;
@@ -535,10 +516,9 @@ static int decrypt_record(const uint8_t* record5, uint8_t* body, uint32_t body_l
     return (int)ct_len;
 }
 
-// Case-insensitive label match with optional leftmost wildcard ("*.example.com").
 static int hostname_eq(const char* pat, const char* host) {
     if (!pat || !host) return 0;
-    // Wildcard: "*.foo" matches "any.foo" but not "a.b.foo" or "foo".
+
     if (pat[0] == '*' && pat[1] == '.') {
         const char* dot = host;
         while (*dot && *dot != '.') dot++;
@@ -566,8 +546,6 @@ static int hostname_matches_cert(const x509_cert_t* c, const char* host) {
 #define CHAIN_MAX  4
 #define CHAIN_DER_BUF_MAX 4096
 
-// Walk the cert chain we've just stashed. Returns 1 if every link verifies
-// AND the topmost cert is itself signed by a trust anchor in our store.
 static int walk_chain(uint8_t (*der_bufs)[CHAIN_DER_BUF_MAX],
                       uint32_t* der_lens,
                       x509_cert_t* certs, int n) {
@@ -576,7 +554,7 @@ static int walk_chain(uint8_t (*der_bufs)[CHAIN_DER_BUF_MAX],
         if (!x509_verify_signature(der_bufs[i], der_lens[i], &certs[i], &certs[i + 1]))
             return 0;
     }
-    // Top: search trust anchors for one whose subject CN matches issuer CN.
+
     const x509_cert_t* anchor = 0;
     if (!trust_find_by_subject_cn(certs[n - 1].issuer_cn, &anchor, 0, 0)) return 0;
     if (!x509_verify_signature(der_bufs[n - 1], der_lens[n - 1], &certs[n - 1], anchor))
@@ -584,12 +562,6 @@ static int walk_chain(uint8_t (*der_bufs)[CHAIN_DER_BUF_MAX],
     return 1;
 }
 
-// TLS 1.3 Certificate message body (RFC 8446 §4.4.2):
-//   opaque certificate_request_context<0..2^8-1>
-//   CertificateList certificate_list<0..2^24-1>
-// Each CertificateEntry:
-//   opaque cert_data<1..2^24-1>
-//   Extension extensions<0..2^16-1>
 static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_t n) {
     if (n < 4) return;
     uint32_t p = 0;
@@ -618,7 +590,7 @@ static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_
             return;
         }
         p += cert_len;
-        // skip extensions — bounds-check ext_len against the list, not just the 2-byte header
+
         if (p + 2 > list_end) return;
         uint16_t ext_len = ((uint16_t)body[p] << 8) | body[p+1];
         if (p + 2 + (uint32_t)ext_len > list_end) return;
@@ -634,13 +606,13 @@ static void process_certificate_msg(tls_ctx_t* ctx, const uint8_t* body, uint32_
     ctx->cert_sig_alg  = leaf->sig_alg;
     ctx->cert_pkey_alg = leaf->pkey_alg;
 
-    // Self-sign convenience check.
+
     if ((leaf->sig_alg == X509_SIG_SHA256_RSA && leaf->pkey_alg == X509_PKEY_RSA) ||
         (leaf->sig_alg == X509_SIG_ECDSA_SHA256 && leaf->pkey_alg == X509_PKEY_EC)) {
         ctx->cert_self_sign_ok =
             (uint8_t)x509_verify_signature(chain_der[0], chain_der_lens[0], leaf, leaf);
     }
-    // Chain validation against trust anchors.
+
     ctx->cert_chain_verified =
         (uint8_t)walk_chain(chain_der, chain_der_lens, chain_certs, chain_n);
 
@@ -679,7 +651,7 @@ static int process_handshake_payload(tls_ctx_t* ctx, const uint8_t* inner, uint3
             }
             return 1;
         }
-        // Inspect Certificate (handshake type 11).
+
         if (ht == 11) {
             process_certificate_msg(ctx, msg + 4, hl);
         }
@@ -720,7 +692,7 @@ static int process_one_record(tls_ctx_t* ctx) {
         ctx->server_seq = 0;
         ctx->state      = TLS_CS_SH_RECEIVED;
     } else if (type == TLS_RECORD_CCS) {
-        // ignore in TLS 1.3
+
     } else if (type == TLS_RECORD_APP_DATA && ctx->state == TLS_CS_SH_RECEIVED) {
         int plen = decrypt_record(header, body, body_len,
                                   ctx->keys.server_key, ctx->keys.server_iv,
@@ -750,7 +722,6 @@ done:
     return consumed_ok ? 1 : -1;
 }
 
-// Encrypt and send one application-data record using the provided key/iv/seq.
 static int send_encrypted_record(int tcp_id,
                                  const uint8_t key[32], const uint8_t iv[12],
                                  uint64_t seq,
@@ -758,7 +729,7 @@ static int send_encrypted_record(int tcp_id,
                                  const uint8_t* inner, uint32_t inner_len) {
     static uint8_t rec[2048];
     if (inner_len + 1 + 16 + 5 > sizeof(rec)) return -1;
-    uint32_t ct_len = inner_len + 1;        // payload || inner_type
+    uint32_t ct_len = inner_len + 1;
     uint32_t body_len = ct_len + 16;
     rec[0] = TLS_RECORD_APP_DATA;
     rec[1] = 0x03; rec[2] = 0x03;
@@ -776,12 +747,9 @@ static int send_encrypted_record(int tcp_id,
     return tcp_send(tcp_id, rec, (uint16_t)(5 + body_len));
 }
 
-// After the handshake completes (server Finished verified):
-//   1. Send client Finished (encrypted with c_hs_traffic key)
-//   2. Derive master secret + application traffic secrets/keys/IVs
 static void finalize_handshake(tls_ctx_t* ctx) {
-    // Client Finished MAC. transcript currently covers up to and including
-    // server Finished, which is what RFC 8446 §4.4.4 specifies.
+
+
     uint8_t th[32];
     sha256(ctx->transcript, ctx->transcript_len, th);
     uint8_t cfk[32];
@@ -789,7 +757,7 @@ static void finalize_handshake(tls_ctx_t* ctx) {
                             (const uint8_t*)"", 0, cfk, 32);
     uint8_t cfin_body[32];
     hmac_sha256(cfk, 32, th, 32, cfin_body);
-    // Build the handshake message: type=20, len=32, body
+
     uint8_t cfin_msg[4 + 32];
     cfin_msg[0] = 20; cfin_msg[1] = 0; cfin_msg[2] = 0; cfin_msg[3] = 32;
     for (int i = 0; i < 32; i++) cfin_msg[4 + i] = cfin_body[i];
@@ -799,18 +767,18 @@ static void finalize_handshake(tls_ctx_t* ctx) {
                           ctx->client_seq++,
                           TLS_RECORD_HANDSHAKE, cfin_msg, sizeof(cfin_msg));
 
-    // Now derive master secret and app traffic secrets.
-    // derived_handshake = Derive-Secret(handshake_secret, "derived", "")
+
+
     uint8_t derived_hs[32];
     tls13_derive_secret(ctx->keys.handshake_secret, "derived",
                         (const uint8_t*)"", 0, derived_hs);
-    // master_secret = HKDF-Extract(derived_hs, 0^32)
+
     uint8_t zero32[32]; for (int i = 0; i < 32; i++) zero32[i] = 0;
     uint8_t master[32];
     hkdf_extract(derived_hs, 32, zero32, 32, master);
 
-    // Transcript hash AT server Finished is the context for application keys.
-    // (RFC 8446 §7.1: c_ap_traffic = Derive-Secret(Master, "c ap traffic", CH..server_Finished))
+
+
     uint8_t ap_hash[32];
     sha256(ctx->transcript, ctx->transcript_len, ap_hash);
 
@@ -844,7 +812,7 @@ int tls_recv(tls_ctx_t* ctx, uint8_t* out, uint32_t max, uint32_t timeout_ms) {
             int n = tcp_recv(ctx->tcp_id, ctx->rx_buf + ctx->rx_len, (uint16_t)free_space);
             if (n > 0) ctx->rx_len += (uint32_t)n;
         }
-        // Drain complete records.
+
         while (ctx->rx_len >= 5) {
             uint16_t body_len = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
             uint32_t total = 5u + body_len;
@@ -869,7 +837,7 @@ int tls_recv(tls_ctx_t* ctx, uint8_t* out, uint32_t max, uint32_t timeout_ms) {
                             for (uint32_t i = 0; i < take; i++) out[got + i] = body[i];
                             got += take;
                         } else if (inner_t == TLS_RECORD_ALERT) {
-                            // Close-notify or fatal — stop reading.
+
                             uint32_t remain = ctx->rx_len - total;
                             for (uint32_t i = 0; i < remain; i++) ctx->rx_buf[i] = ctx->rx_buf[total + i];
                             ctx->rx_len = remain;
@@ -891,7 +859,7 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
     ctx->tcp_id = tcp_id;
     extern const uint8_t x509_testvec_der[406];
 
-    // 1. Read ClientHello record off TCP.
+
     uint64_t deadline = timer_uptime_ms() + timeout_ms;
     while (timer_uptime_ms() < deadline && ctx->rx_len < 5) {
         net_pump_run(50);
@@ -917,21 +885,21 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
         ctx->state = TLS_CS_ERROR; return 0;
     }
 
-    // 2. Generate server X25519 + random.
+
     extern void csprng_bytes(uint8_t*, uint32_t);
     uint8_t server_priv[32], server_pub[32], server_random[32];
     csprng_bytes(server_priv, 32);
     csprng_bytes(server_random, 32);
     x25519_base(server_pub, server_priv);
 
-    // 3. Build + send ServerHello (plaintext).
+
     static uint8_t sh_buf[512];
     int sh_n = tls_build_server_hello(sh_buf, sizeof(sh_buf),
                                       server_random, sid, sl, server_pub);
     if (sh_n < 0) { ctx->state = TLS_CS_ERROR; return 0; }
     tcp_send(tcp_id, sh_buf, (uint16_t)sh_n);
 
-    // 4. Compute keys.
+
     uint8_t shared[32];
     x25519(shared, server_priv, client_pub);
     for (uint32_t i = 0; i < ch_body - 4; i++) ctx->transcript[ctx->transcript_len++] = ctx->rx_buf[9 + i];
@@ -940,34 +908,34 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
     sha256(ctx->transcript, ctx->transcript_len, th);
     tls_derive_handshake_keys(shared, th, &ctx->keys);
 
-    // 5. Send encrypted EncryptedExtensions (empty) + Certificate + ServerFinished
-    //    bundled into a single application_data record.
-    uint8_t ee[6] = { 8, 0, 0, 2, 0, 0 };               // EE: type=8, body_len=2, ext_len=0
+
+
+    uint8_t ee[6] = { 8, 0, 0, 2, 0, 0 };
     static uint8_t cert_buf[1024];
     int cert_n = tls_build_certificate_msg(cert_buf, sizeof(cert_buf),
                                             x509_testvec_der, 406);
     if (cert_n < 0) { ctx->state = TLS_CS_ERROR; return 0; }
-    // Append EE+Cert to transcript for Finished hash
+
     for (int i = 0; i < 6; i++)      ctx->transcript[ctx->transcript_len++] = ee[i];
     for (int i = 0; i < cert_n; i++) ctx->transcript[ctx->transcript_len++] = cert_buf[i];
     sha256(ctx->transcript, ctx->transcript_len, th);
     static uint8_t sf_buf[64];
     tls_build_server_finished(sf_buf, sizeof(sf_buf),
                               ctx->keys.server_hs_traffic_secret, th);
-    // Concatenate inner = EE | Cert | ServerFinished
+
     static uint8_t inner[2048];
     uint32_t ip = 0;
     for (int i = 0; i < 6; i++)       inner[ip++] = ee[i];
     for (int i = 0; i < cert_n; i++)  inner[ip++] = cert_buf[i];
     for (int i = 0; i < 36; i++)      inner[ip++] = sf_buf[i];
-    // Server sequence 0 for encrypted handshake records
+
     send_encrypted_record(tcp_id, ctx->keys.server_key, ctx->keys.server_iv,
                           0, TLS_RECORD_HANDSHAKE, inner, ip);
-    // Update transcript with SF (already there) — we leave it for client Finished verify.
 
-    // 6. Wait for client Finished encrypted with c_hs_traffic. Decrypt with
-    //    client_key/iv (seq=0) and verify the 32-byte HMAC against the
-    //    transcript hash up to and including ServerFinished.
+
+
+
+
     for (int i = 0; i < 36; i++)      ctx->transcript[ctx->transcript_len++] = sf_buf[i];
     uint8_t expected_hash[32];
     sha256(ctx->transcript, ctx->transcript_len, expected_hash);
@@ -977,8 +945,8 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
     uint8_t expected_cf[32];
     hmac_sha256(client_finished_key, 32, expected_hash, 32, expected_cf);
 
-    // Drain incoming bytes until we have a complete application_data record.
-    ctx->rx_len = 0;       // discard anything left from CH read
+
+    ctx->rx_len = 0;
     while (timer_uptime_ms() < deadline) {
         net_pump_run(50);
         int n = tcp_recv(tcp_id, ctx->rx_buf + ctx->rx_len,
@@ -988,17 +956,17 @@ int tls_accept(tls_ctx_t* ctx, int tcp_id, uint32_t timeout_ms) {
         uint16_t blen = ((uint16_t)ctx->rx_buf[3] << 8) | ctx->rx_buf[4];
         if (ctx->rx_len < 5u + blen) continue;
         if (ctx->rx_buf[0] != TLS_RECORD_APP_DATA) { ctx->state = TLS_CS_ERROR; return 0; }
-        // Decrypt with client_key/iv seq=0
+
         int plen = decrypt_record(ctx->rx_buf, ctx->rx_buf + 5, blen,
                                   ctx->keys.client_key, ctx->keys.client_iv, 0);
         if (plen < 0) { ctx->state = TLS_CS_ERROR; return 0; }
-        // Strip trailing zeros + content type
+
         int last = plen - 1;
         while (last >= 0 && ctx->rx_buf[5 + last] == 0) last--;
         if (last < 0 || ctx->rx_buf[5 + last] != TLS_RECORD_HANDSHAKE) {
             ctx->state = TLS_CS_ERROR; return 0;
         }
-        // Inner handshake: type(1)=Finished, length(3)=32, body(32)
+
         const uint8_t* inner_msg = ctx->rx_buf + 5;
         if (last < 4 + 32) { ctx->state = TLS_CS_ERROR; return 0; }
         if (inner_msg[0] != 20) { ctx->state = TLS_CS_ERROR; return 0; }
