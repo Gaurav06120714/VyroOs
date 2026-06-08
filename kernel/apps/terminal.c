@@ -50,23 +50,23 @@ static void render_terminal(app_ctx_t* c) {
         initted = 1;
     }
     const theme_t* t = theme();
-    // Dark terminal background regardless of theme
+
     comp_rect(c->origin_x, c->origin_y, c->width, c->height, 0x0F1018);
 
     for (int i = 0; i < line_count; i++) {
         comp_text_bg_alpha(c->origin_x + 8, c->origin_y + 8 + i * 18,
                            buffer[i], 0xA0FF90);
     }
-    // Input line
+
     int iy = c->origin_y + 8 + line_count * 18;
     if (iy < c->origin_y + c->height - 22) {
         comp_text_bg_alpha(c->origin_x + 8, iy, "> ", t->accent_hi);
         comp_text_bg_alpha(c->origin_x + 24, iy, input_buf, 0xFFFFFF);
-        // blinking caret (always on for simplicity)
+
         int cx = c->origin_x + 24 + input_len * 8;
         comp_rect(cx, iy, 8, 16, 0xFFFFFF);
     }
-    // handle input key
+
     if (c->key) {
         if (c->key == '\n') { run_command(input_buf); input_len = 0; input_buf[0] = 0; }
         else if (c->key == '\b') { if (input_len > 0) input_buf[--input_len] = 0; }
