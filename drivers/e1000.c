@@ -6,22 +6,20 @@ static e1000_info_t info;
 static inline uint32_t mmio_r32(uint64_t addr) { return *(volatile uint32_t*)addr; }
 static inline void     mmio_w32(uint64_t addr, uint32_t v) { *(volatile uint32_t*)addr = v; }
 
-// Known Intel Gigabit Ethernet device IDs that share enough of the 8254x
-// programming model to be probed identically.
 static int is_intel_eth(uint16_t did) {
     static const uint16_t ids[] = {
-        0x100E,   // 82540EM (QEMU default e1000, also VirtualBox)
-        0x100F,   // 82545EM
-        0x10D3,   // 82574L (laptop)
-        0x10EA,   // 82577LM
-        0x153A,   // I217-LM
-        0x153B,   // I217-V
-        0x15A2,   // I218-LM
-        0x15B7,   // I219-LM
-        0x15B8,   // I219-V
-        0x15D7,   // I219-LM (2)
-        0x15F2,   // I225-LM (2.5G)
-        0x1533    // I210
+        0x100E,
+        0x100F,
+        0x10D3,
+        0x10EA,
+        0x153A,
+        0x153B,
+        0x15A2,
+        0x15B7,
+        0x15B8,
+        0x15D7,
+        0x15F2,
+        0x1533
     };
     for (uint32_t i = 0; i < sizeof(ids)/sizeof(ids[0]); i++)
         if (ids[i] == did) return 1;
@@ -42,7 +40,7 @@ int e1000_init(void) {
     }
     if (!info.mmio_base) return 0;
 
-    // Read MAC from RAL/RAH
+
     uint32_t lo = mmio_r32(info.mmio_base + E1000_REG_RAL);
     uint32_t hi = mmio_r32(info.mmio_base + E1000_REG_RAH);
     info.mac[0] = (lo      ) & 0xFF;
