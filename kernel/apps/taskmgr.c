@@ -15,7 +15,7 @@ static void render_taskmgr(app_ctx_t* c) {
     w_label_color(x, y, "System Monitor", t->accent_hi); y += 24;
     w_separator(x, y, c->width - 32); y += 12;
 
-    // CPU
+
     w_label(x, y, "CPU"); y += 18;
     int cores = cpu_count();
     for (int i = 0; i < cores && i < 8; i++) {
@@ -27,7 +27,7 @@ static void render_taskmgr(app_ctx_t* c) {
     }
     y += 4; w_separator(x, y, c->width - 32); y += 12;
 
-    // Memory
+
     w_label(x, y, "Memory"); y += 18;
     uint32_t used_pages = pmm_used_pages();
     uint32_t tot_pages  = pmm_total_pages();
@@ -42,7 +42,7 @@ static void render_taskmgr(app_ctx_t* c) {
     y += 24;
     w_separator(x, y, c->width - 32); y += 12;
 
-    // Processes
+
     w_label(x, y, "Processes"); y += 20;
     w_label_dim(x + 8, y, "1  kernel/shell   (RUNNING)"); y += 18;
     w_label_dim(x + 8, y, "2  compositor     (RUNNING)"); y += 18;
