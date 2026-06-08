@@ -3,28 +3,13 @@
 #include "../drivers/framebuffer.h"
 #include "../drivers/screen.h"
 
-// Back buffer: 1024 * 768 * 3 = 2.36 MB.
-// vC.6.12.3: parked at a FIXED PHYSICAL ADDRESS (16 MB) and the pointer
-// is declared static const so it lives in .rodata — the bytes inside
-// the .rodata can never be written from C, so the OOB BSS writer that
-// kept corrupting backbuf to -1 cannot touch the pointer itself. The
-// 2.36 MB at 0x1000000 sits ABOVE the kernel heap (0x500000-0xD00000)
-// and is identity-mapped by the bootloader's 0-4GB page tables, so we
-// can write pixels into it freely without going through kmalloc.
 #define BACKBUF_PHYS 0x1000000UL
 static uint8_t* const backbuf = (uint8_t*)BACKBUF_PHYS;
 static uint8_t* font    = (uint8_t*)0x80000;
 
-// vC.6.14: BSS canary instrumentation.
-// Two 64-bit sentinels sit in BSS immediately before and after an 8-byte
-// guard zone that straddles the region other globals occupy. If any OOB
-// write that previously corrupted backbuf also walks through these sentinels
-// we will catch the frame it happens and print the corrupted value so the
-// guilty writer can be identified. The canary value 0xDEADC0DEDEADC0DE
-// is chosen to be obviously synthetic — any other value means corruption.
 #define CANARY_VAL  0xDEADC0DEDEADC0DEULL
 static volatile uint64_t canary_before = CANARY_VAL;
-static volatile uint8_t  canary_pad[8];   // guard zone between canaries
+static volatile uint8_t  canary_pad[8];
 static volatile uint64_t canary_after  = CANARY_VAL;
 static int canary_tripped = 0;
 
@@ -32,28 +17,21 @@ static int canary_tripped = 0;
 #define BB_H  FB_HEIGHT
 #define BB_PITCH (BB_W * 3)
 
-// ─────────────────────────────────────────────────
-// Initialize the back buffer
-// ─────────────────────────────────────────────────
 int comp_init() {
-    // vC.6.12.3: backbuf is a fixed-address const pointer now — nothing
-    // to allocate, just confirm the address is non-zero (compile-time
-    // guarantee, but kept for sanity).
+
+
+
     return backbuf != 0;
 }
 
 void comp_revalidate(void) {
-    // No-op now — the pointer is const, can't be corrupted.
+
 }
 
-// vC.6.14: check both BSS canaries and return 0 if either was stomped.
 int comp_canary_ok(void) {
     return (canary_before == CANARY_VAL) && (canary_after == CANARY_VAL);
 }
 
-// vC.6.14: dump canary state to the VGA text console.
-// Called once when a trip is first detected so the bad value (and which
-// sentinel was hit) is visible even if the GUI render loop crashes next.
 void comp_canary_dump(void) {
     if (!canary_tripped) {
         print_color("[CANARY] BSS sentinel corruption detected!\n",
@@ -66,7 +44,7 @@ void comp_canary_dump(void) {
             print_color("[CANARY] canary_AFTER stomped — OOB write above compositor globals\n",
                         MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
         }
-        // Reset sentinels so we can detect subsequent frames independently
+
         canary_before = CANARY_VAL;
         canary_after  = CANARY_VAL;
         canary_tripped = 1;
@@ -76,21 +54,10 @@ void comp_canary_dump(void) {
 uint32_t comp_width()  { return BB_W; }
 uint32_t comp_height() { return BB_H; }
 
-// ─────────────────────────────────────────────────
-// Pixel ops on the back buffer
-// ─────────────────────────────────────────────────
-// vC.6.11.1: validate backbuf is in the kernel heap range. CR2 capture
-// in vC.6.11.0 revealed that something was corrupting the backbuf
-// pointer to 0xFFFFFFFFFFFFFFFF — same value an int -1 sign-extends to
-// when read as a pointer. The corruption source is still unknown
-// (probably an out-of-bounds write nearby in BSS), but rejecting any
-// backbuf outside the heap range [HEAP_START, HEAP_START+HEAP_SIZE]
-// stops the kernel taking a page fault and lets the GUI render-loop
-// keep going (it just paints nothing that frame, which is acceptable).
 static inline int backbuf_sane(void) {
-    // vC.6.12.3: backbuf is a const-pointer at a fixed physical address,
-    // always sane. Keeping the function so call-sites don't need to
-    // change shape.
+
+
+
     return 1;
 }
 
@@ -129,19 +96,18 @@ void comp_border(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
     for (uint32_t j = 0; j < h; j++) { put(x, y+j, color); put(x+w-1, y+j, color); }
 }
 
-// Drop shadow: a darker rectangle offset down-right behind the window
 void comp_shadow(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
     for (uint32_t off = 1; off <= 5; off++) {
-        // Fade alpha by darkening the color toward black
+
         uint8_t r = (color >> 16) & 0xFF, g = (color >> 8) & 0xFF, b = color & 0xFF;
-        uint32_t fade = (6 - off);            // 5..1
+        uint32_t fade = (6 - off);
         r = (uint8_t)(r * fade / 12);
         g = (uint8_t)(g * fade / 12);
         b = (uint8_t)(b * fade / 12);
         uint32_t c = (r << 16) | (g << 8) | b;
-        // Right edge
+
         for (uint32_t j = 0; j < h; j++) put(x + w + off - 1, y + off + j, c);
-        // Bottom edge
+
         for (uint32_t i = 0; i < w; i++) put(x + off + i, y + h + off - 1, c);
     }
 }
@@ -160,7 +126,6 @@ void comp_text(uint32_t px, uint32_t py, const char* s, uint32_t fg, uint32_t bg
     for (int i = 0; s[i]; i++) { comp_glyph(x, py, s[i], fg, bg); x += 8; }
 }
 
-// Text where background = whatever's already there (no bg fill)
 void comp_text_bg_alpha(uint32_t px, uint32_t py, const char* s, uint32_t fg) {
     uint32_t x = px;
     for (int i = 0; s[i]; i++) {
@@ -179,7 +144,7 @@ void comp_gradient_v(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
     int tr = (top >> 16) & 0xFF, tg = (top >> 8) & 0xFF, tb = top & 0xFF;
     int br = (bottom >> 16) & 0xFF, bg = (bottom >> 8) & 0xFF, bb = bottom & 0xFF;
     for (uint32_t j = 0; j < h; j++) {
-        // signed math so negative deltas work (e.g. bright→dark)
+
         int r = tr + (br - tr) * (int)j / (int)h;
         int g = tg + (bg - tg) * (int)j / (int)h;
         int b = tb + (bb - tb) * (int)j / (int)h;
@@ -188,10 +153,6 @@ void comp_gradient_v(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
         for (uint32_t i = 0; i < w; i++) put(x + i, y + j, c);
     }
 }
-
-// ─────────────────────────────────────────────────
-// Glassmorphism primitives (v3.15)
-// ─────────────────────────────────────────────────
 
 static inline void get_bgr(uint32_t x, uint32_t y, uint8_t out[3]) {
     if (x >= BB_W || y >= BB_H || !backbuf_sane()) { out[0]=out[1]=out[2]=0; return; }
@@ -215,7 +176,7 @@ void comp_blur_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint8_t pass
     if (y + h > BB_H) h = BB_H - y;
 
     for (uint8_t pass = 0; pass < passes; pass++) {
-        // 3-tap horizontal then vertical box blur.
+
         for (uint32_t yy = y; yy < y + h; yy++) {
             for (uint32_t xx = x + 1; xx + 1 < x + w; xx++) {
                 uint8_t a[3], b[3], c[3];
@@ -290,9 +251,9 @@ void comp_rounded_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
                       uint32_t tint, uint8_t opacity, uint32_t border_radius,
                       uint32_t border_color) {
-    // 1. Blur the area underneath
+
     comp_blur_rect(x, y, w, h, 2);
-    // 2. Tint with a semi-transparent color over the blur
+
     uint8_t tb = tint & 0xFF, tg = (tint >> 8) & 0xFF, tr = (tint >> 16) & 0xFF;
     uint32_t inv = 255 - opacity;
     for (uint32_t yy = 0; yy < h; yy++) {
@@ -306,7 +267,7 @@ void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
                     (uint8_t)((cur[2] * inv + tr * opacity) / 255));
         }
     }
-    // 3. Subtle border highlight along the rounded edge
+
     uint8_t bb = border_color & 0xFF;
     uint8_t bg = (border_color >> 8) & 0xFF;
     uint8_t br = (border_color >> 16) & 0xFF;
@@ -320,20 +281,16 @@ void comp_glass_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
     }
 }
 
-// ─────────────────────────────────────────────────
-// comp_present: blit the back buffer to the actual framebuffer.
-// One pass; the framebuffer is also BGR 24bpp so memcpy-equivalent.
-// ─────────────────────────────────────────────────
 extern uint8_t fb_available(void);
 void comp_present() {
     if (!fb_available()) return;
-    // vC.6.12.2: heal AT the blit so even if backbuf got corrupted during
-    // the render pass, we have a valid pointer for the present.
+
+
     comp_revalidate();
     if (!backbuf_sane()) return;
-    // We don't have direct fb pointer access — copy pixel by pixel.
-    // This is the one place that matters for performance; for now,
-    // straight-line copy is fine on QEMU.
+
+
+
     for (uint32_t y = 0; y < BB_H; y++) {
         for (uint32_t x = 0; x < BB_W; x++) {
             uint32_t off = y * BB_PITCH + x * 3;
