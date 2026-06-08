@@ -19,7 +19,7 @@ void hal_cpu_detect(hal_cpu_info_t* info) {
     for (uint32_t i = 0; i < sizeof(*info); i++) ((uint8_t*)info)[i] = 0;
     uint32_t a, b, c, d;
 
-    // Leaf 0: max basic leaf + vendor string in EBX/EDX/ECX
+
     cpuid(0, 0, &a, &b, &c, &d);
     uint32_t max_basic = a;
     for (int i = 0; i < 4; i++) info->vendor[0 + i] = (char)(b >> (i * 8));
@@ -27,7 +27,7 @@ void hal_cpu_detect(hal_cpu_info_t* info) {
     for (int i = 0; i < 4; i++) info->vendor[8 + i] = (char)(c >> (i * 8));
     info->vendor[12] = 0;
 
-    // Leaf 1: family/model/stepping + flags
+
     if (max_basic >= 1) {
         cpuid(1, 0, &a, &b, &c, &d);
         info->stepping = a & 0xF;
@@ -50,7 +50,7 @@ void hal_cpu_detect(hal_cpu_info_t* info) {
         info->has_rdseed = (b >> 18) & 1;
     }
 
-    // Extended leaves 0x80000002..04: 48-byte brand string
+
     cpuid(0x80000000, 0, &a, &b, &c, &d);
     if (a >= 0x80000004) {
         for (int leaf = 0; leaf < 3; leaf++) {
@@ -65,7 +65,6 @@ void hal_cpu_detect(hal_cpu_info_t* info) {
     }
 }
 
-// Memory map and MMU left to dedicated modules (e820, pmm). Stub here.
 uint32_t hal_memory_map(hal_mem_range_t* out, uint32_t max) {
     (void)out; (void)max; return 0;
 }
