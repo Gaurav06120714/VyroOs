@@ -1,11 +1,10 @@
 #include "pci.h"
-#include "../drivers/pic.h"   // outb/inb + 32-bit port helpers below
+#include "../drivers/pic.h"
 
 #define MAX_PCI_DEVICES 32
 static pci_device_t devices[MAX_PCI_DEVICES];
 static uint32_t     device_count = 0;
 
-// 32-bit port I/O (PCI config uses dwords)
 static inline void outl(uint16_t port, uint32_t val) {
     __asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -15,9 +14,6 @@ static inline uint32_t inl(uint16_t port) {
     return ret;
 }
 
-// ─────────────────────────────────────────────────
-// pci_config_read: read a dword from PCI config space
-// ─────────────────────────────────────────────────
 uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
     uint32_t address = (uint32_t)((bus << 16) | (slot << 11) | (func << 8) |
                                   (offset & 0xFC) | 0x80000000);
@@ -25,9 +21,6 @@ uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset
     return inl(PCI_CONFIG_DATA);
 }
 
-// ─────────────────────────────────────────────────
-// pci_scan: enumerate all PCI buses/slots/functions
-// ─────────────────────────────────────────────────
 void pci_scan() {
     device_count = 0;
 
@@ -36,7 +29,7 @@ void pci_scan() {
             for (uint8_t func = 0; func < 8; func++) {
                 uint32_t reg0 = pci_config_read((uint8_t)bus, slot, func, 0x00);
                 uint16_t vendor = reg0 & 0xFFFF;
-                if (vendor == 0xFFFF) continue;   // no device
+                if (vendor == 0xFFFF) continue;
 
                 if (device_count >= MAX_PCI_DEVICES) return;
 
@@ -57,10 +50,10 @@ void pci_scan() {
                 d->irq_line   = regF & 0xFF;
                 d->valid      = 1;
 
-                // Only check func 0 for non-multifunction devices
+
                 if (func == 0) {
                     uint32_t header = pci_config_read((uint8_t)bus, slot, 0, 0x0C);
-                    if (!((header >> 16) & 0x80)) break;  // not multifunction
+                    if (!((header >> 16) & 0x80)) break;
                 }
             }
         }
@@ -74,9 +67,6 @@ pci_device_t* pci_get_device(uint32_t index) {
     return &devices[index];
 }
 
-// ─────────────────────────────────────────────────
-// pci_find_network: find a network controller (class 0x02)
-// ─────────────────────────────────────────────────
 pci_device_t* pci_find_network() {
     for (uint32_t i = 0; i < device_count; i++) {
         if (devices[i].class_id == 0x02) return &devices[i];
