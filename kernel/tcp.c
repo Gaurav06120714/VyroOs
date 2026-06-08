@@ -9,11 +9,11 @@
 #define TCP_MSS        536
 #define SYN_RETRY_MAX  3
 #define TCP_BUF_SIZE        1024
-#define TCP_DATA_RTO_MS     1000     // initial RTO before any RTT sample
+#define TCP_DATA_RTO_MS     1000
 #define TCP_RTO_MIN_MS       200
 #define TCP_RTO_MAX_MS      5000
 #define TCP_DUP_ACK_THRESH     3
-#define TCP_INIT_SSTHRESH  65535     // initial ssthresh per RFC 5681
+#define TCP_INIT_SSTHRESH  65535
 
 #define TCP_FIN  0x01
 #define TCP_SYN  0x02
@@ -26,7 +26,7 @@ typedef struct {
     uint16_t dst_port;
     uint32_t seq;
     uint32_t ack;
-    uint8_t  data_off;     // upper 4 bits: header length in 32-bit words
+    uint8_t  data_off;
     uint8_t  flags;
     uint16_t window;
     uint16_t checksum;
@@ -36,15 +36,12 @@ typedef struct {
 static tcp_tcb_t tcbs[TCB_COUNT];
 static uint16_t  next_eph_port = 32768;
 
-// Per-TCB linear buffers. snd_buf holds outstanding (unacked) data starting at
-// sequence snd_una; rcv_buf holds bytes received in order but not yet drained.
 static uint8_t   snd_buf[TCB_COUNT][TCP_BUF_SIZE];
 static uint16_t  snd_len[TCB_COUNT];
 static uint64_t  snd_oldest_ms[TCB_COUNT];
 static uint8_t   rcv_buf[TCB_COUNT][TCP_BUF_SIZE];
 static uint16_t  rcv_len[TCB_COUNT];
 
-// Single-slot out-of-order reassembly buffer per TCB.
 static uint8_t   ooo_buf[TCB_COUNT][TCP_MSS];
 static uint16_t  ooo_len[TCB_COUNT];
 static uint32_t  ooo_seq[TCB_COUNT];
@@ -69,7 +66,7 @@ static int alloc_tcb(void) {
 
 int tcp_listen(uint16_t local_port) {
     if (!local_port) return -1;
-    // Reject duplicate listener on same port
+
     for (int i = 0; i < TCB_COUNT; i++) {
         if (tcbs[i].active && tcbs[i].is_listener && tcbs[i].local_port == local_port)
             return -1;
@@ -124,7 +121,7 @@ int tcp_send(int id, const uint8_t* data, uint16_t len) {
     if (len > free_space) len = free_space;
     if (len == 0) return 0;
 
-    // Append to snd_buf.
+
     for (uint16_t i = 0; i < len; i++) snd_buf[id][snd_len[id] + i] = data[i];
     snd_len[id] += len;
     if (snd_oldest_ms[id] == 0) snd_oldest_ms[id] = timer_uptime_ms();
@@ -133,19 +130,17 @@ int tcp_send(int id, const uint8_t* data, uint16_t len) {
     return len;
 }
 
-// Emit queued bytes from snd_buf, throttled by cwnd. Called from tcp_send
-// (post-append) and from ACK processing (post-window-slide).
 static void try_emit(int id) {
     tcp_tcb_t* t = &tcbs[id];
     if (t->state != TCP_ESTABLISHED) return;
     uint32_t in_flight = t->snd_nxt - t->snd_una;
-    if (in_flight >= snd_len[id]) return;                  // everything is on the wire
+    if (in_flight >= snd_len[id]) return;
     uint32_t queued = snd_len[id] - in_flight;
     uint32_t avail  = (t->cwnd > in_flight) ? (t->cwnd - in_flight) : 0;
     if (avail == 0) return;
     uint32_t to_send = queued < avail ? queued : avail;
 
-    uint32_t off = in_flight;                              // first queued byte in snd_buf
+    uint32_t off = in_flight;
     while (to_send > 0) {
         uint32_t chunk = to_send < TCP_MSS ? to_send : TCP_MSS;
         arm_rtt_probe(t, t->snd_nxt);
@@ -165,16 +160,15 @@ int tcp_recv(int id, uint8_t* out, uint16_t max) {
     if (n > max) n = max;
     if (n == 0) return 0;
     for (uint16_t i = 0; i < n; i++) out[i] = rcv_buf[id][i];
-    // Shift remainder forward.
+
     for (uint16_t i = 0; i < rcv_len[id] - n; i++) rcv_buf[id][i] = rcv_buf[id][n + i];
     rcv_len[id] -= n;
     return n;
 }
 
-// Called from tcp_input when a peer ACKs new bytes.
 static void slide_snd_window(int id, uint32_t acked) {
     if (acked == 0 || acked > snd_len[id]) {
-        // Nothing acknowledged, or peer over-ACKed (should not happen with strict RFC)
+
         if (acked > snd_len[id]) acked = snd_len[id];
         else return;
     }
@@ -323,7 +317,6 @@ static int build_and_send(const tcp_tcb_t* t, uint8_t flags,
     return rtl8139_send(frame, sizeof(frame));
 }
 
-// Send a RST in response to a stray segment.
 static void send_rst_reply(const uint8_t src_ip[4], const uint8_t dst_ip[4],
                            uint16_t src_port, uint16_t dst_port,
                            uint32_t seg_seq, uint32_t seg_ack, uint8_t seg_flags,
@@ -414,16 +407,15 @@ static tcp_tcb_t* find_tcb(const uint8_t remote_ip[4], uint16_t remote_port,
     return 0;
 }
 
-// RFC 6298 RTT estimator. Updates srtt/rttvar/rto on a fresh sample.
 static void rtt_sample(tcp_tcb_t* t, uint32_t sample_ms) {
     if (sample_ms == 0) sample_ms = 1;
     if (t->srtt_ms == 0) {
-        // First measurement
+
         t->srtt_ms   = sample_ms;
         t->rttvar_ms = sample_ms / 2;
     } else {
-        // RFC 6298: RTTVAR <- (1-beta)*RTTVAR + beta*|SRTT - sample|, beta=1/4
-        //          SRTT   <- (1-alpha)*SRTT + alpha*sample, alpha=1/8
+
+
         uint32_t diff = (t->srtt_ms > sample_ms) ? t->srtt_ms - sample_ms
                                                  : sample_ms - t->srtt_ms;
         t->rttvar_ms = (3 * t->rttvar_ms + diff) / 4;
@@ -436,7 +428,7 @@ static void rtt_sample(tcp_tcb_t* t, uint32_t sample_ms) {
 }
 
 static void arm_rtt_probe(tcp_tcb_t* t, uint32_t seq_being_sent) {
-    if (t->rtt_in_flight) return;   // already timing one
+    if (t->rtt_in_flight) return;
     t->rtt_in_flight     = 1;
     t->rtt_probe_seq     = seq_being_sent;
     t->rtt_probe_sent_ms = timer_uptime_ms();
@@ -466,7 +458,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
 
     tcp_tcb_t* t = find_tcb(ip->src, sport, dport);
     if (!t) {
-        // No full-tuple match — but is there a listener on dport?
+
         int lid = find_listener(dport);
         if (lid >= 0 && (flags & TCP_SYN) && !(flags & TCP_ACK) && !(flags & TCP_RST)) {
             int child = alloc_tcb();
@@ -518,7 +510,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
             t->snd_una = seg_ack;
             t->state   = TCP_ESTABLISHED;
         } else if (flags & TCP_SYN) {
-            // Retransmitted SYN — resend SYN-ACK
+
             build_and_send(t, TCP_SYN | TCP_ACK, t->snd_una, t->rcv_nxt);
         }
         break;
@@ -535,7 +527,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
             build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             t->state = TCP_ESTABLISHED;
         } else if (flags & TCP_SYN) {
-            // Simultaneous open — not supported this phase; reset.
+
             build_and_send(t, TCP_RST, t->snd_nxt, 0);
             t->state = TCP_CLOSED; t->active = 0;
         }
@@ -546,7 +538,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
         if (flags & TCP_ACK) {
             uint32_t newly_acked = seg_ack - t->snd_una;
             if (newly_acked > 0 && newly_acked <= snd_len[id]) {
-                // RTT sample: if the probed segment is now fully ACKed
+
                 if (t->rtt_in_flight &&
                     (int32_t)(seg_ack - t->rtt_probe_seq) > 0) {
                     uint32_t sample = (uint32_t)(timer_uptime_ms() - t->rtt_probe_sent_ms);
@@ -557,18 +549,18 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                 t->snd_una     = seg_ack;
                 t->dup_acks    = 0;
                 t->last_ack_recv = seg_ack;
-                // Congestion window update
+
                 if (t->cwnd < t->ssthresh) {
-                    t->cwnd += TCP_MSS;                    // slow start
+                    t->cwnd += TCP_MSS;
                 } else {
                     uint32_t inc = (TCP_MSS * TCP_MSS) / t->cwnd;
                     if (inc == 0) inc = 1;
-                    t->cwnd += inc;                        // congestion avoidance
+                    t->cwnd += inc;
                 }
                 try_emit(id);
             } else if (newly_acked == 0 && snd_len[id] > 0 && payload == 0 &&
                        !(flags & (TCP_SYN | TCP_FIN))) {
-                // Duplicate ACK
+
                 if (seg_ack == t->last_ack_recv) {
                     t->dup_acks++;
                 } else {
@@ -576,12 +568,12 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                     t->last_ack_recv = seg_ack;
                 }
                 if (t->dup_acks == TCP_DUP_ACK_THRESH) {
-                    // Fast retransmit: re-emit the segment at snd_una
+
                     uint16_t chunk = snd_len[id] < TCP_MSS ? snd_len[id] : TCP_MSS;
                     build_and_send_data(t, TCP_ACK | TCP_PSH,
                                         t->snd_una, t->rcv_nxt, &snd_buf[id][0], chunk);
-                    // RFC 5681 fast recovery (without inflation): halve ssthresh,
-                    // collapse cwnd to ssthresh, never below 2*MSS.
+
+
                     uint32_t half = t->cwnd / 2;
                     uint32_t floor_v = 2 * TCP_MSS;
                     t->ssthresh = half > floor_v ? half : floor_v;
@@ -592,7 +584,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
         if (payload > 0) {
             const uint8_t* pdata = (const uint8_t*)th + hdr_len;
             if (seg_seq == t->rcv_nxt) {
-                // In-order: deliver to recv buf, drain OoO slot if it now fits
+
                 uint16_t free_space = TCP_BUF_SIZE - rcv_len[id];
                 uint16_t to_copy = payload;
                 if (to_copy > free_space) to_copy = free_space;
@@ -600,7 +592,7 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                 rcv_len[id] += to_copy;
                 t->rcv_nxt  += to_copy;
 
-                // If the stored OoO segment is now contiguous, drain it.
+
                 if (ooo_len[id] && ooo_seq[id] == t->rcv_nxt) {
                     uint16_t fs = TCP_BUF_SIZE - rcv_len[id];
                     uint16_t cp = ooo_len[id];
@@ -612,17 +604,17 @@ int tcp_input(const uint8_t* frame, uint16_t len) {
                 }
                 build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             } else if ((int32_t)(seg_seq - t->rcv_nxt) > 0) {
-                // Future segment: store in single OoO slot (overwrite if newer or none)
+
                 if (payload <= TCP_MSS &&
                     (ooo_len[id] == 0 || seg_seq < ooo_seq[id])) {
                     for (uint16_t i = 0; i < payload; i++) ooo_buf[id][i] = pdata[i];
                     ooo_len[id] = payload;
                     ooo_seq[id] = seg_seq;
                 }
-                // Duplicate ACK to signal the gap
+
                 build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             } else {
-                // Old / already-acked data — re-ACK
+
                 build_and_send(t, TCP_ACK, t->snd_nxt, t->rcv_nxt);
             }
         }
@@ -675,7 +667,7 @@ void tcp_tick(void) {
 
         if (t->state == TCP_SYN_SENT) {
             uint64_t delta = now - t->syn_sent_at_ms;
-            uint64_t retry_at = (uint64_t)1000 << t->retries;   // 1s, 2s, 4s
+            uint64_t retry_at = (uint64_t)1000 << t->retries;
             if (delta >= retry_at) {
                 if (t->retries >= SYN_RETRY_MAX) {
                     t->state = TCP_CLOSED;
@@ -694,7 +686,7 @@ void tcp_tick(void) {
         } else if (t->state == TCP_ESTABLISHED && snd_len[i] > 0) {
             uint32_t rto = t->rto_ms ? t->rto_ms : TCP_DATA_RTO_MS;
             if (snd_oldest_ms[i] && now - snd_oldest_ms[i] >= rto) {
-                // Retransmit only in-flight bytes (snd_nxt - snd_una), MSS at a time.
+
                 uint32_t in_flight = t->snd_nxt - t->snd_una;
                 uint32_t seq = t->snd_una;
                 uint32_t off = 0;
@@ -708,12 +700,12 @@ void tcp_tick(void) {
                 }
                 snd_oldest_ms[i] = now;
                 t->rtt_in_flight = 0;
-                // Collapse congestion window per RFC 5681.
+
                 uint32_t half = t->cwnd / 2;
                 uint32_t floor_v = 2 * TCP_MSS;
                 t->ssthresh = half > floor_v ? half : floor_v;
                 t->cwnd     = TCP_MSS;
-                // Exponential back-off, capped.
+
                 uint32_t back = t->rto_ms * 2;
                 if (back > TCP_RTO_MAX_MS) back = TCP_RTO_MAX_MS;
                 t->rto_ms = back;
@@ -721,4 +713,3 @@ void tcp_tick(void) {
         }
     }
 }
-
