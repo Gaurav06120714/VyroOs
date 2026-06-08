@@ -11,7 +11,7 @@ static int   initted = 0;
 static void render_textedit(app_ctx_t* c) {
     if (!initted) { text_len = 0; while (text[text_len]) text_len++; initted = 1; }
     const theme_t* t = theme();
-    // Toolbar
+
     comp_rect(c->origin_x, c->origin_y, c->width, 32, t->win_title);
     int abs_mx = c->mx + c->origin_x, abs_my = c->my + c->origin_y;
     if (w_button(c->origin_x + 6, c->origin_y + 4, 60, 24, "New", abs_mx, abs_my, c->clicked)) {
@@ -28,7 +28,7 @@ static void render_textedit(app_ctx_t* c) {
     info[p] = 0;
     w_label_dim(c->origin_x + c->width - 90, c->origin_y + 8, info);
 
-    // Editor area
+
     comp_rect(c->origin_x, c->origin_y + 32, c->width, c->height - 32, 0xF8FAF8);
     int x = c->origin_x + 10;
     int y = c->origin_y + 40;
@@ -39,10 +39,10 @@ static void render_textedit(app_ctx_t* c) {
         comp_glyph(x, y, ch, 0x202028, 0xF8FAF8);
         x += 8;
     }
-    // Caret at end
+
     if (y < c->origin_y + c->height - 20) comp_rect(x, y, 2, 16, 0x202028);
 
-    // Input handling
+
     if (c->key) {
         if (c->key == '\b' && text_len > 0) text[--text_len] = 0;
         else if ((c->key >= 32 && c->key < 127) || c->key == '\n') {
