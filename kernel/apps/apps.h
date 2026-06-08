@@ -1,9 +1,6 @@
 #ifndef APPS_H
 #define APPS_H
 
-// Forward declarations for built-in apps.
-// Each provides a render(app_ctx_t*) function.
-
 #include "../app.h"
 
 extern const app_def_t APP_SETTINGS;
