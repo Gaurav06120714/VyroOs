@@ -5,7 +5,7 @@ static int     count = 0;
 
 void klog(const char* msg) {
     if (count >= KLOG_MAX) {
-        // shift up (drop oldest)
+
         for (int i = 1; i < KLOG_MAX; i++)
             for (int j = 0; j < 80; j++) buffer[i-1][j] = buffer[i][j];
         count = KLOG_MAX - 1;
