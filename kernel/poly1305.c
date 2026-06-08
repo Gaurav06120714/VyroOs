@@ -1,8 +1,5 @@
 #include "poly1305.h"
 
-// Reference implementation in the style of poly1305-donna-32: 26-bit limbs,
-// straightforward field multiplication mod 2^130 - 5.
-
 static inline uint32_t load32_le(const uint8_t* p) {
     return  (uint32_t)p[0]        |
            ((uint32_t)p[1] <<  8) |
@@ -17,16 +14,16 @@ static inline void store32_le(uint8_t* p, uint32_t v) {
 }
 
 typedef struct {
-    uint32_t r[5];          // clamped r as 5 × 26-bit
-    uint32_t h[5];          // accumulator
-    uint32_t pad[4];        // s as 4 × 32-bit (little-endian)
+    uint32_t r[5];
+    uint32_t h[5];
+    uint32_t pad[4];
     uint8_t  buf[16];
     uint32_t buf_used;
     uint8_t  final;
 } poly1305_ctx;
 
 static void poly1305_init(poly1305_ctx* st, const uint8_t key[32]) {
-    // Load r and clamp per RFC 8439
+
     uint32_t t0 = load32_le(key +  0);
     uint32_t t1 = load32_le(key +  4);
     uint32_t t2 = load32_le(key +  8);
@@ -53,7 +50,7 @@ static void poly1305_block(poly1305_ctx* st, const uint8_t* m) {
     uint32_t s1 = r1 * 5, s2 = r2 * 5, s3 = r3 * 5, s4 = r4 * 5;
     uint32_t h0 = st->h[0], h1 = st->h[1], h2 = st->h[2], h3 = st->h[3], h4 = st->h[4];
 
-    // Load 128-bit message block + 2^128 (or +0 for final partial) as 5 × 26-bit
+
     uint32_t t0 = load32_le(m +  0);
     uint32_t t1 = load32_le(m +  4);
     uint32_t t2 = load32_le(m +  8);
@@ -65,14 +62,14 @@ static void poly1305_block(poly1305_ctx* st, const uint8_t* m) {
     h3 += ((t2 >> 14) | (t3 << 18)) & 0x3ffffff;
     h4 += ( t3 >>  8              ) | hibit;
 
-    // h *= r mod (2^130 - 5)
+
     uint64_t d0 = (uint64_t)h0 * r0 + (uint64_t)h1 * s4 + (uint64_t)h2 * s3 + (uint64_t)h3 * s2 + (uint64_t)h4 * s1;
     uint64_t d1 = (uint64_t)h0 * r1 + (uint64_t)h1 * r0 + (uint64_t)h2 * s4 + (uint64_t)h3 * s3 + (uint64_t)h4 * s2;
     uint64_t d2 = (uint64_t)h0 * r2 + (uint64_t)h1 * r1 + (uint64_t)h2 * r0 + (uint64_t)h3 * s4 + (uint64_t)h4 * s3;
     uint64_t d3 = (uint64_t)h0 * r3 + (uint64_t)h1 * r2 + (uint64_t)h2 * r1 + (uint64_t)h3 * r0 + (uint64_t)h4 * s4;
     uint64_t d4 = (uint64_t)h0 * r4 + (uint64_t)h1 * r3 + (uint64_t)h2 * r2 + (uint64_t)h3 * r1 + (uint64_t)h4 * r0;
 
-    // Carry propagate
+
     uint32_t c;
     c = (uint32_t)(d0 >> 26); h0 = (uint32_t)d0 & 0x3ffffff; d1 += c;
     c = (uint32_t)(d1 >> 26); h1 = (uint32_t)d1 & 0x3ffffff; d2 += c;
@@ -114,7 +111,7 @@ static void poly1305_finish(poly1305_ctx* st, uint8_t out[16]) {
 
     uint32_t h0 = st->h[0], h1 = st->h[1], h2 = st->h[2], h3 = st->h[3], h4 = st->h[4];
 
-    // Fully reduce h
+
     uint32_t c;
     c = h1 >> 26; h1 &= 0x3ffffff; h2 += c;
     c = h2 >> 26; h2 &= 0x3ffffff; h3 += c;
@@ -122,14 +119,14 @@ static void poly1305_finish(poly1305_ctx* st, uint8_t out[16]) {
     c = h4 >> 26; h4 &= 0x3ffffff; h0 += c * 5;
     c = h0 >> 26; h0 &= 0x3ffffff; h1 += c;
 
-    // Compute h + (-p) and select if no borrow
+
     uint32_t g0 = h0 + 5; c = g0 >> 26; g0 &= 0x3ffffff;
     uint32_t g1 = h1 + c; c = g1 >> 26; g1 &= 0x3ffffff;
     uint32_t g2 = h2 + c; c = g2 >> 26; g2 &= 0x3ffffff;
     uint32_t g3 = h3 + c; c = g3 >> 26; g3 &= 0x3ffffff;
     uint32_t g4 = h4 + c - (1u << 26);
 
-    uint32_t mask = (g4 >> 31) - 1;             // 0xFFFFFFFF if g4 high bit clear
+    uint32_t mask = (g4 >> 31) - 1;
     g0 &= mask; g1 &= mask; g2 &= mask; g3 &= mask; g4 &= mask;
     mask = ~mask;
     h0 = (h0 & mask) | g0;
@@ -138,13 +135,13 @@ static void poly1305_finish(poly1305_ctx* st, uint8_t out[16]) {
     h3 = (h3 & mask) | g3;
     h4 = (h4 & mask) | g4;
 
-    // Repack 5 × 26-bit limbs into 4 × 32-bit
+
     uint32_t f0 =  h0        | (h1 << 26);
     uint32_t f1 = (h1 >>  6) | (h2 << 20);
     uint32_t f2 = (h2 >> 12) | (h3 << 14);
     uint32_t f3 = (h3 >> 18) | (h4 <<  8);
 
-    // Add s (pad) mod 2^128
+
     uint64_t s0 = (uint64_t)f0 + st->pad[0]; f0 = (uint32_t)s0;
     uint64_t s1 = (uint64_t)f1 + st->pad[1] + (s0 >> 32); f1 = (uint32_t)s1;
     uint64_t s2 = (uint64_t)f2 + st->pad[2] + (s1 >> 32); f2 = (uint32_t)s2;
