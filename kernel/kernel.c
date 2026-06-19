@@ -192,8 +192,7 @@ void kernel_main() {
     trust_add(globalsign_mock_der,   globalsign_mock_der_len);
     ok("Trust anchor store (5 built-in: ECDSA test + Vyro Root + 3 mock CAs)");
 
-    tunes_play_boot();
-    ok("Boot chime (C-E-G-C ascending, PC speaker)");
+    ok("Boot chime (disabled)");
 
     extern int xhci_init();
     if (xhci_init()) ok("xHCI USB 3.0 controller (capability regs parsed)");

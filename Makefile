@@ -311,9 +311,7 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-vga std \
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
-		-device qemu-xhci,id=xhci \
-		-audiodev coreaudio,id=snd0 \
-		-machine pcspk-audiodev=snd0
+		-device qemu-xhci,id=xhci
 
 build: $(BUILD)/vyro.img
 
