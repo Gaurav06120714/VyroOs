@@ -7,7 +7,13 @@
 #include "../net.h"
 #include "../smp.h"
 
-static int sel_section = 0;
+static int sel_section  = 0;
+static int brightness   = 80;
+static int volume       = 60;
+static int wifi_on      = 1;
+static int bt_on        = 0;
+static int notif_on     = 1;
+static int animations   = 1;
 static const char* sections[] = {
     "General", "Display", "Personalization", "Accounts",
     "Network", "Security", "Storage", "About"
@@ -17,24 +23,51 @@ static const char* sections[] = {
 static void render_general(app_ctx_t* c) {
     int x = c->origin_x + 200;
     int y = c->origin_y + 16;
-    w_label_color(x, y, "General", theme()->accent_hi); y += 28;
-    w_label(x, y, "Theme:"); y += 20;
-    int dark = theme()->is_dark;
-    int new_dark = w_toggle(x + 80, y - 20, dark, c->mx + c->origin_x, c->my + c->origin_y, c->clicked);
-    if (new_dark != dark) { theme_set_dark(new_dark); notify_post("Theme", new_dark?"Dark":"Light"); }
-    w_label_dim(x, y, dark ? "Dark mode" : "Light mode"); y += 28;
-    w_separator(x, y, 360); y += 16;
-    w_label(x, y, "Sound volume:"); y += 20;
-    w_progress(x, y, 360, 14, 80); y += 28;
-    w_label_dim(x, y, "PC speaker output volume");
+    int amx = c->mx + c->origin_x, amy = c->my + c->origin_y;
+    const theme_t* t = theme();
+    w_label_color(x, y, "General", t->accent_hi); y += 32;
+
+    w_label(x, y, "Dark Mode");
+    int dark = t->is_dark;
+    int nd = w_toggle(x + 200, y - 4, dark, amx, amy, c->clicked);
+    if (nd != dark) { theme_set_dark(nd); notify_post("Theme", nd?"Dark":"Light"); }
+    w_label_dim(x, y + 18, dark ? "Using dark theme" : "Using light theme");
+    y += 48; w_separator(x, y, 360); y += 16;
+
+    w_label(x, y, "Animations");
+    animations = w_toggle(x + 200, y - 4, animations, amx, amy, c->clicked);
+    w_label_dim(x, y + 18, "Window open/close effects");
+    y += 48; w_separator(x, y, 360); y += 16;
+
+    w_label(x, y, "Notifications");
+    notif_on = w_toggle(x + 200, y - 4, notif_on, amx, amy, c->clicked);
+    w_label_dim(x, y + 18, notif_on ? "Notifications enabled" : "Silent mode");
+    y += 48; w_separator(x, y, 360); y += 16;
+
+    w_label(x, y, "Volume"); y += 24;
+    w_progress(x, y, 280, 14, volume);
+    if (w_button(x + 288, y - 2, 28, 18, "+", amx, amy, c->clicked) && volume < 100) volume += 5;
+    if (w_button(x + 320, y - 2, 28, 18, "-", amx, amy, c->clicked) && volume > 0)   volume -= 5;
+    y += 28; w_separator(x, y, 360); y += 16;
+
+    w_label(x, y, "Brightness"); y += 24;
+    w_progress(x, y, 280, 14, brightness);
+    if (w_button(x + 288, y - 2, 28, 18, "+", amx, amy, c->clicked) && brightness < 100) brightness += 5;
+    if (w_button(x + 320, y - 2, 28, 18, "-", amx, amy, c->clicked) && brightness > 0)   brightness -= 5;
 }
 static void render_display(app_ctx_t* c) {
     int x = c->origin_x + 200, y = c->origin_y + 16;
-    w_label_color(x, y, "Display", theme()->accent_hi); y += 28;
-    w_label(x, y, "Resolution: 1024 x 768"); y += 20;
-    w_label(x, y, "Color depth: 24 bpp BGR");  y += 20;
-    w_label(x, y, "Framebuffer: VESA mode 0x118"); y += 20;
-    w_label(x, y, "Refresh: ~60 Hz (compositor)");
+    const theme_t* t = theme();
+    w_label_color(x, y, "Display", t->accent_hi); y += 32;
+    w_label(x, y, "Resolution");      w_label_color(x+180, y, "1024 x 768", t->accent_hi); y += 26;
+    w_label(x, y, "Color depth");     w_label_color(x+180, y, "24 bpp BGR",  t->accent_hi); y += 26;
+    w_label(x, y, "Framebuffer");     w_label_color(x+180, y, "VESA 0x118",  t->accent_hi); y += 26;
+    w_label(x, y, "Refresh rate");    w_label_color(x+180, y, "~60 Hz",      t->accent_hi); y += 26;
+    w_label(x, y, "Pixel format");    w_label_color(x+180, y, "BGR24 linear",t->accent_hi); y += 26;
+    w_separator(x, y, 360); y += 16;
+    w_label(x, y, "Back-buffer");     w_label_color(x+180, y, "0x1000000 (pinned)", t->accent_hi); y += 26;
+    w_label(x, y, "Compositor");      w_label_color(x+180, y, "double-buffered",    t->accent_hi); y += 26;
+    w_label(x, y, "Glass effects");   w_label_color(x+180, y, "box-blur + tint",    t->accent_hi);
 }
 static void render_personal(app_ctx_t* c) {
     int x = c->origin_x + 200, y = c->origin_y + 16;
@@ -57,7 +90,20 @@ static void render_accounts(app_ctx_t* c) {
 }
 static void render_network(app_ctx_t* c) {
     int x = c->origin_x + 200, y = c->origin_y + 16;
-    w_label_color(x, y, "Network", theme()->accent_hi); y += 28;
+    int amx = c->mx + c->origin_x, amy = c->my + c->origin_y;
+    const theme_t* t = theme();
+    w_label_color(x, y, "Network", t->accent_hi); y += 32;
+
+    w_label(x, y, "Wi-Fi");
+    wifi_on = w_toggle(x + 200, y - 4, wifi_on, amx, amy, c->clicked);
+    w_label_dim(x, y + 18, wifi_on ? "Connected via RTL8139" : "Disabled");
+    y += 48; w_separator(x, y, 360); y += 16;
+
+    w_label(x, y, "Bluetooth");
+    bt_on = w_toggle(x + 200, y - 4, bt_on, amx, amy, c->clicked);
+    w_label_dim(x, y + 18, bt_on ? "On" : "Off (no adapter)");
+    y += 48; w_separator(x, y, 360); y += 16;
+
     const uint8_t* mac = net_mac(); const uint8_t* ip = net_ip();
     char buf[64];
     int p = 0;
@@ -94,14 +140,28 @@ static void render_storage(app_ctx_t* c) {
 }
 static void render_about(app_ctx_t* c) {
     int x = c->origin_x + 200, y = c->origin_y + 16;
-    w_label_color(x, y, "About Vyro OS", theme()->accent_hi); y += 28;
-    w_label(x, y, "Version: 2.0.0"); y += 20;
-    w_label(x, y, "Arch: x86_64 (64-bit)"); y += 20;
-    w_label(x, y, "Kernel: monolithic, custom"); y += 20;
-    char b[32]; int cn = cpu_count(); b[0] = '0' + cn; b[1] = ' '; b[2] = 'c'; b[3]='o'; b[4]='r'; b[5]='e'; b[6]='s'; b[7]=0;
-    w_label(x, y, "CPUs:"); w_label_dim(x + 56, y, b); y += 20;
-    w_label(x, y, "License: MIT"); y += 20;
-    w_label_dim(x, y, "Built from scratch. $0 budget.");
+    const theme_t* t = theme();
+    w_label_color(x, y, "About Vyro OS", t->accent_hi); y += 32;
+
+    struct { const char* k; const char* v; } rows[] = {
+        { "Version",    "2.0.0 (v8)"          },
+        { "Architecture","x86_64 (64-bit)"    },
+        { "Kernel",     "from-scratch custom"  },
+        { "Boot",       "BIOS + VBE (GRUB-less)"},
+        { "GUI",        "double-buffered compositor"},
+        { "Network",    "TCP/IP + TLS 1.3"    },
+        { "Crypto",     "9 primitives (RFC verified)"},
+        { "License",    "MIT ($0 budget)"      },
+    };
+    for (int i = 0; i < 8; i++) {
+        w_label(x, y, rows[i].k);
+        w_label_color(x + 180, y, rows[i].v, t->accent_hi);
+        y += 26;
+    }
+    y += 8; w_separator(x, y, 360); y += 16;
+    char b[12]; int cn = cpu_count(); b[0]='0'+(char)cn; b[1]=' '; b[2]='C'; b[3]='P'; b[4]='U'; b[5]='s'; b[6]=' '; b[7]='d'; b[8]='e'; b[9]='t'; b[10]='e'; b[11]=0;
+    w_label_dim(x, y, b); y += 20;
+    w_label_dim(x, y, "155+ git tags  |  ~53,000 lines of code");
 }
 
 static void render_settings(app_ctx_t* c) {
