@@ -49,6 +49,7 @@ static int      current_desktop = 0;
 static ctxmenu_t menu;
 static int       show_power_menu    = 0;
 static int       show_quick_settings = 0;
+static int       show_notif_center   = 0;
 static int       locked  = 0;
 static char      pw_buf[32];
 static int       pw_len  = 0;
@@ -294,6 +295,16 @@ static void draw_topbar(int mx, int my) {
     if (qs_hover) comp_rect(right, 2, 30, TOPBAR_H - 4, t->accent);
     comp_text(right + 3, (TOPBAR_H - 14) / 2, "QS",
               qs_hover ? 0xFFFFFF : dim, qs_hover ? t->accent : bar_bg);
+
+    right -= 6;
+    comp_rect(right, 6, 1, TOPBAR_H - 12, sep);
+
+    right -= 32;
+    int bell_hover = point_in(mx, my, right, 2, 30, TOPBAR_H - 4);
+    if (bell_hover || show_notif_center) comp_rect(right, 2, 30, TOPBAR_H - 4, t->accent);
+    comp_text(right + 4, (TOPBAR_H - 14) / 2, "[B]",
+              (bell_hover || show_notif_center) ? 0xFFFFFF : dim,
+              (bell_hover || show_notif_center) ? t->accent : bar_bg);
 
     right -= 6;
     comp_rect(right, 6, 1, TOPBAR_H - 12, sep);
@@ -606,6 +617,62 @@ static void draw_power_menu(int mx, int my) {
     }
 }
 
+static void draw_notif_center(int mx, int my) {
+    if (!show_notif_center) return;
+    (void)mx; (void)my;
+    const theme_t* t = theme();
+    int pw = 320, ph = (int)comp_height() - TOPBAR_H - 8;
+    int px = (int)comp_width() - pw - 4;
+    int py = TOPBAR_H + 4;
+
+    comp_shadow(px - 4, py, pw + 8, ph, t->win_shadow);
+    comp_glass_panel(px, py, pw, ph, 0x080F1C, 245, 0, t->win_border);
+
+    /* header */
+    comp_text(px + 14, py + 10, "Notification Center", t->accent_hi, 0x080F1C);
+    comp_rect(px, py + 30, pw, 1, t->win_border);
+
+    notification_t* hist; int count = 0;
+    notify_history(&hist, &count);
+
+    if (count == 0) {
+        w_label_dim(px + pw/2 - 60, py + ph/2 - 8, "No notifications");
+        return;
+    }
+
+    int ry = py + 38;
+    int shown = 0;
+    for (int i = count - 1; i >= 0 && shown < 12; i--) {
+        if (!hist[i].title[0]) continue;
+        int card_h = 60;
+        if (ry + card_h > py + ph - 8) break;
+
+        uint32_t cbg = t->is_dark ? 0x111828 : 0xF0F4FF;
+        comp_rect(px + 8, ry, pw - 16, card_h, cbg);
+        comp_border(px + 8, ry, pw - 16, card_h, t->win_border);
+        /* accent stripe */
+        comp_rect(px + 8, ry, 3, card_h, t->accent);
+        /* title */
+        comp_text(px + 18, ry + 8, hist[i].title, t->text, cbg);
+        /* body */
+        comp_text(px + 18, ry + 26, hist[i].body, t->text_dim, cbg);
+        /* time stamp placeholder */
+        comp_text(px + pw - 56, ry + 8, "now", t->text_dim, cbg);
+
+        ry += card_h + 6;
+        shown++;
+    }
+
+    /* clear all button */
+    int btn_y = py + ph - 36;
+    comp_rect(px, btn_y - 1, pw, 1, t->win_border);
+    int cl = 0; (void)cl;
+    comp_rect(px + 8, btn_y + 6, pw - 16, 24, t->is_dark ? 0x1C2230 : 0xDDE3F0);
+    comp_border(px + 8, btn_y + 6, pw - 16, 24, t->win_border);
+    comp_text(px + pw/2 - 36, btn_y + 12, "Clear All", t->text_dim,
+              t->is_dark ? 0x1C2230 : 0xDDE3F0);
+}
+
 static int qs_volume     = 60;
 static int qs_brightness = 80;
 static int qs_wifi       = 1;
@@ -704,6 +771,7 @@ static void render(int mx, int my, int clicked) {
     draw_notifications();
     draw_power_menu(mx, my);
     draw_quick_settings(mx, my);
+    draw_notif_center(mx, my);
     ctxmenu_draw(&menu, mx, my);
     draw_cursor(mx, my);
     comp_present();
@@ -861,12 +929,14 @@ void gui_run() {
             lpress = 0;
         }
 
-        if (lpress && (show_power_menu || show_quick_settings)) {
-            int pw_x = (int)comp_width() - PANEL_W - 210 - 8;
-            int qs_x = (int)comp_width() - PANEL_W - 290 - 8;
+        if (lpress && (show_power_menu || show_quick_settings || show_notif_center)) {
+            int pw_x  = (int)comp_width() - PANEL_W - 210 - 8;
+            int qs_x  = (int)comp_width() - pw_x;   /* unused but keep for ref */
+            int nc_x  = (int)comp_width() - 320 - 4;
             int hit = 0;
-            if (show_power_menu  && point_in(mx, my, pw_x, TOPBAR_H + 4, 210, 190)) hit = 1;
-            if (show_quick_settings && point_in(mx, my, qs_x, TOPBAR_H + 4, 290, 310)) hit = 1;
+            if (show_power_menu     && point_in(mx, my, pw_x, TOPBAR_H + 4, 210, 190)) hit = 1;
+            if (show_quick_settings && point_in(mx, my, (int)comp_width() - 300 - 8, TOPBAR_H + 4, 300, 380)) hit = 1;
+            if (show_notif_center   && point_in(mx, my, nc_x, TOPBAR_H + 4, 320, (int)comp_height() - TOPBAR_H - 8)) hit = 1;
 
             if (show_power_menu && hit) {
                 int py_ = TOPBAR_H + 4; (void)pw_x;
@@ -878,22 +948,27 @@ void gui_run() {
                 }
                 show_power_menu = 0; lpress = 0;
             } else if (!hit) {
-                show_power_menu = 0; show_quick_settings = 0;
+                show_power_menu = 0; show_quick_settings = 0; show_notif_center = 0;
             }
+            (void)qs_x;
         }
 
         if (lpress) {
-            int usable_w = (int)comp_width() - PANEL_W;
+            int usable_w  = (int)comp_width() - PANEL_W;
             int pwr_right = usable_w - 8;
             int pwr_x     = pwr_right - 36;
             int qs_x      = pwr_x - 6 - 32;
+            int bell_x    = qs_x - 6 - 32;
 
             if (point_in(mx, my, pwr_x, 2, 34, TOPBAR_H - 4)) {
                 show_power_menu     = !show_power_menu;
-                show_quick_settings = 0;
+                show_quick_settings = 0; show_notif_center = 0;
             } else if (point_in(mx, my, qs_x, 2, 30, TOPBAR_H - 4)) {
                 show_quick_settings = !show_quick_settings;
-                show_power_menu     = 0;
+                show_power_menu = 0; show_notif_center = 0;
+            } else if (point_in(mx, my, bell_x, 2, 30, TOPBAR_H - 4)) {
+                show_notif_center   = !show_notif_center;
+                show_power_menu = 0; show_quick_settings = 0;
             } else if (point_in(mx, my, 0, TOPBAR_H, usable_w, TASKBAR_H)) {
             } else if (hovered_dock >= 0) {
                 open_app(dock_app_names[hovered_dock]);
