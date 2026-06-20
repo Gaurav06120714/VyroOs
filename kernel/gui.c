@@ -719,6 +719,7 @@ void gui_run() {
 
     comp_revalidate();
     notify_post("Welcome to Vyro OS 2.0", "Right-click desktop for options");
+    open_app("Files");
 
     int dragging = -1, resizing = -1;
     int dox = 0, doy = 0;
