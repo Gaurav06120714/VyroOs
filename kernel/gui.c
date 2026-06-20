@@ -480,43 +480,102 @@ static void draw_cursor(int x, int y) {
 
 static void draw_lockscreen(int mx, int my) {
     (void)mx; (void)my;
-    comp_gradient_v(0, 0, (int)comp_width(), (int)comp_height(), 0x0A0E18, 0x000000);
+    int sw = (int)comp_width(), sh = (int)comp_height();
+    comp_gradient_v(0, 0, sw, sh, 0x060C18, 0x000810);
+    /* subtle star-like dots */
+    for (int i = 0; i < 80; i++) {
+        int sx2 = (i * 131 + 47) % sw;
+        int sy2 = (i * 97  + 23) % (sh / 2);
+        comp_pixel(sx2, sy2, 0x6080C0);
+    }
     const theme_t* t = theme();
 
     rtc_time_t rt; rtc_read(&rt);
+
+    /* --- big clock --- */
     char clk[6]; d2(clk, rt.hour); clk[2] = ':'; d2(clk+3, rt.minute); clk[5] = 0;
-    int cx = (int)comp_width()/2 - 90, cy = 140;
-    for (int i = 0; i < 5; i++) {
-        for (int dy = 0; dy < 4; dy++)
-            for (int dx = 0; dx < 4; dx++)
-                comp_glyph(cx + i*32 + dx, cy + dy, clk[i], 0xFFFFFF, 0);
+    int scale = 5; /* 5x glyph scale */
+    int cw2 = 5 * 8 * scale; /* 5 chars * 8px * scale */
+    int clk_x = sw/2 - cw2/2;
+    int clk_y = 70;
+    for (int ci = 0; ci < 5; ci++) {
+        for (int dy = 0; dy < scale; dy++)
+            for (int dx = 0; dx < scale; dx++)
+                comp_glyph(clk_x + ci * 8 * scale + dx, clk_y + dy * 14, clk[ci], 0xEEF4FF, 0);
     }
-    comp_text((int)comp_width()/2 - 44, cy + 80, "Vyro OS 2.0", 0xA0B0C0, 0);
 
-    int pw = 420, ph = 210;
-    int px = ((int)comp_width() - pw) / 2;
-    int py = (int)comp_height() / 2 + 20;
-    comp_glass_panel(px, py, pw, ph, 0x101828, 220, 12, 0x3A4258);
-    comp_text(px + 20, py + 16, "Sign In", 0xFFFFFF, 0x101828);
-    comp_rect(px, py + 38, pw, 1, 0x3A4258);
+    /* date line */
+    static const char* wday_names[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+    static const char* mon_names[]  = {"","January","February","March","April","May","June",
+                                       "July","August","September","October","November","December"};
+    int wday = 0;
+    { int y=rt.year,m=rt.month,d=rt.day;
+      if(m<3){m+=12;y--;}
+      int K=y%100,J=y/100;
+      int h=(d+(13*(m+1))/5+K+K/4+J/4+5*J)%7;
+      wday=(h+6)%7; }
+    char date_str[40]; int dsp = 0;
+    const char* wn = wday_names[wday];
+    for(int i=0;wn[i];i++) date_str[dsp++]=wn[i];
+    date_str[dsp++]=','; date_str[dsp++]=' ';
+    const char* mn = mon_names[rt.month>=1&&rt.month<=12?rt.month:1];
+    for(int i=0;mn[i];i++) date_str[dsp++]=mn[i];
+    date_str[dsp++]=' ';
+    if(rt.day>=10){ date_str[dsp++]='0'+rt.day/10; }
+    date_str[dsp++]='0'+rt.day%10;
+    date_str[dsp]=0;
+    int dl = dsp;
+    comp_text(sw/2 - dl*4, clk_y + scale*14 + 8, date_str, 0x8AA0C0, 0);
 
-    comp_text(px + 20, py + 52, "User:", t->text_dim, 0x101828);
-    comp_text(px + 80, py + 52, current_user(), 0xFFFFFF, 0x101828);
+    /* --- avatar circle --- */
+    int av_y = clk_y + scale*14 + 50;
+    int av_r = 36;
+    int av_cx = sw/2, av_cy = av_y + av_r;
+    for (int dy = -av_r; dy <= av_r; dy++) {
+        for (int dx = -av_r; dx <= av_r; dx++) {
+            if (dx*dx + dy*dy <= av_r*av_r)
+                comp_pixel(av_cx + dx, av_cy + dy, 0x2A4080);
+        }
+    }
+    /* ring */
+    for (int dy = -av_r; dy <= av_r; dy++) {
+        for (int dx = -av_r; dx <= av_r; dx++) {
+            int r2 = dx*dx + dy*dy;
+            if (r2 > (av_r-2)*(av_r-2) && r2 <= av_r*av_r)
+                comp_pixel(av_cx + dx, av_cy + dy, 0x5080C0);
+        }
+    }
+    /* initials */
+    const char* uname = current_user();
+    char init[2] = { uname[0] >= 'a' && uname[0] <= 'z' ? uname[0] - 32 : uname[0], 0 };
+    comp_text(av_cx - 4, av_cy - 7, init, 0xCCDDFF, 0x2A4080);
+    comp_text(av_cx - 3, av_cy - 7, init, 0xCCDDFF, 0x2A4080);
 
-    comp_text(px + 20, py + 80, "Password:", t->text_dim, 0x101828);
-    comp_rect(px + 20, py + 100, pw - 40, 32, 0x08101C);
-    comp_border(px + 20, py + 100, pw - 40, 32, 0x4A5870);
-    for (int i = 0; i < pw_len && i < 32; i++)
-        comp_rect(px + 28 + i*11, py + 112, 7, 8, 0xFFFFFF);
+    /* username label */
+    int ul = 0; while(uname[ul]) ul++;
+    comp_text(sw/2 - ul*4, av_cy + av_r + 8, uname, 0xCCDDFF, 0);
+
+    /* --- glass login panel --- */
+    int pw = 380, ph = 170;
+    int px = (sw - pw) / 2;
+    int py = av_cy + av_r + 32;
+    comp_glass_panel(px, py, pw, ph, 0x080F1C, 230, 14, 0x304060);
+
+    comp_rect(px, py + 36, pw, 1, 0x304060);
+    comp_text(px + 20, py + 42, "Password:", t->text_dim, 0x080F1C);
+    comp_rect(px + 20, py + 62, pw - 40, 32, 0x050A14);
+    comp_border(px + 20, py + 62, pw - 40, 32, pw_wrong ? 0xFF5050 : 0x4A5870);
+    for (int i = 0; i < pw_len && i < 28; i++)
+        comp_rect(px + 28 + i*11, py + 74, 7, 8, 0xE0EEFF);
 
     if (pw_wrong)
-        comp_text(px + 20, py + 148, "Wrong password. Try again.", 0xFF7070, 0x101828);
+        comp_text(px + 20, py + 106, "Wrong password. Try again.", 0xFF7070, 0x080F1C);
     else
-        comp_text(px + 20, py + 148, "Press Enter to unlock  (default: guest)", t->text_dim, 0x101828);
+        comp_text(px + 20, py + 106, "Press Enter to unlock  |  default: guest", t->text_dim, 0x080F1C);
 
-    comp_rect(px + pw - 120, py + 170, 100, 26, t->accent);
-    comp_border(px + pw - 120, py + 170, 100, 26, t->accent_hi);
-    comp_text(px + pw - 84, py + 177, "Unlock", 0xFFFFFF, t->accent);
+    comp_rect(px + pw - 110, py + 130, 90, 28, t->accent);
+    comp_border(px + pw - 110, py + 130, 90, 28, t->accent_hi);
+    comp_text(px + pw - 82, py + 137, "Unlock", 0xFFFFFF, t->accent);
 
     draw_cursor(mx, my);
     comp_present();
@@ -547,50 +606,88 @@ static void draw_power_menu(int mx, int my) {
     }
 }
 
+static int qs_volume     = 60;
+static int qs_brightness = 80;
+static int qs_wifi       = 1;
+static int qs_bt         = 0;
+static int qs_dnd        = 0;
+static int qs_dark       = 1;
+
 static void draw_quick_settings(int mx, int my) {
     if (!show_quick_settings) return;
     const theme_t* t = theme();
-    int pw = 290, ph = 310;
-    int px = (int)comp_width() - PANEL_W - pw - 8;
+    int pw = 300, ph = 380;
+    int px = (int)comp_width() - pw - 8;
     int py = TOPBAR_H + 4;
     comp_shadow(px, py, pw, ph, t->win_shadow);
-    comp_glass_panel(px, py, pw, ph, 0x0C1220, 240, 10, t->win_border);
+    comp_glass_panel(px, py, pw, ph, 0x0C1220, 245, 12, t->win_border);
+
+    /* header */
     comp_text(px + 14, py + 10, "Quick Settings", t->accent_hi, 0x0C1220);
     comp_rect(px, py + 30, pw, 1, t->win_border);
 
-    const char* labels[] = { "Wi-Fi", "Bluetooth", "Do Not Disturb", "AirDrop" };
-    static int  states[4] = { 1, 0, 0, 1 };
-    int row_y = py + 38;
+    int ry = py + 38;
+
+    /* toggle rows */
+    struct { const char* label; const char* sub; int* state; } rows[4];
+    rows[0].label = "Wi-Fi";          rows[0].sub = qs_wifi ? "Connected" : "Off";  rows[0].state = &qs_wifi;
+    rows[1].label = "Bluetooth";      rows[1].sub = qs_bt   ? "On"        : "Off";  rows[1].state = &qs_bt;
+    rows[2].label = "Do Not Disturb"; rows[2].sub = qs_dnd  ? "Enabled"   : "Off";  rows[2].state = &qs_dnd;
+    rows[3].label = "Dark Mode";      rows[3].sub = qs_dark ? "On"        : "Off";  rows[3].state = &qs_dark;
+
     for (int i = 0; i < 4; i++) {
-        comp_text(px + 14, row_y + 5, labels[i], t->text, 0x0C1220);
-        int new_state = w_toggle(px + pw - 64, row_y, states[i], mx, my, 0);
-        states[i] = new_state;
-        row_y += 34;
+        comp_text(px + 14, ry + 4, rows[i].label, t->text,     0x0C1220);
+        comp_text(px + 14, ry + 20, rows[i].sub,  t->text_dim, 0x0C1220);
+        int ns = w_toggle(px + pw - 60, ry + 4, *rows[i].state, mx, my, 1);
+        if (ns != *rows[i].state) {
+            *rows[i].state = ns;
+            if (i == 3) theme_set_dark(ns);
+        }
+        ry += 42;
     }
 
-    comp_rect(px, row_y, pw, 1, t->win_border);
-    row_y += 10;
+    comp_rect(px, ry, pw, 1, t->win_border); ry += 12;
 
-    comp_text(px + 14, row_y + 4, "Brightness", t->text_dim, 0x0C1220);
-    row_y += 20;
-    w_progress(px + 14, row_y, pw - 28, 14, 80);
-    row_y += 28;
+    /* brightness */
+    comp_text(px + 14, ry, "Brightness", t->text_dim, 0x0C1220);
+    char bpct[8]; int bv = qs_brightness, bp = 0;
+    if (!bv) { bpct[0]='0'; bpct[1]='%'; bpct[2]=0; }
+    else { char r[4]; int n=0; while(bv){r[n++]='0'+bv%10;bv/=10;} while(n) bpct[bp++]=r[--n]; bpct[bp++]='%'; bpct[bp]=0; }
+    comp_text(px + pw - 36, ry, bpct, t->accent_hi, 0x0C1220);
+    ry += 18;
+    w_progress(px + 14, ry, pw - 72, 14, qs_brightness);
+    if (w_button(px + pw - 52, ry - 2, 22, 18, "-", mx, my, 1) && qs_brightness > 0)   qs_brightness -= 5;
+    if (w_button(px + pw - 26, ry - 2, 22, 18, "+", mx, my, 1) && qs_brightness < 100) qs_brightness += 5;
+    ry += 26;
 
-    comp_text(px + 14, row_y + 4, "Volume", t->text_dim, 0x0C1220);
-    row_y += 20;
-    w_progress(px + 14, row_y, pw - 28, 14, 60);
-    row_y += 28;
+    /* volume */
+    comp_text(px + 14, ry, "Volume", t->text_dim, 0x0C1220);
+    char vpct[8]; int vv = qs_volume, vp = 0;
+    if (!vv) { vpct[0]='0'; vpct[1]='%'; vpct[2]=0; }
+    else { char r2[4]; int n2=0; while(vv){r2[n2++]='0'+vv%10;vv/=10;} while(n2) vpct[vp++]=r2[--n2]; vpct[vp++]='%'; vpct[vp]=0; }
+    comp_text(px + pw - 36, ry, vpct, t->accent_hi, 0x0C1220);
+    ry += 18;
+    w_progress(px + 14, ry, pw - 72, 14, qs_volume);
+    if (w_button(px + pw - 52, ry - 2, 22, 18, "-", mx, my, 1) && qs_volume > 0)   qs_volume -= 5;
+    if (w_button(px + pw - 26, ry - 2, 22, 18, "+", mx, my, 1) && qs_volume < 100) qs_volume += 5;
+    ry += 26;
 
-    comp_rect(px, row_y, pw, 1, t->win_border);
-    row_y += 10;
+    comp_rect(px, ry, pw, 1, t->win_border); ry += 10;
 
-    const char* net_items[] = { "Network", "Bluetooth", "Display", "Sound" };
+    /* shortcut tiles */
+    const char* tiles[] = { "Settings", "Network", "Display", "Sound" };
+    int tile_w = (pw - 28) / 2;
     for (int i = 0; i < 4; i++) {
-        int nx = px + 14 + (i % 2) * ((pw - 28) / 2 + 4);
-        int ny = row_y + (i / 2) * 36;
-        comp_rect(nx, ny, (pw - 32) / 2, 30, t->is_dark ? 0x1C2640 : 0xCDD4E8);
-        comp_border(nx, ny, (pw - 32) / 2, 30, t->win_border);
-        comp_text(nx + 8, ny + 8, net_items[i], t->text, t->is_dark ? 0x1C2640 : 0xCDD4E8);
+        int tx = px + 14 + (i % 2) * (tile_w + 4);
+        int ty2 = ry + (i / 2) * 36;
+        uint32_t tile_bg = t->is_dark ? 0x1C2640 : 0xCDD4E8;
+        int thov = (mx >= tx && mx < tx + tile_w && my >= ty2 && my < ty2 + 30);
+        if (thov) tile_bg = t->accent;
+        comp_rect(tx, ty2, tile_w, 30, tile_bg);
+        comp_border(tx, ty2, tile_w, 30, t->win_border);
+        int tl = 0; while(tiles[i][tl]) tl++;
+        comp_text(tx + tile_w/2 - tl*4, ty2 + 8, tiles[i],
+                  thov ? 0xFFFFFF : t->text, tile_bg);
     }
 }
 
