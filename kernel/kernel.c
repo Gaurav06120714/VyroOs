@@ -256,17 +256,9 @@ void kernel_main() {
         }
     }
 
-    shell_init();
     if (fb_available() && fb_probe()) {
-        print_color("  Launching Vyro OS 2.0 desktop...\n\n",
-                    MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
         gui_run();
-
-        print_color("  Desktop exited. Shell mode.\n\n",
-                    MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
-    } else {
-        print_color("  Framebuffer unavailable — shell mode. Type 'gui' to retry.\n\n",
-                    MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     }
+    shell_init();
     shell_run();
 }
