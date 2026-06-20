@@ -307,8 +307,9 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-smp 4 \
 		-cpu max \
 		-name "Vyro OS" \
-		-display cocoa,show-cursor=on,full-screen=on \
+		-display cocoa,show-cursor=off \
 		-vga std \
+		-device usb-tablet \
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
 		-device qemu-xhci,id=xhci
