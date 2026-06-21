@@ -103,6 +103,87 @@ make
 
 ---
 
+## Installation & Running (Path C — the from-scratch desktop)
+
+This is the bootable microkernel at the repo root. It builds to a disk image
+and runs in **QEMU**. You need three tools: an `x86_64-elf` cross-compiler,
+`nasm`, and `qemu`.
+
+### macOS
+
+1. **Install [Homebrew](https://brew.sh)** (skip if you already have it):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. **Install the toolchain:**
+   ```bash
+   brew install x86_64-elf-gcc x86_64-elf-binutils nasm qemu make
+   ```
+3. **Clone and build + run:**
+   ```bash
+   git clone https://github.com/Gaurav06120714/VyroOs.git
+   cd VyroOs
+   make           # builds build/vyro.img
+   make all       # builds and launches the desktop in QEMU
+   ```
+
+### Windows
+
+The cross toolchain is easiest inside **WSL2** (Windows Subsystem for Linux).
+
+1. **Install WSL2 + Ubuntu** (in an *Administrator* PowerShell, then reboot):
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+2. **Open the Ubuntu terminal and install the tools:**
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential nasm qemu-system-x86 make git
+   ```
+3. **Install the `x86_64-elf` cross-compiler.** Ubuntu has no apt package for
+   it, so either build it once with the helper below, or — because the WSL
+   host is already x86_64 — use the native compiler as a drop-in:
+   ```bash
+   # Quick path: use the native toolchain (works on x86_64 Linux/WSL hosts)
+   make CC=gcc LD=ld
+   make CC=gcc LD=ld all
+   ```
+   If that errors, install a real cross-compiler following the
+   [OSDev GCC Cross-Compiler guide](https://wiki.osdev.org/GCC_Cross-Compiler)
+   (target `x86_64-elf`), then just run `make` / `make all`.
+4. **Clone and build + run:**
+   ```bash
+   git clone https://github.com/Gaurav06120714/VyroOs.git
+   cd VyroOs
+   make           # or: make CC=gcc LD=ld
+   make all       # launches the desktop in QEMU
+   ```
+   > A QEMU window needs an X server on WSL2. Windows 11 (WSLg) shows it
+   > automatically. On Windows 10, install [VcXsrv](https://sourceforge.net/projects/vcxsrv/)
+   > and `export DISPLAY=:0` before `make all`.
+
+### Using the desktop
+
+The guest uses a PS/2 mouse, so QEMU grabs the pointer on first click:
+
+1. **Click once inside the Vyro OS window** to grab the mouse + keyboard.
+2. Move the mouse and type — the cursor tracks and keys register.
+3. Press **Ctrl + Alt + G** to release the mouse back to your host.
+
+It boots straight to the desktop (no login). Click dock icons to open apps,
+right-click the desktop for the context menu.
+
+### Common make targets
+
+| Command | What it does |
+|---------|--------------|
+| `make` | Build `build/vyro.img` |
+| `make all` | Build and run in QEMU (graphical window) |
+| `make usb` | Build a 32 MB bootable USB image (`build/vyro-usb.img`) |
+| `make clean` | Remove all build artifacts |
+
+---
+
 ## Why three paths instead of one?
 
 Honest answer:
