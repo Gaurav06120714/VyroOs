@@ -887,8 +887,10 @@ int  gui_glass_mode(void)       { return glass_mode_on; }
 
 
 void gui_run() {
+    /* Zero GUI state while briefly masking interrupts, then re-enable them so
+     * keyboard (IRQ1), mouse (IRQ12) and the timer (IRQ0) keep firing inside
+     * the GUI loop — otherwise input is dead and the cursor/keys freeze. */
     __asm__ volatile("cli");
-    /* Force-zero all GUI state — safe_wc() guards against any BSS corruption at runtime */
     *(volatile int*)&win_count = 0;
     for (int _i = 0; _i < MAX_WINS; _i++) {
         wins[_i].app = 0; wins[_i].x = 0; wins[_i].y = 0;
@@ -896,6 +898,7 @@ void gui_run() {
         wins[_i].minimized = 0; wins[_i].maximized = 0; wins[_i].desktop = 0;
         wins[_i].opened_at = 0; wins[_i].last_key = 0;
     }
+    __asm__ volatile("sti");
     if (!fb_available()) return;
     if (!comp_init()) return;
     theme_init();

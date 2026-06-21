@@ -10,7 +10,7 @@ Linker script and memory map
 
                 0x0000000000010000                . = 0x10000
 
-.text           0x0000000000010000    0x36396
+.text           0x0000000000010000    0x36296
  *(.text)
  .text          0x0000000000010000       0x2c build/kernel_entry.o
                 0x0000000000010000                _start
@@ -490,685 +490,685 @@ Linker script and memory map
                 0x000000000002f140                speaker_off
                 0x000000000002f150                beep
  *fill*         0x000000000002f195        0xb 
- .text          0x000000000002f1a0      0x3e8 build/mouse.o
+ .text          0x000000000002f1a0      0x2d8 build/mouse.o
                 0x000000000002f1a0                mouse_handler
                 0x000000000002f2c0                mouse_init
-                0x000000000002f470                mouse_poll
-                0x000000000002f560                mouse_x
-                0x000000000002f570                mouse_y
-                0x000000000002f580                mouse_buttons
- *fill*         0x000000000002f588       0x18 
- .text          0x000000000002f5a0     0x40cd build/gui.o
-                0x0000000000032600                gui_set_glass_mode
-                0x0000000000032610                gui_glass_mode
-                0x0000000000032620                gui_run
- *fill*         0x000000000003366d       0x13 
- .text          0x0000000000033680      0x535 build/sha256.o
-                0x0000000000033680                sha256
-                0x0000000000033b40                sha256_hex
- *fill*         0x0000000000033bb5        0xb 
- .text          0x0000000000033bc0      0x42e build/security.o
-                0x0000000000033bc0                user_add
-                0x0000000000033da0                security_init
-                0x0000000000033e60                auth_login
-                0x0000000000033f30                auth_logout
-                0x0000000000033fa0                current_user
-                0x0000000000033fc0                current_is_admin
-                0x0000000000033fe0                user_list
- *fill*         0x0000000000033fee        0x2 
- .text          0x0000000000033ff0      0x287 build/pkg.o
-                0x0000000000033ff0                pkg_init
-                0x0000000000034030                pkg_repo
-                0x0000000000034040                pkg_find
-                0x0000000000034200                pkg_install
-                0x0000000000034220                pkg_remove
- *fill*         0x0000000000034277        0x9 
- .text          0x0000000000034280      0x298 build/smp.o
-                0x00000000000342f0                smp_init
-                0x00000000000344d0                cpu_count
-                0x00000000000344e0                cpu_apic_id
-                0x0000000000034500                lapic_address
-                0x0000000000034510                acpi_found
- *fill*         0x0000000000034518        0x8 
- .text          0x0000000000034520       0x79 build/power.o
-                0x0000000000034520                power_shutdown
-                0x0000000000034550                power_reboot
-                0x0000000000034570                power_halt
-                0x0000000000034590                power_suspend
- *fill*         0x0000000000034599        0x7 
- .text          0x00000000000345a0       0xe6 build/klog.o
-                0x00000000000345a0                klog
-                0x0000000000034650                klog_count
-                0x0000000000034660                klog_get
- *fill*         0x0000000000034686       0x3a 
- .text          0x00000000000346c0      0x56c build/html.o
-                0x00000000000347c0                html_render
- *fill*         0x0000000000034c2c        0x4 
- .text          0x0000000000034c30      0x226 build/theme.o
-                0x0000000000034c30                theme_init
-                0x0000000000034cd0                theme_set_dark
-                0x0000000000034e50                theme
- *fill*         0x0000000000034e56        0xa 
- .text          0x0000000000034e60     0x15e8 build/compositor.o
-                0x0000000000035310                comp_init
-                0x0000000000035320                comp_revalidate
-                0x0000000000035330                comp_canary_ok
-                0x0000000000035360                comp_canary_dump
-                0x0000000000035400                comp_width
-                0x0000000000035410                comp_height
-                0x0000000000035420                comp_pixel
-                0x0000000000035460                comp_clear
-                0x00000000000354b0                comp_rect
-                0x0000000000035560                comp_border
-                0x0000000000035710                comp_shadow
-                0x00000000000358d0                comp_glyph
-                0x00000000000359b0                comp_text
-                0x0000000000035a00                comp_text_bg_alpha
-                0x0000000000035b40                comp_gradient_v
-                0x0000000000035cd0                comp_blur_rect
-                0x0000000000035d00                comp_tint_rect
-                0x0000000000035e80                comp_rounded_rect
-                0x0000000000036040                comp_glass_panel
-                0x00000000000363c0                comp_present
- *fill*         0x0000000000036448       0x18 
- .text          0x0000000000036460      0x121 build/icons.o
-                0x0000000000036460                icon_draw
- *fill*         0x0000000000036581       0x1f 
- .text          0x00000000000365a0      0x23a build/notify.o
-                0x00000000000365a0                notify_post
-                0x0000000000036740                notify_tick
-                0x0000000000036790                notify_active
-                0x00000000000367c0                notify_history
- *fill*         0x00000000000367da        0x6 
- .text          0x00000000000367e0      0x839 build/widgets.o
-                0x00000000000367e0                w_button
-                0x00000000000368f0                w_label
-                0x0000000000036920                w_label_dim
-                0x0000000000036950                w_label_color
-                0x0000000000036960                w_panel
-                0x00000000000369c0                w_panel_titled
-                0x0000000000036a50                w_separator
-                0x0000000000036ab0                w_progress
-                0x0000000000036b60                w_toggle
-                0x0000000000036c80                w_input
-                0x0000000000036da0                w_list_item
-                0x0000000000036ec0                w_icon_tile
- *fill*         0x0000000000037019        0x7 
- .text          0x0000000000037020       0xe0 build/app.o
-                0x0000000000037020                app_register
-                0x0000000000037040                app_count
-                0x0000000000037050                app_get
-                0x0000000000037080                app_find
- .text          0x0000000000037100      0xd3c build/app_settings.o
- *fill*         0x0000000000037e3c        0x4 
- .text          0x0000000000037e40     0x1393 build/app_files.o
- *fill*         0x00000000000391d3       0x2d 
- .text          0x0000000000039200     0x17ab build/app_terminal.o
- *fill*         0x000000000003a9ab       0x15 
- .text          0x000000000003a9c0      0xa9f build/app_textedit.o
- *fill*         0x000000000003b45f       0x21 
- .text          0x000000000003b480      0xc32 build/app_calc.o
- *fill*         0x000000000003c0b2        0xe 
- .text          0x000000000003c0c0     0x1489 build/app_clock.o
- *fill*         0x000000000003d549       0x37 
- .text          0x000000000003d580     0x12c6 build/app_taskmgr.o
- *fill*         0x000000000003e846        0xa 
- .text          0x000000000003e850      0x128 build/app_launcher.o
-                0x000000000003e970                launcher_set_callback
- *fill*         0x000000000003e978        0x8 
- .text          0x000000000003e980      0x181 build/app_notecenter.o
- *fill*         0x000000000003eb01       0x1f 
- .text          0x000000000003eb20      0x882 build/app_control.o
- *fill*         0x000000000003f3a2       0x1e 
- .text          0x000000000003f3c0      0xcf3 build/app_browser.o
- *fill*         0x00000000000400b3        0xd 
- .text          0x00000000000400c0      0xcff build/app_pkgstore.o
- *fill*         0x0000000000040dbf        0x1 
- .text          0x0000000000040dc0      0xd22 build/app_notes.o
- *fill*         0x0000000000041ae2       0x1e 
- .text          0x0000000000041b00      0xcb9 build/app_calendar.o
- *fill*         0x00000000000427b9        0x7 
- .text          0x00000000000427c0      0xaed build/app_network.o
- *fill*         0x00000000000432ad       0x13 
- .text          0x00000000000432c0      0xaec build/app_disk.o
- *fill*         0x0000000000043dac        0x4 
- .text          0x0000000000043db0       0xa5 build/apps_reg.o
-                0x0000000000043db0                apps_register_all
- *fill*         0x0000000000043e55        0xb 
- .text          0x0000000000043e60      0x33d build/sockets.o
-                0x0000000000043e60                tcp_state_name
-                0x0000000000043e80                sock_socket
-                0x0000000000043f20                sock_bind
-                0x0000000000043f70                sock_connect
-                0x0000000000043fd0                sock_listen
-                0x0000000000044020                sock_send
-                0x0000000000044070                sock_recv
-                0x00000000000440b0                sock_close
-                0x0000000000044130                sock_count
-                0x0000000000044160                sock_get
- *fill*         0x000000000004419d        0x3 
- .text          0x00000000000441a0       0x46 build/dhcp.o
-                0x00000000000441a0                dhcp_init
-                0x00000000000441b0                dhcp_lease_active
-                0x00000000000441c0                dhcp_offered_ip
-                0x00000000000441d0                dhcp_gateway
-                0x00000000000441e0                dhcp_dns
- *fill*         0x00000000000441e6        0xa 
- .text          0x00000000000441f0       0x9f build/dns.o
-                0x00000000000441f0                dns_resolve
- *fill*         0x000000000004428f       0x11 
- .text          0x00000000000442a0      0x376 build/ipc.o
-                0x00000000000442a0                pipe_create
-                0x0000000000044310                pipe_write
-                0x00000000000443a0                pipe_read
-                0x0000000000044430                pipe_count
-                0x0000000000044460                mq_send
-                0x0000000000044510                mq_recv
-                0x00000000000445a0                mq_count
-                0x00000000000445e0                signal_send
-                0x00000000000445f0                signal_count
-                0x0000000000044600                signal_name
- *fill*         0x0000000000044616       0x2a 
- .text          0x0000000000044640      0xa96 build/widgets_panel.o
-                0x0000000000044990                widgets_panel_draw
- *fill*         0x00000000000450d6        0xa 
- .text          0x00000000000450e0      0x475 build/ctxmenu.o
-                0x00000000000450e0                ctxmenu_clear
-                0x0000000000045100                ctxmenu_add
-                0x0000000000045130                ctxmenu_show
-                0x0000000000045160                ctxmenu_hide
-                0x0000000000045170                ctxmenu_handle_click
-                0x00000000000452a0                ctxmenu_draw
- *fill*         0x0000000000045555        0xb 
- .text          0x0000000000045560      0x3b8 build/rtl8139.o
-                0x0000000000045640                rtl8139_init
-                0x0000000000045830                rtl8139_send
-                0x00000000000458e0                rtl8139_mac
-                0x00000000000458f0                rtl8139_tx_count
-                0x0000000000045900                rtl8139_rx_count
-                0x0000000000045910                rtl8139_set_rx_handler
- *fill*         0x0000000000045918        0x8 
- .text          0x0000000000045920      0x42d build/net_io.o
-                0x0000000000045990                net_io_init
-                0x00000000000459b0                net_io_poll
-                0x0000000000045a10                net_io_rx_count
-                0x0000000000045a20                net_io_tx_count
-                0x0000000000045a30                net_io_send_udp_bcast
-                0x0000000000045bb0                net_io_send_udp
- *fill*         0x0000000000045d4d       0x13 
- .text          0x0000000000045d60      0x2a6 build/dhcp_real.o
-                0x0000000000045e80                dhcp_real_run
-                0x0000000000045fe0                dhcp_real_ip
-                0x0000000000045ff0                dhcp_real_gw
-                0x0000000000046000                dhcp_real_dns
- *fill*         0x0000000000046006       0x3a 
- .text          0x0000000000046040      0x356 build/dns_real.o
-                0x00000000000461e0                dns_real_resolve
+                0x000000000002f440                mouse_poll
+                0x000000000002f450                mouse_x
+                0x000000000002f460                mouse_y
+                0x000000000002f470                mouse_buttons
+ *fill*         0x000000000002f478        0x8 
+ .text          0x000000000002f480     0x40cd build/gui.o
+                0x00000000000324e0                gui_set_glass_mode
+                0x00000000000324f0                gui_glass_mode
+                0x0000000000032500                gui_run
+ *fill*         0x000000000003354d       0x33 
+ .text          0x0000000000033580      0x535 build/sha256.o
+                0x0000000000033580                sha256
+                0x0000000000033a40                sha256_hex
+ *fill*         0x0000000000033ab5        0xb 
+ .text          0x0000000000033ac0      0x42e build/security.o
+                0x0000000000033ac0                user_add
+                0x0000000000033ca0                security_init
+                0x0000000000033d60                auth_login
+                0x0000000000033e30                auth_logout
+                0x0000000000033ea0                current_user
+                0x0000000000033ec0                current_is_admin
+                0x0000000000033ee0                user_list
+ *fill*         0x0000000000033eee        0x2 
+ .text          0x0000000000033ef0      0x287 build/pkg.o
+                0x0000000000033ef0                pkg_init
+                0x0000000000033f30                pkg_repo
+                0x0000000000033f40                pkg_find
+                0x0000000000034100                pkg_install
+                0x0000000000034120                pkg_remove
+ *fill*         0x0000000000034177        0x9 
+ .text          0x0000000000034180      0x298 build/smp.o
+                0x00000000000341f0                smp_init
+                0x00000000000343d0                cpu_count
+                0x00000000000343e0                cpu_apic_id
+                0x0000000000034400                lapic_address
+                0x0000000000034410                acpi_found
+ *fill*         0x0000000000034418        0x8 
+ .text          0x0000000000034420       0x79 build/power.o
+                0x0000000000034420                power_shutdown
+                0x0000000000034450                power_reboot
+                0x0000000000034470                power_halt
+                0x0000000000034490                power_suspend
+ *fill*         0x0000000000034499        0x7 
+ .text          0x00000000000344a0       0xe6 build/klog.o
+                0x00000000000344a0                klog
+                0x0000000000034550                klog_count
+                0x0000000000034560                klog_get
+ *fill*         0x0000000000034586       0x3a 
+ .text          0x00000000000345c0      0x56c build/html.o
+                0x00000000000346c0                html_render
+ *fill*         0x0000000000034b2c        0x4 
+ .text          0x0000000000034b30      0x226 build/theme.o
+                0x0000000000034b30                theme_init
+                0x0000000000034bd0                theme_set_dark
+                0x0000000000034d50                theme
+ *fill*         0x0000000000034d56        0xa 
+ .text          0x0000000000034d60     0x15e8 build/compositor.o
+                0x0000000000035210                comp_init
+                0x0000000000035220                comp_revalidate
+                0x0000000000035230                comp_canary_ok
+                0x0000000000035260                comp_canary_dump
+                0x0000000000035300                comp_width
+                0x0000000000035310                comp_height
+                0x0000000000035320                comp_pixel
+                0x0000000000035360                comp_clear
+                0x00000000000353b0                comp_rect
+                0x0000000000035460                comp_border
+                0x0000000000035610                comp_shadow
+                0x00000000000357d0                comp_glyph
+                0x00000000000358b0                comp_text
+                0x0000000000035900                comp_text_bg_alpha
+                0x0000000000035a40                comp_gradient_v
+                0x0000000000035bd0                comp_blur_rect
+                0x0000000000035c00                comp_tint_rect
+                0x0000000000035d80                comp_rounded_rect
+                0x0000000000035f40                comp_glass_panel
+                0x00000000000362c0                comp_present
+ *fill*         0x0000000000036348       0x18 
+ .text          0x0000000000036360      0x121 build/icons.o
+                0x0000000000036360                icon_draw
+ *fill*         0x0000000000036481       0x1f 
+ .text          0x00000000000364a0      0x23a build/notify.o
+                0x00000000000364a0                notify_post
+                0x0000000000036640                notify_tick
+                0x0000000000036690                notify_active
+                0x00000000000366c0                notify_history
+ *fill*         0x00000000000366da        0x6 
+ .text          0x00000000000366e0      0x839 build/widgets.o
+                0x00000000000366e0                w_button
+                0x00000000000367f0                w_label
+                0x0000000000036820                w_label_dim
+                0x0000000000036850                w_label_color
+                0x0000000000036860                w_panel
+                0x00000000000368c0                w_panel_titled
+                0x0000000000036950                w_separator
+                0x00000000000369b0                w_progress
+                0x0000000000036a60                w_toggle
+                0x0000000000036b80                w_input
+                0x0000000000036ca0                w_list_item
+                0x0000000000036dc0                w_icon_tile
+ *fill*         0x0000000000036f19        0x7 
+ .text          0x0000000000036f20       0xe0 build/app.o
+                0x0000000000036f20                app_register
+                0x0000000000036f40                app_count
+                0x0000000000036f50                app_get
+                0x0000000000036f80                app_find
+ .text          0x0000000000037000      0xd3c build/app_settings.o
+ *fill*         0x0000000000037d3c        0x4 
+ .text          0x0000000000037d40     0x1393 build/app_files.o
+ *fill*         0x00000000000390d3       0x2d 
+ .text          0x0000000000039100     0x17ab build/app_terminal.o
+ *fill*         0x000000000003a8ab       0x15 
+ .text          0x000000000003a8c0      0xa9f build/app_textedit.o
+ *fill*         0x000000000003b35f       0x21 
+ .text          0x000000000003b380      0xc32 build/app_calc.o
+ *fill*         0x000000000003bfb2        0xe 
+ .text          0x000000000003bfc0     0x1489 build/app_clock.o
+ *fill*         0x000000000003d449       0x37 
+ .text          0x000000000003d480     0x12c6 build/app_taskmgr.o
+ *fill*         0x000000000003e746        0xa 
+ .text          0x000000000003e750      0x128 build/app_launcher.o
+                0x000000000003e870                launcher_set_callback
+ *fill*         0x000000000003e878        0x8 
+ .text          0x000000000003e880      0x181 build/app_notecenter.o
+ *fill*         0x000000000003ea01       0x1f 
+ .text          0x000000000003ea20      0x882 build/app_control.o
+ *fill*         0x000000000003f2a2       0x1e 
+ .text          0x000000000003f2c0      0xcf3 build/app_browser.o
+ *fill*         0x000000000003ffb3        0xd 
+ .text          0x000000000003ffc0      0xcff build/app_pkgstore.o
+ *fill*         0x0000000000040cbf        0x1 
+ .text          0x0000000000040cc0      0xd22 build/app_notes.o
+ *fill*         0x00000000000419e2       0x1e 
+ .text          0x0000000000041a00      0xcb9 build/app_calendar.o
+ *fill*         0x00000000000426b9        0x7 
+ .text          0x00000000000426c0      0xaed build/app_network.o
+ *fill*         0x00000000000431ad       0x13 
+ .text          0x00000000000431c0      0xaec build/app_disk.o
+ *fill*         0x0000000000043cac        0x4 
+ .text          0x0000000000043cb0       0xa5 build/apps_reg.o
+                0x0000000000043cb0                apps_register_all
+ *fill*         0x0000000000043d55        0xb 
+ .text          0x0000000000043d60      0x33d build/sockets.o
+                0x0000000000043d60                tcp_state_name
+                0x0000000000043d80                sock_socket
+                0x0000000000043e20                sock_bind
+                0x0000000000043e70                sock_connect
+                0x0000000000043ed0                sock_listen
+                0x0000000000043f20                sock_send
+                0x0000000000043f70                sock_recv
+                0x0000000000043fb0                sock_close
+                0x0000000000044030                sock_count
+                0x0000000000044060                sock_get
+ *fill*         0x000000000004409d        0x3 
+ .text          0x00000000000440a0       0x46 build/dhcp.o
+                0x00000000000440a0                dhcp_init
+                0x00000000000440b0                dhcp_lease_active
+                0x00000000000440c0                dhcp_offered_ip
+                0x00000000000440d0                dhcp_gateway
+                0x00000000000440e0                dhcp_dns
+ *fill*         0x00000000000440e6        0xa 
+ .text          0x00000000000440f0       0x9f build/dns.o
+                0x00000000000440f0                dns_resolve
+ *fill*         0x000000000004418f       0x11 
+ .text          0x00000000000441a0      0x376 build/ipc.o
+                0x00000000000441a0                pipe_create
+                0x0000000000044210                pipe_write
+                0x00000000000442a0                pipe_read
+                0x0000000000044330                pipe_count
+                0x0000000000044360                mq_send
+                0x0000000000044410                mq_recv
+                0x00000000000444a0                mq_count
+                0x00000000000444e0                signal_send
+                0x00000000000444f0                signal_count
+                0x0000000000044500                signal_name
+ *fill*         0x0000000000044516       0x2a 
+ .text          0x0000000000044540      0xa96 build/widgets_panel.o
+                0x0000000000044890                widgets_panel_draw
+ *fill*         0x0000000000044fd6        0xa 
+ .text          0x0000000000044fe0      0x475 build/ctxmenu.o
+                0x0000000000044fe0                ctxmenu_clear
+                0x0000000000045000                ctxmenu_add
+                0x0000000000045030                ctxmenu_show
+                0x0000000000045060                ctxmenu_hide
+                0x0000000000045070                ctxmenu_handle_click
+                0x00000000000451a0                ctxmenu_draw
+ *fill*         0x0000000000045455        0xb 
+ .text          0x0000000000045460      0x3b8 build/rtl8139.o
+                0x0000000000045540                rtl8139_init
+                0x0000000000045730                rtl8139_send
+                0x00000000000457e0                rtl8139_mac
+                0x00000000000457f0                rtl8139_tx_count
+                0x0000000000045800                rtl8139_rx_count
+                0x0000000000045810                rtl8139_set_rx_handler
+ *fill*         0x0000000000045818        0x8 
+ .text          0x0000000000045820      0x42d build/net_io.o
+                0x0000000000045890                net_io_init
+                0x00000000000458b0                net_io_poll
+                0x0000000000045910                net_io_rx_count
+                0x0000000000045920                net_io_tx_count
+                0x0000000000045930                net_io_send_udp_bcast
+                0x0000000000045ab0                net_io_send_udp
+ *fill*         0x0000000000045c4d       0x13 
+ .text          0x0000000000045c60      0x2a6 build/dhcp_real.o
+                0x0000000000045d80                dhcp_real_run
+                0x0000000000045ee0                dhcp_real_ip
+                0x0000000000045ef0                dhcp_real_gw
+                0x0000000000045f00                dhcp_real_dns
+ *fill*         0x0000000000045f06       0x3a 
+ .text          0x0000000000045f40      0x356 build/dns_real.o
+                0x00000000000460e0                dns_real_resolve
 
-.rodata         0x00000000000463a0     0x4bc8
+.rodata         0x00000000000462a0     0x4bc8
  *(.rodata)
- .rodata        0x00000000000463a0      0x100 build/isr.o
- .rodata        0x00000000000464a0       0x40 build/screen.o
- .rodata        0x00000000000464e0       0x98 build/keyboard.o
- *fill*         0x0000000000046578        0x8 
- .rodata        0x0000000000046580      0x748 build/shell.o
- .rodata        0x0000000000046cc8       0x58 build/syscall.o
- .rodata        0x0000000000046d20     0x1438 build/user_init.o
-                0x0000000000046d20                user_init_elf_len
-                0x0000000000046d40                user_init_elf
- *fill*         0x0000000000048158        0x8 
- .rodata        0x0000000000048160     0x15e0 build/user_hello.o
-                0x0000000000048160                user_hello_elf_len
-                0x0000000000048180                user_hello_elf
- .rodata        0x0000000000049740        0xe build/udp.o
- *fill*         0x000000000004974e        0x2 
- .rodata        0x0000000000049750       0x48 build/tcp.o
- *fill*         0x0000000000049798        0x8 
- .rodata        0x00000000000497a0       0x91 build/x509.o
- *fill*         0x0000000000049831        0xf 
- .rodata        0x0000000000049840      0x196 build/x509_testvec.o
-                0x0000000000049840                x509_testvec_der
- *fill*         0x00000000000499d6        0xa 
- .rodata        0x00000000000499e0       0x48 build/x25519.o
- *fill*         0x0000000000049a28       0x18 
- .rodata        0x0000000000049a40       0x28 build/tls.o
- *fill*         0x0000000000049a68       0x18 
- .rodata        0x0000000000049a80       0x28 build/memmap.o
- .rodata        0x0000000000049aa8        0x8 build/parttab.o
- .rodata        0x0000000000049ab0       0xde build/smp_trampoline_blob.o
-                0x0000000000049ab0                smp_trampoline_blob
-                0x0000000000049b8e                smp_trampoline_blob_end
- *fill*         0x0000000000049b8e        0x2 
- .rodata        0x0000000000049b90       0x13 build/rsa.o
- *fill*         0x0000000000049ba3       0x1d 
- .rodata        0x0000000000049bc0       0x80 build/ecdsa.o
- .rodata        0x0000000000049c40       0x30 build/wallpaper.o
- *fill*         0x0000000000049c70       0x10 
- .rodata        0x0000000000049c80       0x80 build/widgets_desktop.o
- .rodata        0x0000000000049d00       0x13 build/bignum_4k.o
- *fill*         0x0000000000049d13        0xd 
- .rodata        0x0000000000049d20       0xc8 build/tunes.o
- *fill*         0x0000000000049de8        0x8 
- .rodata        0x0000000000049df0       0x18 build/e1000.o
- *fill*         0x0000000000049e08       0x18 
- .rodata        0x0000000000049e20      0x2d0 build/gui.o
- *fill*         0x000000000004a0f0       0x10 
- .rodata        0x000000000004a100      0x100 build/sha256.o
- .rodata        0x000000000004a200      0x170 build/icons.o
-                0x000000000004a200                ICON_TRASH
-                0x000000000004a240                ICON_APPS
-                0x000000000004a280                ICON_BROWSER
-                0x000000000004a2c0                ICON_SETTINGS
-                0x000000000004a300                ICON_TERMINAL
-                0x000000000004a340                ICON_FINDER
- *fill*         0x000000000004a370       0x10 
- .rodata        0x000000000004a380       0xa0 build/app_settings.o
-                0x000000000004a3c0                APP_SETTINGS
- .rodata        0x000000000004a420       0x20 build/app_files.o
-                0x000000000004a420                APP_FILES
- .rodata        0x000000000004a440       0x20 build/app_terminal.o
-                0x000000000004a440                APP_TERMINAL
- .rodata        0x000000000004a460       0x20 build/app_textedit.o
-                0x000000000004a460                APP_TEXTEDIT
- .rodata        0x000000000004a480      0x180 build/app_calc.o
-                0x000000000004a5e0                APP_CALC
- .rodata        0x000000000004a600      0x268 build/app_clock.o
-                0x000000000004a7a0                APP_CLOCK
- *fill*         0x000000000004a868       0x18 
- .rodata        0x000000000004a880      0x100 build/app_taskmgr.o
-                0x000000000004a960                APP_TASKMGR
- .rodata        0x000000000004a980       0x20 build/app_launcher.o
-                0x000000000004a980                APP_LAUNCHER
- .rodata        0x000000000004a9a0       0x20 build/app_notecenter.o
-                0x000000000004a9a0                APP_NOTECENTER
- .rodata        0x000000000004a9c0       0x20 build/app_control.o
-                0x000000000004a9c0                APP_CONTROL
- .rodata        0x000000000004a9e0       0x20 build/app_browser.o
-                0x000000000004a9e0                APP_BROWSER2
- .rodata        0x000000000004aa00       0x48 build/app_pkgstore.o
-                0x000000000004aa00                APP_PKGSTORE
- *fill*         0x000000000004aa48       0x18 
- .rodata        0x000000000004aa60       0x20 build/app_notes.o
-                0x000000000004aa60                APP_NOTES
- .rodata        0x000000000004aa80      0x108 build/app_calendar.o
-                0x000000000004aac0                APP_CALENDAR
- *fill*         0x000000000004ab88       0x18 
- .rodata        0x000000000004aba0       0x20 build/app_network.o
-                0x000000000004aba0                APP_NETWORK
- .rodata        0x000000000004abc0      0x1a0 build/app_disk.o
-                0x000000000004ad40                APP_DISK
- .rodata        0x000000000004ad60       0x58 build/sockets.o
- *fill*         0x000000000004adb8        0x8 
- .rodata        0x000000000004adc0       0x80 build/dns.o
- .rodata        0x000000000004ae40       0x70 build/ipc.o
- *fill*         0x000000000004aeb0       0x10 
- .rodata        0x000000000004aec0       0xa8 build/widgets_panel.o
+ .rodata        0x00000000000462a0      0x100 build/isr.o
+ .rodata        0x00000000000463a0       0x40 build/screen.o
+ .rodata        0x00000000000463e0       0x98 build/keyboard.o
+ *fill*         0x0000000000046478        0x8 
+ .rodata        0x0000000000046480      0x748 build/shell.o
+ .rodata        0x0000000000046bc8       0x58 build/syscall.o
+ .rodata        0x0000000000046c20     0x1438 build/user_init.o
+                0x0000000000046c20                user_init_elf_len
+                0x0000000000046c40                user_init_elf
+ *fill*         0x0000000000048058        0x8 
+ .rodata        0x0000000000048060     0x15e0 build/user_hello.o
+                0x0000000000048060                user_hello_elf_len
+                0x0000000000048080                user_hello_elf
+ .rodata        0x0000000000049640        0xe build/udp.o
+ *fill*         0x000000000004964e        0x2 
+ .rodata        0x0000000000049650       0x48 build/tcp.o
+ *fill*         0x0000000000049698        0x8 
+ .rodata        0x00000000000496a0       0x91 build/x509.o
+ *fill*         0x0000000000049731        0xf 
+ .rodata        0x0000000000049740      0x196 build/x509_testvec.o
+                0x0000000000049740                x509_testvec_der
+ *fill*         0x00000000000498d6        0xa 
+ .rodata        0x00000000000498e0       0x48 build/x25519.o
+ *fill*         0x0000000000049928       0x18 
+ .rodata        0x0000000000049940       0x28 build/tls.o
+ *fill*         0x0000000000049968       0x18 
+ .rodata        0x0000000000049980       0x28 build/memmap.o
+ .rodata        0x00000000000499a8        0x8 build/parttab.o
+ .rodata        0x00000000000499b0       0xde build/smp_trampoline_blob.o
+                0x00000000000499b0                smp_trampoline_blob
+                0x0000000000049a8e                smp_trampoline_blob_end
+ *fill*         0x0000000000049a8e        0x2 
+ .rodata        0x0000000000049a90       0x13 build/rsa.o
+ *fill*         0x0000000000049aa3       0x1d 
+ .rodata        0x0000000000049ac0       0x80 build/ecdsa.o
+ .rodata        0x0000000000049b40       0x30 build/wallpaper.o
+ *fill*         0x0000000000049b70       0x10 
+ .rodata        0x0000000000049b80       0x80 build/widgets_desktop.o
+ .rodata        0x0000000000049c00       0x13 build/bignum_4k.o
+ *fill*         0x0000000000049c13        0xd 
+ .rodata        0x0000000000049c20       0xc8 build/tunes.o
+ *fill*         0x0000000000049ce8        0x8 
+ .rodata        0x0000000000049cf0       0x18 build/e1000.o
+ *fill*         0x0000000000049d08       0x18 
+ .rodata        0x0000000000049d20      0x2d0 build/gui.o
+ *fill*         0x0000000000049ff0       0x10 
+ .rodata        0x000000000004a000      0x100 build/sha256.o
+ .rodata        0x000000000004a100      0x170 build/icons.o
+                0x000000000004a100                ICON_TRASH
+                0x000000000004a140                ICON_APPS
+                0x000000000004a180                ICON_BROWSER
+                0x000000000004a1c0                ICON_SETTINGS
+                0x000000000004a200                ICON_TERMINAL
+                0x000000000004a240                ICON_FINDER
+ *fill*         0x000000000004a270       0x10 
+ .rodata        0x000000000004a280       0xa0 build/app_settings.o
+                0x000000000004a2c0                APP_SETTINGS
+ .rodata        0x000000000004a320       0x20 build/app_files.o
+                0x000000000004a320                APP_FILES
+ .rodata        0x000000000004a340       0x20 build/app_terminal.o
+                0x000000000004a340                APP_TERMINAL
+ .rodata        0x000000000004a360       0x20 build/app_textedit.o
+                0x000000000004a360                APP_TEXTEDIT
+ .rodata        0x000000000004a380      0x180 build/app_calc.o
+                0x000000000004a4e0                APP_CALC
+ .rodata        0x000000000004a500      0x268 build/app_clock.o
+                0x000000000004a6a0                APP_CLOCK
+ *fill*         0x000000000004a768       0x18 
+ .rodata        0x000000000004a780      0x100 build/app_taskmgr.o
+                0x000000000004a860                APP_TASKMGR
+ .rodata        0x000000000004a880       0x20 build/app_launcher.o
+                0x000000000004a880                APP_LAUNCHER
+ .rodata        0x000000000004a8a0       0x20 build/app_notecenter.o
+                0x000000000004a8a0                APP_NOTECENTER
+ .rodata        0x000000000004a8c0       0x20 build/app_control.o
+                0x000000000004a8c0                APP_CONTROL
+ .rodata        0x000000000004a8e0       0x20 build/app_browser.o
+                0x000000000004a8e0                APP_BROWSER2
+ .rodata        0x000000000004a900       0x48 build/app_pkgstore.o
+                0x000000000004a900                APP_PKGSTORE
+ *fill*         0x000000000004a948       0x18 
+ .rodata        0x000000000004a960       0x20 build/app_notes.o
+                0x000000000004a960                APP_NOTES
+ .rodata        0x000000000004a980      0x108 build/app_calendar.o
+                0x000000000004a9c0                APP_CALENDAR
+ *fill*         0x000000000004aa88       0x18 
+ .rodata        0x000000000004aaa0       0x20 build/app_network.o
+                0x000000000004aaa0                APP_NETWORK
+ .rodata        0x000000000004aac0      0x1a0 build/app_disk.o
+                0x000000000004ac40                APP_DISK
+ .rodata        0x000000000004ac60       0x58 build/sockets.o
+ *fill*         0x000000000004acb8        0x8 
+ .rodata        0x000000000004acc0       0x80 build/dns.o
+ .rodata        0x000000000004ad40       0x70 build/ipc.o
+ *fill*         0x000000000004adb0       0x10 
+ .rodata        0x000000000004adc0       0xa8 build/widgets_panel.o
 
-.rodata.str1.8  0x000000000004af68     0x33ca
+.rodata.str1.8  0x000000000004ae68     0x33ca
  .rodata.str1.8
-                0x000000000004af68      0x629 build/kernel.o
- *fill*         0x000000000004b591        0x7 
+                0x000000000004ae68      0x629 build/kernel.o
+ *fill*         0x000000000004b491        0x7 
  .rodata.str1.8
-                0x000000000004b598       0x5c build/isr.o
- *fill*         0x000000000004b5f4        0x4 
+                0x000000000004b498       0x5c build/isr.o
+ *fill*         0x000000000004b4f4        0x4 
  .rodata.str1.8
-                0x000000000004b5f8     0x1f89 build/shell.o
- *fill*         0x000000000004d581        0x7 
+                0x000000000004b4f8     0x1f89 build/shell.o
+ *fill*         0x000000000004d481        0x7 
  .rodata.str1.8
-                0x000000000004d588       0x50 build/vfs.o
+                0x000000000004d488       0x50 build/vfs.o
  .rodata.str1.8
-                0x000000000004d5d8       0x9b build/aead.o
- *fill*         0x000000000004d673        0x5 
+                0x000000000004d4d8       0x9b build/aead.o
+ *fill*         0x000000000004d573        0x5 
  .rodata.str1.8
-                0x000000000004d678       0x31 build/http.o
- *fill*         0x000000000004d6a9        0x7 
+                0x000000000004d578       0x31 build/http.o
+ *fill*         0x000000000004d5a9        0x7 
  .rodata.str1.8
-                0x000000000004d6b0       0x50 build/gui.o
+                0x000000000004d5b0       0x50 build/gui.o
  .rodata.str1.8
-                0x000000000004d700       0x2b build/html.o
- *fill*         0x000000000004d72b        0x5 
+                0x000000000004d600       0x2b build/html.o
+ *fill*         0x000000000004d62b        0x5 
  .rodata.str1.8
-                0x000000000004d730       0xbe build/compositor.o
- *fill*         0x000000000004d7ee        0x2 
+                0x000000000004d630       0xbe build/compositor.o
+ *fill*         0x000000000004d6ee        0x2 
  .rodata.str1.8
-                0x000000000004d7f0       0xa0 build/app_settings.o
+                0x000000000004d6f0       0xa0 build/app_settings.o
  .rodata.str1.8
-                0x000000000004d890       0xd3 build/app_terminal.o
- *fill*         0x000000000004d963        0x5 
+                0x000000000004d790       0xd3 build/app_terminal.o
+ *fill*         0x000000000004d863        0x5 
  .rodata.str1.8
-                0x000000000004d968       0xf2 build/app_textedit.o
- *fill*         0x000000000004da5a        0x6 
+                0x000000000004d868       0xf2 build/app_textedit.o
+ *fill*         0x000000000004d95a        0x6 
  .rodata.str1.8
-                0x000000000004da60      0x11f build/app_taskmgr.o
- *fill*         0x000000000004db7f        0x1 
+                0x000000000004d960      0x11f build/app_taskmgr.o
+ *fill*         0x000000000004da7f        0x1 
  .rodata.str1.8
-                0x000000000004db80       0x3f build/app_control.o
- *fill*         0x000000000004dbbf        0x1 
+                0x000000000004da80       0x3f build/app_control.o
+ *fill*         0x000000000004dabf        0x1 
  .rodata.str1.8
-                0x000000000004dbc0      0x56b build/app_browser.o
- *fill*         0x000000000004e12b        0x5 
+                0x000000000004dac0      0x56b build/app_browser.o
+ *fill*         0x000000000004e02b        0x5 
  .rodata.str1.8
-                0x000000000004e130      0x202 build/app_notes.o
+                0x000000000004e030      0x202 build/app_notes.o
 
-.rodata.str1.1  0x000000000004e332     0x4448
+.rodata.str1.1  0x000000000004e232     0x4448
  .rodata.str1.1
-                0x000000000004e332      0x2c0 build/kernel.o
+                0x000000000004e232      0x2c0 build/kernel.o
  .rodata.str1.1
-                0x000000000004e5f2      0x28c build/isr.o
+                0x000000000004e4f2      0x28c build/isr.o
  .rodata.str1.1
-                0x000000000004e87e       0x11 build/screen.o
+                0x000000000004e77e       0x11 build/screen.o
  .rodata.str1.1
-                0x000000000004e88f     0x277e build/shell.o
+                0x000000000004e78f     0x277e build/shell.o
  .rodata.str1.1
-                0x000000000005100d       0x24 build/vfs.o
+                0x0000000000050f0d       0x24 build/vfs.o
  .rodata.str1.1
-                0x0000000000051031       0xae build/x509.o
+                0x0000000000050f31       0xae build/x509.o
  .rodata.str1.1
-                0x00000000000510df       0x84 build/tls.o
+                0x0000000000050fdf       0x84 build/tls.o
  .rodata.str1.1
-                0x0000000000051163        0xa build/block.o
+                0x0000000000051063        0xa build/block.o
  .rodata.str1.1
-                0x000000000005116d        0x7 build/ecdsa.o
+                0x000000000005106d        0x7 build/ecdsa.o
  .rodata.str1.1
-                0x0000000000051174       0x2a build/wallpaper.o
+                0x0000000000051074       0x2a build/wallpaper.o
  .rodata.str1.1
-                0x000000000005119e       0x60 build/widgets_desktop.o
+                0x000000000005109e       0x60 build/widgets_desktop.o
  .rodata.str1.1
-                0x00000000000511fe        0x7 build/hal_x86_64.o
+                0x00000000000510fe        0x7 build/hal_x86_64.o
  .rodata.str1.1
-                0x0000000000051205        0x5 build/acpi.o
+                0x0000000000051105        0x5 build/acpi.o
  .rodata.str1.1
-                0x000000000005120a       0x22 build/http.o
+                0x000000000005110a       0x22 build/http.o
  .rodata.str1.1
-                0x000000000005122c       0x58 build/usb.o
+                0x000000000005112c       0x58 build/usb.o
  .rodata.str1.1
-                0x0000000000051284      0x434 build/gui.o
+                0x0000000000051184      0x434 build/gui.o
  .rodata.str1.1
-                0x00000000000516b8       0x11 build/sha256.o
+                0x00000000000515b8       0x11 build/sha256.o
  .rodata.str1.1
-                0x00000000000516c9       0x10 build/security.o
+                0x00000000000515c9       0x10 build/security.o
  .rodata.str1.1
-                0x00000000000516d9      0x10c build/pkg.o
+                0x00000000000515d9      0x10c build/pkg.o
  .rodata.str1.1
-                0x00000000000517e5        0xe build/smp.o
+                0x00000000000516e5        0xe build/smp.o
  .rodata.str1.1
-                0x00000000000517f3        0x1 build/klog.o
+                0x00000000000516f3        0x1 build/klog.o
  .rodata.str1.1
-                0x00000000000517f4       0x17 build/html.o
+                0x00000000000516f4       0x17 build/html.o
  .rodata.str1.1
-                0x000000000005180b       0x2c build/icons.o
+                0x000000000005170b       0x2c build/icons.o
  .rodata.str1.1
-                0x0000000000051837      0x3cc build/app_settings.o
+                0x0000000000051737      0x3cc build/app_settings.o
  .rodata.str1.1
-                0x0000000000051c03       0x7f build/app_files.o
+                0x0000000000051b03       0x7f build/app_files.o
  .rodata.str1.1
-                0x0000000000051c82       0xbf build/app_terminal.o
+                0x0000000000051b82       0xbf build/app_terminal.o
  .rodata.str1.1
-                0x0000000000051d41       0x13 build/app_textedit.o
+                0x0000000000051c41       0x13 build/app_textedit.o
  .rodata.str1.1
-                0x0000000000051d54       0x35 build/app_calc.o
+                0x0000000000051c54       0x35 build/app_calc.o
  .rodata.str1.1
-                0x0000000000051d89      0x13f build/app_clock.o
+                0x0000000000051c89      0x13f build/app_clock.o
  .rodata.str1.1
-                0x0000000000051ec8      0x1bd build/app_taskmgr.o
+                0x0000000000051dc8      0x1bd build/app_taskmgr.o
  .rodata.str1.1
-                0x0000000000052085       0x17 build/app_launcher.o
+                0x0000000000051f85       0x17 build/app_launcher.o
  .rodata.str1.1
-                0x000000000005209c       0x34 build/app_notecenter.o
+                0x0000000000051f9c       0x34 build/app_notecenter.o
  .rodata.str1.1
-                0x00000000000520d0       0x77 build/app_control.o
+                0x0000000000051fd0       0x77 build/app_control.o
  .rodata.str1.1
-                0x0000000000052147       0x54 build/app_browser.o
+                0x0000000000052047       0x54 build/app_browser.o
  .rodata.str1.1
-                0x000000000005219b       0x82 build/app_pkgstore.o
+                0x000000000005209b       0x82 build/app_pkgstore.o
  .rodata.str1.1
-                0x000000000005221d       0x51 build/app_notes.o
+                0x000000000005211d       0x51 build/app_notes.o
  .rodata.str1.1
-                0x000000000005226e       0xbf build/app_calendar.o
+                0x000000000005216e       0xbf build/app_calendar.o
  .rodata.str1.1
-                0x000000000005232d       0xdb build/app_network.o
+                0x000000000005222d       0xdb build/app_network.o
  .rodata.str1.1
-                0x0000000000052408      0x1f7 build/app_disk.o
+                0x0000000000052308      0x1f7 build/app_disk.o
  .rodata.str1.1
-                0x00000000000525ff       0x74 build/sockets.o
+                0x00000000000524ff       0x74 build/sockets.o
  .rodata.str1.1
-                0x0000000000052673       0x3e build/dns.o
+                0x0000000000052573       0x3e build/dns.o
  .rodata.str1.1
-                0x00000000000526b1       0x27 build/ipc.o
+                0x00000000000525b1       0x27 build/ipc.o
  .rodata.str1.1
-                0x00000000000526d8       0xa2 build/widgets_panel.o
+                0x00000000000525d8       0xa2 build/widgets_panel.o
 
-.eh_frame       0x0000000000052780     0x7008
- .eh_frame      0x0000000000052780       0x48 build/kernel.o
- .eh_frame      0x00000000000527c8       0x40 build/idt.o
- .eh_frame      0x0000000000052808       0x70 build/isr.o
- .eh_frame      0x0000000000052878      0x1f0 build/screen.o
- .eh_frame      0x0000000000052a68      0x1a0 build/framebuffer.o
- .eh_frame      0x0000000000052c08       0x68 build/pic.o
- .eh_frame      0x0000000000052c70       0x78 build/keyboard.o
- .eh_frame      0x0000000000052ce8     0x16d0 build/shell.o
- .eh_frame      0x00000000000543b8      0x110 build/pmm.o
- .eh_frame      0x00000000000544c8       0xa0 build/heap.o
- .eh_frame      0x0000000000054568       0xa0 build/timer.o
- .eh_frame      0x0000000000054608       0x50 build/rtc.o
- .eh_frame      0x0000000000054658      0x1c8 build/vfs.o
- .eh_frame      0x0000000000054820       0xe8 build/task.o
- .eh_frame      0x0000000000054908       0xa8 build/syscall.o
- .eh_frame      0x00000000000549b0       0x50 build/gdt.o
- .eh_frame      0x0000000000054a00       0x30 build/elf.o
- .eh_frame      0x0000000000054a30       0xb8 build/pci.o
- .eh_frame      0x0000000000054ae8       0x88 build/net.o
- .eh_frame      0x0000000000054b70       0xf0 build/arp.o
- .eh_frame      0x0000000000054c60      0x158 build/udp.o
- .eh_frame      0x0000000000054db8      0x330 build/tcp.o
- .eh_frame      0x00000000000550e8       0x48 build/net_pump.o
- .eh_frame      0x0000000000055130       0x88 build/chacha20.o
- .eh_frame      0x00000000000551b8       0x88 build/poly1305.o
- .eh_frame      0x0000000000055240      0x118 build/aead.o
- .eh_frame      0x0000000000055358      0x240 build/x509.o
- .eh_frame      0x0000000000055598      0x138 build/hkdf.o
- .eh_frame      0x00000000000556d0       0xd8 build/x25519.o
- .eh_frame      0x00000000000557a8      0x3d8 build/tls.o
- .eh_frame      0x0000000000055b80       0xe0 build/sched.o
- .eh_frame      0x0000000000055c60      0x320 build/fat32.o
- .eh_frame      0x0000000000055f80       0x80 build/memmap.o
- .eh_frame      0x0000000000056000      0x118 build/block.o
- .eh_frame      0x0000000000056118      0x150 build/parttab.o
- .eh_frame      0x0000000000056268      0x138 build/lba_xlate.o
- .eh_frame      0x00000000000563a0       0xa8 build/lapic.o
- .eh_frame      0x0000000000056448       0xc0 build/csprng.o
- .eh_frame      0x0000000000056508       0x90 build/smp_boot.o
- .eh_frame      0x0000000000056598       0x30 build/smp_trampoline_blob.o
- .eh_frame      0x00000000000565c8      0x110 build/bignum.o
- .eh_frame      0x00000000000566d8       0xa8 build/rsa.o
- .eh_frame      0x0000000000056780      0x1d0 build/ecdsa.o
- .eh_frame      0x0000000000056950       0x88 build/trust.o
- .eh_frame      0x00000000000569d8       0x68 build/wallpaper.o
- .eh_frame      0x0000000000056a40       0xd8 build/widgets_desktop.o
- .eh_frame      0x0000000000056b18      0x130 build/bignum_4k.o
- .eh_frame      0x0000000000056c48       0x88 build/ipv6.o
- .eh_frame      0x0000000000056cd0       0xd0 build/tunes.o
- .eh_frame      0x0000000000056da0       0x80 build/rsa_pss.o
- .eh_frame      0x0000000000056e20      0x120 build/hal_x86_64.o
- .eh_frame      0x0000000000056f40      0x110 build/acpi.o
- .eh_frame      0x0000000000057050       0xe0 build/ahci.o
- .eh_frame      0x0000000000057130       0x60 build/e1000.o
- .eh_frame      0x0000000000057190      0x110 build/nvme.o
- .eh_frame      0x00000000000572a0       0xc8 build/http.o
- .eh_frame      0x0000000000057368      0x170 build/xhci.o
- .eh_frame      0x00000000000574d8       0x58 build/ata.o
- .eh_frame      0x0000000000057530       0x60 build/usb.o
- .eh_frame      0x0000000000057590       0x60 build/speaker.o
- .eh_frame      0x00000000000575f0       0xc0 build/mouse.o
- .eh_frame      0x00000000000576b0      0x2e0 build/gui.o
- .eh_frame      0x0000000000057990       0x70 build/sha256.o
- .eh_frame      0x0000000000057a00       0xe8 build/security.o
- .eh_frame      0x0000000000057ae8       0xf8 build/pkg.o
- .eh_frame      0x0000000000057be0       0xb0 build/smp.o
- .eh_frame      0x0000000000057c90       0x70 build/power.o
- .eh_frame      0x0000000000057d00       0x58 build/klog.o
- .eh_frame      0x0000000000057d58       0x88 build/html.o
- .eh_frame      0x0000000000057de0       0x78 build/theme.o
- .eh_frame      0x0000000000057e58      0x3b0 build/compositor.o
- .eh_frame      0x0000000000058208       0x50 build/icons.o
- .eh_frame      0x0000000000058258       0x88 build/notify.o
- .eh_frame      0x00000000000582e0      0x280 build/widgets.o
- .eh_frame      0x0000000000058560       0x68 build/app.o
- .eh_frame      0x00000000000585c8       0xc8 build/app_settings.o
- .eh_frame      0x0000000000058690       0x90 build/app_files.o
- .eh_frame      0x0000000000058720      0x148 build/app_terminal.o
- .eh_frame      0x0000000000058868       0x88 build/app_textedit.o
- .eh_frame      0x00000000000588f0       0xb8 build/app_calc.o
- .eh_frame      0x00000000000589a8       0xe0 build/app_clock.o
- .eh_frame      0x0000000000058a88       0xc0 build/app_taskmgr.o
- .eh_frame      0x0000000000058b48       0x68 build/app_launcher.o
- .eh_frame      0x0000000000058bb0       0x68 build/app_notecenter.o
- .eh_frame      0x0000000000058c18       0xc8 build/app_control.o
- .eh_frame      0x0000000000058ce0       0x68 build/app_browser.o
- .eh_frame      0x0000000000058d48       0x78 build/app_pkgstore.o
- .eh_frame      0x0000000000058dc0       0x78 build/app_notes.o
- .eh_frame      0x0000000000058e38       0x78 build/app_calendar.o
- .eh_frame      0x0000000000058eb0       0x68 build/app_network.o
- .eh_frame      0x0000000000058f18       0xa0 build/app_disk.o
- .eh_frame      0x0000000000058fb8       0x38 build/apps_reg.o
- .eh_frame      0x0000000000058ff0       0xe0 build/sockets.o
- .eh_frame      0x00000000000590d0       0x80 build/dhcp.o
- .eh_frame      0x0000000000059150       0x30 build/dns.o
- .eh_frame      0x0000000000059180       0xe0 build/ipc.o
- .eh_frame      0x0000000000059260      0x100 build/widgets_panel.o
- .eh_frame      0x0000000000059360       0xb8 build/ctxmenu.o
- .eh_frame      0x0000000000059418       0xf0 build/rtl8139.o
- .eh_frame      0x0000000000059508      0x140 build/net_io.o
- .eh_frame      0x0000000000059648       0xb0 build/dhcp_real.o
- .eh_frame      0x00000000000596f8       0x90 build/dns_real.o
+.eh_frame       0x0000000000052680     0x6fe8
+ .eh_frame      0x0000000000052680       0x48 build/kernel.o
+ .eh_frame      0x00000000000526c8       0x40 build/idt.o
+ .eh_frame      0x0000000000052708       0x70 build/isr.o
+ .eh_frame      0x0000000000052778      0x1f0 build/screen.o
+ .eh_frame      0x0000000000052968      0x1a0 build/framebuffer.o
+ .eh_frame      0x0000000000052b08       0x68 build/pic.o
+ .eh_frame      0x0000000000052b70       0x78 build/keyboard.o
+ .eh_frame      0x0000000000052be8     0x16d0 build/shell.o
+ .eh_frame      0x00000000000542b8      0x110 build/pmm.o
+ .eh_frame      0x00000000000543c8       0xa0 build/heap.o
+ .eh_frame      0x0000000000054468       0xa0 build/timer.o
+ .eh_frame      0x0000000000054508       0x50 build/rtc.o
+ .eh_frame      0x0000000000054558      0x1c8 build/vfs.o
+ .eh_frame      0x0000000000054720       0xe8 build/task.o
+ .eh_frame      0x0000000000054808       0xa8 build/syscall.o
+ .eh_frame      0x00000000000548b0       0x50 build/gdt.o
+ .eh_frame      0x0000000000054900       0x30 build/elf.o
+ .eh_frame      0x0000000000054930       0xb8 build/pci.o
+ .eh_frame      0x00000000000549e8       0x88 build/net.o
+ .eh_frame      0x0000000000054a70       0xf0 build/arp.o
+ .eh_frame      0x0000000000054b60      0x158 build/udp.o
+ .eh_frame      0x0000000000054cb8      0x330 build/tcp.o
+ .eh_frame      0x0000000000054fe8       0x48 build/net_pump.o
+ .eh_frame      0x0000000000055030       0x88 build/chacha20.o
+ .eh_frame      0x00000000000550b8       0x88 build/poly1305.o
+ .eh_frame      0x0000000000055140      0x118 build/aead.o
+ .eh_frame      0x0000000000055258      0x240 build/x509.o
+ .eh_frame      0x0000000000055498      0x138 build/hkdf.o
+ .eh_frame      0x00000000000555d0       0xd8 build/x25519.o
+ .eh_frame      0x00000000000556a8      0x3d8 build/tls.o
+ .eh_frame      0x0000000000055a80       0xe0 build/sched.o
+ .eh_frame      0x0000000000055b60      0x320 build/fat32.o
+ .eh_frame      0x0000000000055e80       0x80 build/memmap.o
+ .eh_frame      0x0000000000055f00      0x118 build/block.o
+ .eh_frame      0x0000000000056018      0x150 build/parttab.o
+ .eh_frame      0x0000000000056168      0x138 build/lba_xlate.o
+ .eh_frame      0x00000000000562a0       0xa8 build/lapic.o
+ .eh_frame      0x0000000000056348       0xc0 build/csprng.o
+ .eh_frame      0x0000000000056408       0x90 build/smp_boot.o
+ .eh_frame      0x0000000000056498       0x30 build/smp_trampoline_blob.o
+ .eh_frame      0x00000000000564c8      0x110 build/bignum.o
+ .eh_frame      0x00000000000565d8       0xa8 build/rsa.o
+ .eh_frame      0x0000000000056680      0x1d0 build/ecdsa.o
+ .eh_frame      0x0000000000056850       0x88 build/trust.o
+ .eh_frame      0x00000000000568d8       0x68 build/wallpaper.o
+ .eh_frame      0x0000000000056940       0xd8 build/widgets_desktop.o
+ .eh_frame      0x0000000000056a18      0x130 build/bignum_4k.o
+ .eh_frame      0x0000000000056b48       0x88 build/ipv6.o
+ .eh_frame      0x0000000000056bd0       0xd0 build/tunes.o
+ .eh_frame      0x0000000000056ca0       0x80 build/rsa_pss.o
+ .eh_frame      0x0000000000056d20      0x120 build/hal_x86_64.o
+ .eh_frame      0x0000000000056e40      0x110 build/acpi.o
+ .eh_frame      0x0000000000056f50       0xe0 build/ahci.o
+ .eh_frame      0x0000000000057030       0x60 build/e1000.o
+ .eh_frame      0x0000000000057090      0x110 build/nvme.o
+ .eh_frame      0x00000000000571a0       0xc8 build/http.o
+ .eh_frame      0x0000000000057268      0x170 build/xhci.o
+ .eh_frame      0x00000000000573d8       0x58 build/ata.o
+ .eh_frame      0x0000000000057430       0x60 build/usb.o
+ .eh_frame      0x0000000000057490       0x60 build/speaker.o
+ .eh_frame      0x00000000000574f0       0xa0 build/mouse.o
+ .eh_frame      0x0000000000057590      0x2e0 build/gui.o
+ .eh_frame      0x0000000000057870       0x70 build/sha256.o
+ .eh_frame      0x00000000000578e0       0xe8 build/security.o
+ .eh_frame      0x00000000000579c8       0xf8 build/pkg.o
+ .eh_frame      0x0000000000057ac0       0xb0 build/smp.o
+ .eh_frame      0x0000000000057b70       0x70 build/power.o
+ .eh_frame      0x0000000000057be0       0x58 build/klog.o
+ .eh_frame      0x0000000000057c38       0x88 build/html.o
+ .eh_frame      0x0000000000057cc0       0x78 build/theme.o
+ .eh_frame      0x0000000000057d38      0x3b0 build/compositor.o
+ .eh_frame      0x00000000000580e8       0x50 build/icons.o
+ .eh_frame      0x0000000000058138       0x88 build/notify.o
+ .eh_frame      0x00000000000581c0      0x280 build/widgets.o
+ .eh_frame      0x0000000000058440       0x68 build/app.o
+ .eh_frame      0x00000000000584a8       0xc8 build/app_settings.o
+ .eh_frame      0x0000000000058570       0x90 build/app_files.o
+ .eh_frame      0x0000000000058600      0x148 build/app_terminal.o
+ .eh_frame      0x0000000000058748       0x88 build/app_textedit.o
+ .eh_frame      0x00000000000587d0       0xb8 build/app_calc.o
+ .eh_frame      0x0000000000058888       0xe0 build/app_clock.o
+ .eh_frame      0x0000000000058968       0xc0 build/app_taskmgr.o
+ .eh_frame      0x0000000000058a28       0x68 build/app_launcher.o
+ .eh_frame      0x0000000000058a90       0x68 build/app_notecenter.o
+ .eh_frame      0x0000000000058af8       0xc8 build/app_control.o
+ .eh_frame      0x0000000000058bc0       0x68 build/app_browser.o
+ .eh_frame      0x0000000000058c28       0x78 build/app_pkgstore.o
+ .eh_frame      0x0000000000058ca0       0x78 build/app_notes.o
+ .eh_frame      0x0000000000058d18       0x78 build/app_calendar.o
+ .eh_frame      0x0000000000058d90       0x68 build/app_network.o
+ .eh_frame      0x0000000000058df8       0xa0 build/app_disk.o
+ .eh_frame      0x0000000000058e98       0x38 build/apps_reg.o
+ .eh_frame      0x0000000000058ed0       0xe0 build/sockets.o
+ .eh_frame      0x0000000000058fb0       0x80 build/dhcp.o
+ .eh_frame      0x0000000000059030       0x30 build/dns.o
+ .eh_frame      0x0000000000059060       0xe0 build/ipc.o
+ .eh_frame      0x0000000000059140      0x100 build/widgets_panel.o
+ .eh_frame      0x0000000000059240       0xb8 build/ctxmenu.o
+ .eh_frame      0x00000000000592f8       0xf0 build/rtl8139.o
+ .eh_frame      0x00000000000593e8      0x140 build/net_io.o
+ .eh_frame      0x0000000000059528       0xb0 build/dhcp_real.o
+ .eh_frame      0x00000000000595d8       0x90 build/dns_real.o
 
-.rodata.cst32   0x0000000000059790       0x20
- .rodata.cst32  0x0000000000059790       0x20 build/wallpaper.o
+.rodata.cst32   0x0000000000059670       0x20
+ .rodata.cst32  0x0000000000059670       0x20 build/wallpaper.o
 
-.data           0x00000000000597c0     0x129e
+.data           0x00000000000596a0     0x129e
  *(.data)
- .data          0x00000000000597c0        0x0 build/kernel.o
- .data          0x00000000000597c0        0x0 build/idt.o
- .data          0x00000000000597c0        0x0 build/isr.o
- .data          0x00000000000597c0        0x1 build/screen.o
- .data          0x00000000000597c1        0x0 build/framebuffer.o
- .data          0x00000000000597c1        0x0 build/pic.o
- .data          0x00000000000597c1        0x0 build/keyboard.o
- *fill*         0x00000000000597c1        0x3 
- .data          0x00000000000597c4        0x4 build/shell.o
- .data          0x00000000000597c8        0x4 build/pmm.o
- .data          0x00000000000597cc        0x0 build/heap.o
- .data          0x00000000000597cc        0x4 build/timer.o
- .data          0x00000000000597d0        0x0 build/rtc.o
- .data          0x00000000000597d0        0x0 build/vfs.o
- .data          0x00000000000597d0        0x4 build/task.o
- .data          0x00000000000597d4        0x0 build/syscall.o
- .data          0x00000000000597d4        0x0 build/gdt.o
- .data          0x00000000000597d4        0x0 build/elf.o
- .data          0x00000000000597d4        0x0 build/user_init.o
- .data          0x00000000000597d4        0x0 build/user_hello.o
- .data          0x00000000000597d4        0x0 build/pci.o
- .data          0x00000000000597d4        0xa build/net.o
- .data          0x00000000000597de        0x0 build/arp.o
- .data          0x00000000000597de        0x0 build/udp.o
- .data          0x00000000000597de        0x2 build/tcp.o
- .data          0x00000000000597e0        0x0 build/net_pump.o
- .data          0x00000000000597e0        0x0 build/chacha20.o
- .data          0x00000000000597e0        0x0 build/poly1305.o
- .data          0x00000000000597e0        0x0 build/aead.o
- .data          0x00000000000597e0        0x0 build/x509.o
- .data          0x00000000000597e0        0x0 build/x509_testvec.o
- .data          0x00000000000597e0        0x0 build/hkdf.o
- .data          0x00000000000597e0        0x0 build/x25519.o
- .data          0x00000000000597e0        0x0 build/tls.o
- .data          0x00000000000597e0        0x0 build/sched.o
- .data          0x00000000000597e0        0x0 build/fat32.o
- .data          0x00000000000597e0        0x0 build/memmap.o
- .data          0x00000000000597e0        0x0 build/block.o
- .data          0x00000000000597e0        0x0 build/parttab.o
- .data          0x00000000000597e0        0x0 build/lba_xlate.o
- .data          0x00000000000597e0        0x0 build/lapic.o
- .data          0x00000000000597e0        0x0 build/csprng.o
- .data          0x00000000000597e0        0x0 build/smp_boot.o
- .data          0x00000000000597e0        0x0 build/smp_trampoline_blob.o
- .data          0x00000000000597e0        0x0 build/bignum.o
- .data          0x00000000000597e0        0x0 build/rsa.o
- .data          0x00000000000597e0        0x0 build/ecdsa.o
- .data          0x00000000000597e0        0x0 build/trust.o
- .data          0x00000000000597e0        0x0 build/wallpaper.o
- .data          0x00000000000597e0        0x0 build/widgets_desktop.o
- .data          0x00000000000597e0        0x0 build/bignum_4k.o
- .data          0x00000000000597e0        0x0 build/ipv6.o
- .data          0x00000000000597e0      0xd19 build/trust_anchors.o
-                0x00000000000597e0                globalsign_mock_der_len
-                0x0000000000059800                globalsign_mock_der
-                0x0000000000059b38                digicert_mock_der_len
-                0x0000000000059b40                digicert_mock_der
-                0x0000000000059e74                isrg_root_x1_mock_der_len
-                0x0000000000059e80                isrg_root_x1_mock_der
-                0x000000000005a1bc                vyro_root_ca_rsa_der_len
-                0x000000000005a1c0                vyro_root_ca_rsa_der
- .data          0x000000000005a4f9        0x0 build/tunes.o
- .data          0x000000000005a4f9        0x0 build/rsa_pss.o
- .data          0x000000000005a4f9        0x0 build/hal_x86_64.o
- .data          0x000000000005a4f9        0x0 build/acpi.o
- .data          0x000000000005a4f9        0x0 build/ahci.o
- .data          0x000000000005a4f9        0x0 build/e1000.o
- .data          0x000000000005a4f9        0x2 build/nvme.o
- .data          0x000000000005a4fb        0x0 build/http.o
- .data          0x000000000005a4fb        0x2 build/xhci.o
- .data          0x000000000005a4fd        0x0 build/ata.o
- .data          0x000000000005a4fd        0x0 build/usb.o
- .data          0x000000000005a4fd        0x0 build/speaker.o
- *fill*         0x000000000005a4fd        0x3 
- .data          0x000000000005a500        0x8 build/mouse.o
- .data          0x000000000005a508       0x1c build/gui.o
- .data          0x000000000005a524        0x0 build/sha256.o
- .data          0x000000000005a524        0x4 build/security.o
- *fill*         0x000000000005a528       0x18 
- .data          0x000000000005a540      0x400 build/pkg.o
- .data          0x000000000005a940        0x0 build/smp.o
- .data          0x000000000005a940        0x0 build/power.o
- .data          0x000000000005a940        0x0 build/klog.o
- .data          0x000000000005a940        0x0 build/html.o
- .data          0x000000000005a940        0x0 build/theme.o
- .data          0x000000000005a940       0x10 build/compositor.o
- .data          0x000000000005a950        0x0 build/icons.o
- .data          0x000000000005a950        0x0 build/notify.o
- .data          0x000000000005a950        0x0 build/widgets.o
- .data          0x000000000005a950        0x0 build/app.o
- .data          0x000000000005a950       0x14 build/app_settings.o
- .data          0x000000000005a964        0x4 build/app_files.o
- .data          0x000000000005a968        0x4 build/app_terminal.o
- .data          0x000000000005a96c        0x4 build/app_textedit.o
- .data          0x000000000005a970        0x0 build/app_calc.o
- .data          0x000000000005a970        0x0 build/app_clock.o
- .data          0x000000000005a970        0x0 build/app_taskmgr.o
- .data          0x000000000005a970        0x0 build/app_launcher.o
- .data          0x000000000005a970        0x0 build/app_notecenter.o
- .data          0x000000000005a970       0x18 build/app_control.o
- *fill*         0x000000000005a988       0x18 
- .data          0x000000000005a9a0       0xa0 build/app_browser.o
- .data          0x000000000005aa40        0x0 build/app_pkgstore.o
- .data          0x000000000005aa40        0x0 build/app_notes.o
- .data          0x000000000005aa40        0x0 build/app_calendar.o
- .data          0x000000000005aa40        0x4 build/app_network.o
- .data          0x000000000005aa44        0x0 build/app_disk.o
- .data          0x000000000005aa44        0x0 build/apps_reg.o
- .data          0x000000000005aa44        0x4 build/sockets.o
- .data          0x000000000005aa48        0xd build/dhcp.o
- .data          0x000000000005aa55        0x0 build/dns.o
- .data          0x000000000005aa55        0x0 build/ipc.o
- .data          0x000000000005aa55        0x0 build/widgets_panel.o
- .data          0x000000000005aa55        0x0 build/ctxmenu.o
- .data          0x000000000005aa55        0x0 build/rtl8139.o
- .data          0x000000000005aa55        0x6 build/net_io.o
- .data          0x000000000005aa5b        0x0 build/dhcp_real.o
- *fill*         0x000000000005aa5b        0x1 
- .data          0x000000000005aa5c        0x2 build/dns_real.o
+ .data          0x00000000000596a0        0x0 build/kernel.o
+ .data          0x00000000000596a0        0x0 build/idt.o
+ .data          0x00000000000596a0        0x0 build/isr.o
+ .data          0x00000000000596a0        0x1 build/screen.o
+ .data          0x00000000000596a1        0x0 build/framebuffer.o
+ .data          0x00000000000596a1        0x0 build/pic.o
+ .data          0x00000000000596a1        0x0 build/keyboard.o
+ *fill*         0x00000000000596a1        0x3 
+ .data          0x00000000000596a4        0x4 build/shell.o
+ .data          0x00000000000596a8        0x4 build/pmm.o
+ .data          0x00000000000596ac        0x0 build/heap.o
+ .data          0x00000000000596ac        0x4 build/timer.o
+ .data          0x00000000000596b0        0x0 build/rtc.o
+ .data          0x00000000000596b0        0x0 build/vfs.o
+ .data          0x00000000000596b0        0x4 build/task.o
+ .data          0x00000000000596b4        0x0 build/syscall.o
+ .data          0x00000000000596b4        0x0 build/gdt.o
+ .data          0x00000000000596b4        0x0 build/elf.o
+ .data          0x00000000000596b4        0x0 build/user_init.o
+ .data          0x00000000000596b4        0x0 build/user_hello.o
+ .data          0x00000000000596b4        0x0 build/pci.o
+ .data          0x00000000000596b4        0xa build/net.o
+ .data          0x00000000000596be        0x0 build/arp.o
+ .data          0x00000000000596be        0x0 build/udp.o
+ .data          0x00000000000596be        0x2 build/tcp.o
+ .data          0x00000000000596c0        0x0 build/net_pump.o
+ .data          0x00000000000596c0        0x0 build/chacha20.o
+ .data          0x00000000000596c0        0x0 build/poly1305.o
+ .data          0x00000000000596c0        0x0 build/aead.o
+ .data          0x00000000000596c0        0x0 build/x509.o
+ .data          0x00000000000596c0        0x0 build/x509_testvec.o
+ .data          0x00000000000596c0        0x0 build/hkdf.o
+ .data          0x00000000000596c0        0x0 build/x25519.o
+ .data          0x00000000000596c0        0x0 build/tls.o
+ .data          0x00000000000596c0        0x0 build/sched.o
+ .data          0x00000000000596c0        0x0 build/fat32.o
+ .data          0x00000000000596c0        0x0 build/memmap.o
+ .data          0x00000000000596c0        0x0 build/block.o
+ .data          0x00000000000596c0        0x0 build/parttab.o
+ .data          0x00000000000596c0        0x0 build/lba_xlate.o
+ .data          0x00000000000596c0        0x0 build/lapic.o
+ .data          0x00000000000596c0        0x0 build/csprng.o
+ .data          0x00000000000596c0        0x0 build/smp_boot.o
+ .data          0x00000000000596c0        0x0 build/smp_trampoline_blob.o
+ .data          0x00000000000596c0        0x0 build/bignum.o
+ .data          0x00000000000596c0        0x0 build/rsa.o
+ .data          0x00000000000596c0        0x0 build/ecdsa.o
+ .data          0x00000000000596c0        0x0 build/trust.o
+ .data          0x00000000000596c0        0x0 build/wallpaper.o
+ .data          0x00000000000596c0        0x0 build/widgets_desktop.o
+ .data          0x00000000000596c0        0x0 build/bignum_4k.o
+ .data          0x00000000000596c0        0x0 build/ipv6.o
+ .data          0x00000000000596c0      0xd19 build/trust_anchors.o
+                0x00000000000596c0                globalsign_mock_der_len
+                0x00000000000596e0                globalsign_mock_der
+                0x0000000000059a18                digicert_mock_der_len
+                0x0000000000059a20                digicert_mock_der
+                0x0000000000059d54                isrg_root_x1_mock_der_len
+                0x0000000000059d60                isrg_root_x1_mock_der
+                0x000000000005a09c                vyro_root_ca_rsa_der_len
+                0x000000000005a0a0                vyro_root_ca_rsa_der
+ .data          0x000000000005a3d9        0x0 build/tunes.o
+ .data          0x000000000005a3d9        0x0 build/rsa_pss.o
+ .data          0x000000000005a3d9        0x0 build/hal_x86_64.o
+ .data          0x000000000005a3d9        0x0 build/acpi.o
+ .data          0x000000000005a3d9        0x0 build/ahci.o
+ .data          0x000000000005a3d9        0x0 build/e1000.o
+ .data          0x000000000005a3d9        0x2 build/nvme.o
+ .data          0x000000000005a3db        0x0 build/http.o
+ .data          0x000000000005a3db        0x2 build/xhci.o
+ .data          0x000000000005a3dd        0x0 build/ata.o
+ .data          0x000000000005a3dd        0x0 build/usb.o
+ .data          0x000000000005a3dd        0x0 build/speaker.o
+ *fill*         0x000000000005a3dd        0x3 
+ .data          0x000000000005a3e0        0x8 build/mouse.o
+ .data          0x000000000005a3e8       0x1c build/gui.o
+ .data          0x000000000005a404        0x0 build/sha256.o
+ .data          0x000000000005a404        0x4 build/security.o
+ *fill*         0x000000000005a408       0x18 
+ .data          0x000000000005a420      0x400 build/pkg.o
+ .data          0x000000000005a820        0x0 build/smp.o
+ .data          0x000000000005a820        0x0 build/power.o
+ .data          0x000000000005a820        0x0 build/klog.o
+ .data          0x000000000005a820        0x0 build/html.o
+ .data          0x000000000005a820        0x0 build/theme.o
+ .data          0x000000000005a820       0x10 build/compositor.o
+ .data          0x000000000005a830        0x0 build/icons.o
+ .data          0x000000000005a830        0x0 build/notify.o
+ .data          0x000000000005a830        0x0 build/widgets.o
+ .data          0x000000000005a830        0x0 build/app.o
+ .data          0x000000000005a830       0x14 build/app_settings.o
+ .data          0x000000000005a844        0x4 build/app_files.o
+ .data          0x000000000005a848        0x4 build/app_terminal.o
+ .data          0x000000000005a84c        0x4 build/app_textedit.o
+ .data          0x000000000005a850        0x0 build/app_calc.o
+ .data          0x000000000005a850        0x0 build/app_clock.o
+ .data          0x000000000005a850        0x0 build/app_taskmgr.o
+ .data          0x000000000005a850        0x0 build/app_launcher.o
+ .data          0x000000000005a850        0x0 build/app_notecenter.o
+ .data          0x000000000005a850       0x18 build/app_control.o
+ *fill*         0x000000000005a868       0x18 
+ .data          0x000000000005a880       0xa0 build/app_browser.o
+ .data          0x000000000005a920        0x0 build/app_pkgstore.o
+ .data          0x000000000005a920        0x0 build/app_notes.o
+ .data          0x000000000005a920        0x0 build/app_calendar.o
+ .data          0x000000000005a920        0x4 build/app_network.o
+ .data          0x000000000005a924        0x0 build/app_disk.o
+ .data          0x000000000005a924        0x0 build/apps_reg.o
+ .data          0x000000000005a924        0x4 build/sockets.o
+ .data          0x000000000005a928        0xd build/dhcp.o
+ .data          0x000000000005a935        0x0 build/dns.o
+ .data          0x000000000005a935        0x0 build/ipc.o
+ .data          0x000000000005a935        0x0 build/widgets_panel.o
+ .data          0x000000000005a935        0x0 build/ctxmenu.o
+ .data          0x000000000005a935        0x0 build/rtl8139.o
+ .data          0x000000000005a935        0x6 build/net_io.o
+ .data          0x000000000005a93b        0x0 build/dhcp_real.o
+ *fill*         0x000000000005a93b        0x1 
+ .data          0x000000000005a93c        0x2 build/dns_real.o
                 0x0000000000100000                . = 0x100000
 
-.bss            0x0000000000100000    0x7e208
+.bss            0x0000000000100000    0x7e1e8
                 0x0000000000100000                __bss_start = .
  *(COMMON)
  *(.bss)
@@ -1254,59 +1254,59 @@ Linker script and memory map
  .bss           0x00000000001696f0        0x0 build/ata.o
  .bss           0x00000000001696f0        0x8 build/usb.o
  .bss           0x00000000001696f8        0x0 build/speaker.o
- .bss           0x00000000001696f8        0x9 build/mouse.o
- *fill*         0x0000000000169701       0x1f 
- .bss           0x0000000000169720      0x340 build/gui.o
- .bss           0x0000000000169a60        0x0 build/sha256.o
- .bss           0x0000000000169a60      0x280 build/security.o
- .bss           0x0000000000169ce0        0x0 build/pkg.o
- .bss           0x0000000000169ce0       0x40 build/smp.o
- .bss           0x0000000000169d20        0x0 build/power.o
- .bss           0x0000000000169d20     0x2820 build/klog.o
- .bss           0x000000000016c540       0x14 build/html.o
- *fill*         0x000000000016c554        0xc 
- .bss           0x000000000016c560       0x48 build/theme.o
- .bss           0x000000000016c5a8       0x10 build/compositor.o
- .bss           0x000000000016c5b8        0x0 build/icons.o
- *fill*         0x000000000016c5b8        0x8 
- .bss           0x000000000016c5c0     0x16a0 build/notify.o
- .bss           0x000000000016dc60        0x0 build/widgets.o
- .bss           0x000000000016dc60       0xa0 build/app.o
- .bss           0x000000000016dd00        0x8 build/app_settings.o
- .bss           0x000000000016dd08       0x10 build/app_files.o
- *fill*         0x000000000016dd18        0x8 
- .bss           0x000000000016dd20     0x1a40 build/app_terminal.o
- .bss           0x000000000016f760     0x1020 build/app_textedit.o
- .bss           0x0000000000170780      0x100 build/app_calc.o
- .bss           0x0000000000170880       0x18 build/app_clock.o
- .bss           0x0000000000170898        0x4 build/app_taskmgr.o
- *fill*         0x000000000017089c        0x4 
- .bss           0x00000000001708a0        0x8 build/app_launcher.o
- .bss           0x00000000001708a8        0x0 build/app_notecenter.o
- .bss           0x00000000001708a8        0x8 build/app_control.o
- *fill*         0x00000000001708b0       0x10 
- .bss           0x00000000001708c0      0x2b0 build/app_browser.o
- *fill*         0x0000000000170b70       0x10 
- .bss           0x0000000000170b80       0x48 build/app_pkgstore.o
- *fill*         0x0000000000170bc8       0x18 
- .bss           0x0000000000170be0     0x11a0 build/app_notes.o
- .bss           0x0000000000171d80       0x10 build/app_calendar.o
- .bss           0x0000000000171d90        0x8 build/app_network.o
- .bss           0x0000000000171d98        0x4 build/app_disk.o
- .bss           0x0000000000171d9c        0x0 build/apps_reg.o
- *fill*         0x0000000000171d9c        0x4 
- .bss           0x0000000000171da0      0x500 build/sockets.o
- .bss           0x00000000001722a0        0x0 build/dhcp.o
- .bss           0x00000000001722a0        0x0 build/dns.o
- .bss           0x00000000001722a0     0x5120 build/ipc.o
- .bss           0x00000000001773c0        0x0 build/widgets_panel.o
- .bss           0x00000000001773c0        0x0 build/ctxmenu.o
- .bss           0x00000000001773c0       0x58 build/rtl8139.o
- *fill*         0x0000000000177418        0x8 
- .bss           0x0000000000177420     0x6ba0 build/net_io.o
- .bss           0x000000000017dfc0      0x140 build/dhcp_real.o
- .bss           0x000000000017e100      0x108 build/dns_real.o
-                0x000000000017e208                __bss_end = .
+ .bss           0x00000000001696f8        0x5 build/mouse.o
+ *fill*         0x00000000001696fd        0x3 
+ .bss           0x0000000000169700      0x340 build/gui.o
+ .bss           0x0000000000169a40        0x0 build/sha256.o
+ .bss           0x0000000000169a40      0x280 build/security.o
+ .bss           0x0000000000169cc0        0x0 build/pkg.o
+ .bss           0x0000000000169cc0       0x40 build/smp.o
+ .bss           0x0000000000169d00        0x0 build/power.o
+ .bss           0x0000000000169d00     0x2820 build/klog.o
+ .bss           0x000000000016c520       0x14 build/html.o
+ *fill*         0x000000000016c534        0xc 
+ .bss           0x000000000016c540       0x48 build/theme.o
+ .bss           0x000000000016c588       0x10 build/compositor.o
+ .bss           0x000000000016c598        0x0 build/icons.o
+ *fill*         0x000000000016c598        0x8 
+ .bss           0x000000000016c5a0     0x16a0 build/notify.o
+ .bss           0x000000000016dc40        0x0 build/widgets.o
+ .bss           0x000000000016dc40       0xa0 build/app.o
+ .bss           0x000000000016dce0        0x8 build/app_settings.o
+ .bss           0x000000000016dce8       0x10 build/app_files.o
+ *fill*         0x000000000016dcf8        0x8 
+ .bss           0x000000000016dd00     0x1a40 build/app_terminal.o
+ .bss           0x000000000016f740     0x1020 build/app_textedit.o
+ .bss           0x0000000000170760      0x100 build/app_calc.o
+ .bss           0x0000000000170860       0x18 build/app_clock.o
+ .bss           0x0000000000170878        0x4 build/app_taskmgr.o
+ *fill*         0x000000000017087c        0x4 
+ .bss           0x0000000000170880        0x8 build/app_launcher.o
+ .bss           0x0000000000170888        0x0 build/app_notecenter.o
+ .bss           0x0000000000170888        0x8 build/app_control.o
+ *fill*         0x0000000000170890       0x10 
+ .bss           0x00000000001708a0      0x2b0 build/app_browser.o
+ *fill*         0x0000000000170b50       0x10 
+ .bss           0x0000000000170b60       0x48 build/app_pkgstore.o
+ *fill*         0x0000000000170ba8       0x18 
+ .bss           0x0000000000170bc0     0x11a0 build/app_notes.o
+ .bss           0x0000000000171d60       0x10 build/app_calendar.o
+ .bss           0x0000000000171d70        0x8 build/app_network.o
+ .bss           0x0000000000171d78        0x4 build/app_disk.o
+ .bss           0x0000000000171d7c        0x0 build/apps_reg.o
+ *fill*         0x0000000000171d7c        0x4 
+ .bss           0x0000000000171d80      0x500 build/sockets.o
+ .bss           0x0000000000172280        0x0 build/dhcp.o
+ .bss           0x0000000000172280        0x0 build/dns.o
+ .bss           0x0000000000172280     0x5120 build/ipc.o
+ .bss           0x00000000001773a0        0x0 build/widgets_panel.o
+ .bss           0x00000000001773a0        0x0 build/ctxmenu.o
+ .bss           0x00000000001773a0       0x58 build/rtl8139.o
+ *fill*         0x00000000001773f8        0x8 
+ .bss           0x0000000000177400     0x6ba0 build/net_io.o
+ .bss           0x000000000017dfa0      0x140 build/dhcp_real.o
+ .bss           0x000000000017e0e0      0x108 build/dns_real.o
+                0x000000000017e1e8                __bss_end = .
 LOAD build/kernel_entry.o
 LOAD build/isr_stubs.o
 LOAD build/kernel.o

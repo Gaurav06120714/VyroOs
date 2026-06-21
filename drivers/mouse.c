@@ -10,69 +10,6 @@ static uint8_t  buttons = 0;
 static uint8_t  packet[3];
 static uint8_t  cycle = 0;
 
-#define VMMOUSE_MAGIC     0x564D5868UL
-#define VMMOUSE_PORT      0x5658
-#define VMMOUSE_CMD_ABSPTR_COMMAND  0x27
-#define VMMOUSE_CMD_ABSPTR_STATUS   0x28
-#define VMMOUSE_CMD_ABSPTR_DATA     0x29
-#define VMMOUSE_ABSPTR_ENABLE       0x45414552UL
-
-static int vmmouse_active = 0;
-
-static uint32_t vmmouse_cmd(uint32_t cmd, uint32_t arg,
-                             uint32_t* eax_out, uint32_t* ecx_out,
-                             uint32_t* edx_out) {
-    uint32_t eax = VMMOUSE_MAGIC, ebx = arg, ecx = cmd, edx = VMMOUSE_PORT;
-    __asm__ volatile(
-        "inl %%dx, %%eax"
-        : "+a"(eax), "+b"(ebx), "+c"(ecx), "+d"(edx)
-        :
-        : "memory"
-    );
-    if (eax_out) *eax_out = eax;
-    if (ecx_out) *ecx_out = ecx;
-    if (edx_out) *edx_out = edx;
-    return ebx;
-}
-
-static int vmmouse_enable(void) {
-    uint32_t eax = 0, ecx = 0, edx = 0;
-    vmmouse_cmd(VMMOUSE_CMD_ABSPTR_COMMAND, VMMOUSE_ABSPTR_ENABLE,
-                &eax, &ecx, &edx);
-
-    return (eax == VMMOUSE_MAGIC);
-}
-
-static void vmmouse_poll(void) {
-
-    uint32_t count = vmmouse_cmd(VMMOUSE_CMD_ABSPTR_STATUS, 0,
-                                  0, 0, 0);
-    if ((count & 0xFFFF) < 4) return;
-
-    uint32_t x_raw, y_raw, dummy, btn_raw;
-    x_raw   = vmmouse_cmd(VMMOUSE_CMD_ABSPTR_DATA, 0, 0, 0, 0);
-    y_raw   = vmmouse_cmd(VMMOUSE_CMD_ABSPTR_DATA, 0, 0, 0, 0);
-    dummy   = vmmouse_cmd(VMMOUSE_CMD_ABSPTR_DATA, 0, 0, 0, 0);
-    btn_raw = vmmouse_cmd(VMMOUSE_CMD_ABSPTR_DATA, 0, 0, 0, 0);
-    (void)dummy;
-
-
-    pos_x = (int)((x_raw * FB_WIDTH)  >> 16);
-    pos_y = (int)((y_raw * FB_HEIGHT) >> 16);
-
-    if (pos_x < 0) pos_x = 0;
-    if (pos_y < 0) pos_y = 0;
-    if (pos_x >= FB_WIDTH)  pos_x = FB_WIDTH  - 1;
-    if (pos_y >= FB_HEIGHT) pos_y = FB_HEIGHT - 1;
-
-
-    uint8_t new_btn = 0;
-    if (btn_raw & (1 << 5)) new_btn |= MOUSE_LEFT;
-    if (btn_raw & (1 << 4)) new_btn |= MOUSE_RIGHT;
-    if (btn_raw & (1 << 3)) new_btn |= MOUSE_MIDDLE;
-    buttons = new_btn;
-}
-
 static void mouse_wait_write() {
     for (int i = 0; i < 100000; i++)
         if ((inb(0x64) & 2) == 0) return;
@@ -134,30 +71,29 @@ void mouse_handler(registers_t* regs) {
 }
 
 void mouse_init() {
+    /* PS/2 mouse via IRQ12 — present and reliable in every QEMU/VM config.
+     * (The VMware vmmouse backdoor is deliberately not used: QEMU's vmport
+     * answers its version probe even when no vmmouse device exists, which
+     * would switch us to an absolute device that never delivers data and
+     * leave the cursor frozen.) */
 
-    if (vmmouse_enable()) {
-        vmmouse_active = 1;
-
-        return;
-    }
+    mouse_wait_write();
+    outb(0x64, 0xA8);                 /* enable aux (mouse) port */
 
 
     mouse_wait_write();
-    outb(0x64, 0xA8);
-
-
-    mouse_wait_write();
-    outb(0x64, 0x20);
+    outb(0x64, 0x20);                 /* read controller config byte */
     mouse_wait_read();
-    uint8_t status = inb(0x60) | 2;
+    uint8_t status = inb(0x60) | 2;   /* set bit 1: enable mouse IRQ12 */
+    status &= ~0x20;                  /* clear bit 5: enable mouse clock */
     mouse_wait_write();
-    outb(0x64, 0x60);
+    outb(0x64, 0x60);                 /* write controller config byte */
     mouse_wait_write();
     outb(0x60, status);
 
 
-    mouse_write(0xF6); mouse_read();
-    mouse_write(0xF4); mouse_read();
+    mouse_write(0xF6); mouse_read();  /* set defaults */
+    mouse_write(0xF4); mouse_read();  /* enable data reporting */
 
 
     irq_register(12, mouse_handler);
@@ -166,7 +102,7 @@ void mouse_init() {
 }
 
 void mouse_poll(void) {
-    if (vmmouse_active) vmmouse_poll();
+    /* PS/2 mouse is interrupt-driven (IRQ12); nothing to poll. */
 }
 
 int     mouse_x()       { return pos_x; }

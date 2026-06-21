@@ -310,8 +310,6 @@ all: $(BUILD)/vyro.img $(BUILD)/disk.img
 		-name "Vyro OS" \
 		-display cocoa,show-cursor=off \
 		-vga std \
-		-usb \
-		-device usb-tablet \
 		-netdev user,id=n0 \
 		-device rtl8139,netdev=n0 \
 		-device qemu-xhci,id=xhci
