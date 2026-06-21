@@ -18,6 +18,13 @@
 #include "../drivers/rtc.h"
 #include "../include/types.h"
 
+/* Serial debug helpers — COM1 115200 8N1 */
+static void gui_serial_putc(char c) {
+    uint8_t st; do { __asm__ volatile("inb %1,%0":"=a"(st):"dN"((uint16_t)(0x3F8+5))); } while (!(st & 0x20));
+    __asm__ volatile("outb %0,%1"::"a"((uint8_t)c),"dN"((uint16_t)0x3F8));
+}
+static void gui_serial_puts(const char* s) { while (*s) gui_serial_putc(*s++); }
+
 #define TOPBAR_H    32
 #define TASKBAR_H   26
 #define DOCK_H      76
@@ -42,7 +49,7 @@ typedef struct {
 } window_t;
 
 static window_t wins[MAX_WINS];
-static int      win_count = 0;
+static volatile int win_count = 0;
 static int      hovered_dock = -1;
 static int      current_desktop = 0;
 
@@ -109,14 +116,24 @@ static void d2(char* buf, int n) { buf[0] = '0' + (n/10); buf[1] = '0' + (n%10);
 static int point_in(int px, int py, int x, int y, int w, int h) {
     return px >= x && px < x + w && py >= y && py < y + h;
 }
-static void bring_to_front(int i) {
-    if (i == win_count - 1) return;
-    window_t tmp = wins[i];
-    for (int k = i; k < win_count - 1; k++) wins[k] = wins[k+1];
-    wins[win_count - 1] = tmp;
+/* clamp win_count on every access — guards against BSS corruption */
+static inline int safe_wc(void) {
+    int wc = *(volatile int*)&win_count;
+    if ((unsigned)wc > (unsigned)MAX_WINS) { *(volatile int*)&win_count = 0; return 0; }
+    return wc;
 }
+int gui_get_win_count(void) { return *(volatile int*)&win_count; }
+static void bring_to_front(int i) {
+    int wc = safe_wc();
+    if (i == wc - 1) return;
+    window_t tmp = wins[i];
+    for (int k = i; k < wc - 1; k++) wins[k] = wins[k+1];
+    wins[wc - 1] = tmp;
+}
+
 static int find_app_window(const char* name) {
-    for (int i = 0; i < win_count; i++)
+    int wc = safe_wc();
+    for (int i = 0; i < wc; i++)
         if (wins[i].app) {
             const char* a = wins[i].app->name; const char* b = name;
             while (*a && *b && *a == *b) { a++; b++; }
@@ -136,8 +153,8 @@ static void open_app(const char* name) {
     }
     const app_def_t* a = app_find(name);
     if (!a) return;
-    if (win_count >= MAX_WINS) win_count = MAX_WINS - 1;
-    window_t* w = &wins[win_count++];
+    { int _wc2 = safe_wc(); if (_wc2 >= MAX_WINS) win_count = MAX_WINS - 1; }
+    window_t* w = &wins[win_count]; win_count++;
     w->app = a;
     int usable_w = (int)comp_width() - PANEL_W;
     int usable_h = (int)comp_height() - TOPBAR_H - TASKBAR_H - DOCK_H - 16;
@@ -347,12 +364,13 @@ static void draw_taskbar(int mx, int my, int clicked) {
     comp_rect(0, ty + TASKBAR_H - 1, (int)comp_width() - PANEL_W, 1, sep);
 
     int bx = 8;
-    for (int i = 0; i < win_count; i++) {
+    int _twc = safe_wc();
+    for (int i = 0; i < _twc; i++) {
         if (!wins[i].app || wins[i].desktop != current_desktop) continue;
         const char* nm = wins[i].app->name;
         int len = 0; while (nm[len]) len++;
         int bw = len * 8 + 20;
-        int focused  = (i == win_count - 1);
+        int focused  = (i == _twc - 1);
         int hover    = point_in(mx, my, bx, ty + 2, bw, TASKBAR_H - 4);
         uint32_t bbg = focused  ? t->accent :
                        hover    ? sep       : bar_bg;
@@ -762,8 +780,9 @@ static void render(int mx, int my, int clicked) {
     if (locked) { draw_lockscreen(mx, my); return; }
 
     draw_desktop_bg();
-    for (int i = 0; i < win_count; i++)
-        draw_window(&wins[i], i == win_count - 1, mx, my, clicked);
+    { int _rwc = safe_wc();
+    for (int i = 0; i < _rwc; i++)
+        draw_window(&wins[i], i == _rwc - 1, mx, my, clicked); }
     draw_topbar(mx, my);
     draw_taskbar(mx, my, clicked);
     widgets_panel_draw((int)comp_width() - PANEL_W, TOPBAR_H + 4, PANEL_W);
@@ -839,7 +858,7 @@ static void dispatch_action(int act) {
             theme_set_dark(!theme()->is_dark);
             notify_post("Theme", theme()->is_dark ? "Dark" : "Light"); break;
         case ACT_SHOW_DESKTOP:
-            for (int i = 0; i < win_count; i++) wins[i].minimized = 1; break;
+            { int _mwc = safe_wc(); for (int i = 0; i < _mwc; i++) wins[i].minimized = 1; } break;
         case ACT_OPEN_SETTINGS:
             open_app("Settings"); break;
 
@@ -874,16 +893,28 @@ static int glass_mode_on = 0;
 void gui_set_glass_mode(int on) { glass_mode_on = on ? 1 : 0; }
 int  gui_glass_mode(void)       { return glass_mode_on; }
 
+
 void gui_run() {
+    __asm__ volatile("cli");
+    /* Force-zero all GUI state — safe_wc() guards against any BSS corruption at runtime */
+    *(volatile int*)&win_count = 0;
+    for (int _i = 0; _i < MAX_WINS; _i++) {
+        wins[_i].app = 0; wins[_i].x = 0; wins[_i].y = 0;
+        wins[_i].w = 0; wins[_i].h = 0; wins[_i].visible = 0;
+        wins[_i].minimized = 0; wins[_i].maximized = 0; wins[_i].desktop = 0;
+        wins[_i].opened_at = 0; wins[_i].last_key = 0;
+    }
     if (!fb_available()) return;
-    if (!comp_init())    return;
+    if (!comp_init()) return;
     theme_init();
     apps_register_all();
     launcher_set_callback(on_launch);
     ctxmenu_clear(&menu);
-
     comp_revalidate();
     notify_post("Welcome to Vyro OS 2.0", "Right-click desktop for options");
+    /* Final guaranteed reset before opening initial apps */
+    *(volatile int*)&win_count = 0;
+    __asm__ volatile("" ::: "memory");
     open_app("Files");
 
     int dragging = -1, resizing = -1;
@@ -910,8 +941,7 @@ void gui_run() {
                 else last_key = (int)(unsigned char)c;
             }
         }
-        if (last_key && win_count > 0)
-            wins[win_count - 1].last_key = last_key;
+        { int _kwc = safe_wc(); if (last_key && _kwc > 0) wins[_kwc - 1].last_key = last_key; }
 
         int mx     = mouse_x(), my = mouse_y();
         uint8_t btn = mouse_buttons();
@@ -973,7 +1003,8 @@ void gui_run() {
             } else if (hovered_dock >= 0) {
                 open_app(dock_app_names[hovered_dock]);
             } else {
-                for (int i = win_count - 1; i >= 0; i--) {
+                { int _lwc = safe_wc();
+                for (int i = _lwc - 1; i >= 0; i--) {
                     window_t* w = &wins[i];
                     if (!w->visible || w->minimized || w->desktop != current_desktop) continue;
                     int btn_y = w->y + (TITLE_H - 14) / 2;
@@ -983,15 +1014,15 @@ void gui_run() {
                     if (!w->maximized &&
                         point_in(mx, my, w->x + w->w - RESIZE_GRIP,
                                  w->y + w->h - RESIZE_GRIP, RESIZE_GRIP, RESIZE_GRIP)) {
-                        bring_to_front(i); resizing = win_count - 1;
+                        bring_to_front(i); resizing = safe_wc() - 1;
                         dox = mx - (w->x + w->w); doy = my - (w->y + w->h); break;
                     }
                     if (point_in(mx, my, w->x, w->y, w->w, TITLE_H)) {
-                        bring_to_front(i); dragging = win_count - 1;
+                        bring_to_front(i); dragging = safe_wc() - 1;
                         dox = mx - wins[dragging].x; doy = my - wins[dragging].y; break;
                     }
                     if (point_in(mx, my, w->x, w->y, w->w, w->h)) { bring_to_front(i); break; }
-                }
+                } }
             }
         }
 
@@ -1003,13 +1034,14 @@ void gui_run() {
                 ctxmenu_show(&menu, mx, my);
             } else {
                 int hit_window = -1;
-                for (int i = win_count - 1; i >= 0; i--) {
+                { int _rwc2 = safe_wc();
+                for (int i = _rwc2 - 1; i >= 0; i--) {
                     if (!wins[i].visible || wins[i].minimized ||
                         wins[i].desktop != current_desktop) continue;
                     if (point_in(mx, my, wins[i].x, wins[i].y, wins[i].w, wins[i].h)) {
                         hit_window = i; break;
                     }
-                }
+                } }
                 if (hit_window >= 0) {
                     ctx_source = CTX_WINDOW; ctx_window_idx = hit_window;
                     build_window_menu();

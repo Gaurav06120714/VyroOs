@@ -21,7 +21,8 @@ CFLAGS  = -ffreestanding \
           -c
 
 LDFLAGS = -T link.ld \
-          --oformat binary
+          --oformat binary \
+          -Map build/kernel.map
 
 BUILD   = build
 
