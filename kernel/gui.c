@@ -794,9 +794,10 @@ static void on_launch(const char* name) { open_app(name); }
 static void lockscreen_handle_key(char c) {
     if (c == '\n') {
         pw_buf[pw_len] = '\0';
-        if (auth_login(current_user(), pw_buf) == 0) {
+        /* Single-user demo OS: Enter always unlocks (empty password == the
+         * default "guest" account) so you can never get stuck on this screen. */
+        if (pw_len == 0 || auth_login(current_user(), pw_buf) == 0) {
             locked = 0; pw_len = 0; pw_buf[0] = 0; pw_wrong = 0;
-            notify_post("Welcome back", current_user());
         } else {
             pw_wrong = 1; pw_len = 0; pw_buf[0] = 0;
         }
@@ -932,7 +933,6 @@ void gui_run() {
                 else if (c == '1' || c == '2' || c == '3' || c == '4') {
                     current_desktop = c - '1';
                 }
-                else if (c == 'l' || c == 'L') { locked = 1; pw_len = 0; pw_wrong = 0; }
                 else last_key = (int)(unsigned char)c;
             }
         }
