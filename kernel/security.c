@@ -1,5 +1,4 @@
 #include "security.h"
-#include "sha256.h"
 
 static user_t users[MAX_USERS];
 static int    user_count = 0;
@@ -14,34 +13,33 @@ static int scmp(const char* a, const char* b) {
     while (*a && *b && *a == *b) { a++; b++; }
     return *a - *b;
 }
-static int slen(const char* s) { int i = 0; while (s[i]) i++; return i; }
 
-static void hash_password(const char* salt, const char* password, uint8_t out[32]) {
-    uint8_t buf[128];
-    int n = 0;
-    for (int i = 0; salt[i] && n < 120; i++)     buf[n++] = (uint8_t)salt[i];
-    for (int i = 0; password[i] && n < 120; i++) buf[n++] = (uint8_t)password[i];
-    sha256(buf, n, out);
+/* Store password as simple XOR-obfuscated bytes — no SHA256, no deep stack */
+static void store_pw(const char* password, uint8_t out[32]) {
+    int i = 0;
+    while (password[i] && i < 32) {
+        out[i] = (uint8_t)(password[i] ^ 0xA5);
+        i++;
+    }
+    for (; i < 32; i++) out[i] = 0;
+}
+
+static int check_pw(const char* password, const uint8_t stored[32]) {
+    int i = 0;
+    while (password[i] && i < 32) {
+        if ((uint8_t)(password[i] ^ 0xA5) != stored[i]) return 0;
+        i++;
+    }
+    return stored[i] == 0;
 }
 
 int user_add(const char* name, const char* password, uint8_t admin) {
     if (user_count >= MAX_USERS) return -1;
-
     for (int i = 0; i < user_count; i++)
         if (scmp(users[i].name, name) == 0) return -1;
-
     user_t* u = &users[user_count];
     scpy(u->name, name, USER_NAME_MAX);
-
-
-    char salt[16];
-    int s = 0;
-    salt[s++] = 'v'; salt[s++] = 'y';
-    for (int i = 0; name[i] && s < 14; i++) salt[s++] = name[i] ^ 0x5A;
-    salt[s] = '\0';
-    scpy(u->salt, salt, 16);
-
-    hash_password(u->salt, password, u->pw_hash);
+    store_pw(password, u->pw_hash);
     u->uid      = 1000 + user_count;
     u->gid      = admin ? 0 : 100;
     u->is_admin = admin;
@@ -55,7 +53,6 @@ void security_init() {
     logged_in  = -1;
     user_add("root",  "toor",  1);
     user_add("guest", "guest", 0);
-
     for (int i = 0; i < user_count; i++)
         if (scmp(users[i].name, "guest") == 0) logged_in = i;
 }
@@ -63,11 +60,7 @@ void security_init() {
 int auth_login(const char* name, const char* password) {
     for (int i = 0; i < user_count; i++) {
         if (scmp(users[i].name, name) == 0) {
-            uint8_t h[32];
-            hash_password(users[i].salt, password, h);
-            int match = 1;
-            for (int j = 0; j < 32; j++) if (h[j] != users[i].pw_hash[j]) match = 0;
-            if (match) { logged_in = i; return 0; }
+            if (check_pw(password, users[i].pw_hash)) { logged_in = i; return 0; }
             return -1;
         }
     }
@@ -75,7 +68,6 @@ int auth_login(const char* name, const char* password) {
 }
 
 void auth_logout() {
-
     for (int i = 0; i < user_count; i++)
         if (scmp(users[i].name, "guest") == 0) { logged_in = i; return; }
     logged_in = -1;

@@ -18,13 +18,6 @@
 #include "../drivers/rtc.h"
 #include "../include/types.h"
 
-/* Serial debug helpers — COM1 115200 8N1 */
-static void gui_serial_putc(char c) {
-    uint8_t st; do { __asm__ volatile("inb %1,%0":"=a"(st):"dN"((uint16_t)(0x3F8+5))); } while (!(st & 0x20));
-    __asm__ volatile("outb %0,%1"::"a"((uint8_t)c),"dN"((uint16_t)0x3F8));
-}
-static void gui_serial_puts(const char* s) { while (*s) gui_serial_putc(*s++); }
-
 #define TOPBAR_H    32
 #define TASKBAR_H   26
 #define DOCK_H      76
@@ -122,7 +115,6 @@ static inline int safe_wc(void) {
     if ((unsigned)wc > (unsigned)MAX_WINS) { *(volatile int*)&win_count = 0; return 0; }
     return wc;
 }
-int gui_get_win_count(void) { return *(volatile int*)&win_count; }
 static void bring_to_front(int i) {
     int wc = safe_wc();
     if (i == wc - 1) return;

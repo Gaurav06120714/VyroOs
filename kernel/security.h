@@ -8,7 +8,6 @@
 
 typedef struct {
     char     name[USER_NAME_MAX];
-    char     salt[16];
     uint8_t  pw_hash[32];
     uint32_t uid;
     uint32_t gid;

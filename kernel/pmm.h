@@ -4,7 +4,9 @@
 #include "../include/types.h"
 
 #define PAGE_SIZE       4096
-#define PMM_BITMAP_ADDR 0x100000
+/* Bitmap sits above the kernel BSS (which now ends ~0x17e208) and below
+ * PMM-managed RAM (0x200000). Was 0x100000, which now collides with BSS. */
+#define PMM_BITMAP_ADDR 0x180000
 #define PMM_MEM_START   0x200000
 
 #define PMM_MEM_END_DEFAULT 0x4000000

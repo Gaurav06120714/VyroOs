@@ -14,6 +14,17 @@ typedef struct {
 
 static arp_entry_t cache[ARP_CACHE_SIZE];
 
+/* Non-blocking cache-only lookup — safe to call from interrupt context */
+int arp_cache_lookup(const uint8_t ip[4], uint8_t out_mac[6]) {
+    for (int i = 0; i < ARP_CACHE_SIZE; i++) {
+        if (!cache[i].valid) continue;
+        int m = 1;
+        for (int j = 0; j < 4; j++) if (cache[i].ip[j] != ip[j]) { m = 0; break; }
+        if (m) { for (int j = 0; j < 6; j++) out_mac[j] = cache[i].mac[j]; return 1; }
+    }
+    return 0;
+}
+
 static int cache_lookup(const uint8_t ip[4], uint8_t out_mac[6]) {
     for (int i = 0; i < ARP_CACHE_SIZE; i++) {
         if (!cache[i].valid) continue;

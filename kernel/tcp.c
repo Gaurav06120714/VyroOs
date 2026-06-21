@@ -233,7 +233,7 @@ static int build_and_send_data(const tcp_tcb_t* t, uint8_t flags,
     for (uint32_t i = 0; i < 14 + 20 + 20; i++) frame[i] = 0;
 
     uint8_t dst_mac[6];
-    if (!arp_resolve(t->remote_ip, 500, dst_mac)) {
+    if (!arp_cache_lookup(t->remote_ip, dst_mac)) {
         for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;
     }
 
@@ -280,7 +280,7 @@ static int build_and_send(const tcp_tcb_t* t, uint8_t flags,
     for (uint32_t i = 0; i < sizeof(frame); i++) frame[i] = 0;
 
     uint8_t dst_mac[6];
-    if (!arp_resolve(t->remote_ip, 500, dst_mac)) {
+    if (!arp_cache_lookup(t->remote_ip, dst_mac)) {
         for (int i = 0; i < 6; i++) dst_mac[i] = 0xFF;
     }
 
