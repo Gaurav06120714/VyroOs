@@ -41,7 +41,7 @@ jobs:
           timeout 8 qemu-system-x86_64 \
             -drive file=build/vyro.img,format=raw,if=ide,index=0,media=disk \
             -drive file=build/disk.img,format=raw,if=ide,index=1,media=disk \
-            -m 256M -smp 4 -display none -no-reboot \
+            -m 256M -smp 4 -cpu max -display none -no-reboot \
             -d cpu_reset -D /tmp/qemu.log || true
           if grep -q "Triple fault" /tmp/qemu.log; then
             echo "FAIL: triple fault during boot"; cat /tmp/qemu.log; exit 1
