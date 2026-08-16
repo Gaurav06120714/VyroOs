@@ -4,6 +4,9 @@
 #include "../compositor.h"
 #include "../net.h"
 #include "../html.h"
+#include "../dns.h"
+#include "../dns_real.h"
+#include "../http.h"
 
 #define TOOLBAR_H  40
 #define TABBAR_H   32
@@ -28,6 +31,96 @@ static int   curtab = 0;
 
 static int slen(const char* s){int i=0;while(s[i])i++;return i;}
 static void scpy(char* d,const char* s,int m){int i=0;while(s[i]&&i<m-1){d[i]=s[i];i++;}d[i]=0;}
+static void sapp(char* d,const char* s,int m){int i=slen(d),j=0;while(s[j]&&i<m-1){d[i++]=s[j++];}d[i]=0;}
+
+/* ---- real page fetch state ----
+ * page_buf holds the plain-text view of the most recently fetched web page.
+ * page_ready is set once a non-vyro:// URL has been fetched (success or error). */
+#define PAGE_MAX 8192
+static char page_buf[PAGE_MAX];
+static int  page_ready = 0;
+
+static int is_vyro(const char* u){
+    return u[0]=='v'&&u[1]=='y'&&u[2]=='r'&&u[3]=='o'&&
+           u[4]==':'&&u[5]=='/'&&u[6]=='/';
+}
+
+/* Strip HTML tags + <script>/<style> blocks and collapse whitespace into
+ * page_buf, so a fetched page renders as readable text. */
+static void html_to_text(const uint8_t* in, uint32_t len, char* out, int outmax){
+    int o = 0, intag = 0, skip = 0, lastnl = 1, lastsp = 1;
+    for (uint32_t i = 0; i < len && o < outmax - 1; i++){
+        char ch = (char)in[i];
+        if (ch == '<'){
+            intag = 1;
+            /* detect <script / <style / </script / </style to drop their text */
+            const char* r = (const char*)(in + i + 1);
+            if (i + 7 < len){
+                if ((r[0]=='s'||r[0]=='S') && (r[1]=='c'||r[1]=='C')) skip = 1;
+                else if ((r[0]=='s'||r[0]=='S') && (r[1]=='t'||r[1]=='T')) skip = 1;
+                else if (r[0]=='/' ) skip = 0;
+            }
+            continue;
+        }
+        if (ch == '>'){ intag = 0; continue; }
+        if (intag || skip) continue;
+        if (ch == '\r') continue;
+        if (ch == '\n'){ if(!lastnl){out[o++]='\n'; lastnl=1; lastsp=1;} continue; }
+        if (ch == ' ' || ch == '\t'){ if(!lastsp){out[o++]=' '; lastsp=1;} continue; }
+        out[o++] = ch; lastsp = 0; lastnl = 0;
+    }
+    out[o] = 0;
+}
+
+/* Resolve host, HTTP GET over the real TCP stack, and store readable text. */
+static void browser_fetch(const char* u){
+    const char* p = u;
+    /* skip http:// or https:// scheme if present */
+    if ((p[0]=='h'||p[0]=='H')){
+        const char* s = p; while (*s && *s != ':' && *s != '/') s++;
+        if (s[0]==':' && s[1]=='/' && s[2]=='/') p = s + 3;
+    }
+    char host[128]; int hi = 0;
+    while (*p && *p!='/' && *p!=':' && hi < 127) host[hi++] = *p++;
+    host[hi] = 0;
+    uint16_t port = 80;
+    if (*p == ':'){ p++; int pr=0; while(*p>='0'&&*p<='9'){pr=pr*10+(*p-'0');p++;} if(pr>0) port=(uint16_t)pr; }
+    char path[160]; int pi = 0;
+    if (*p != '/') path[pi++] = '/';
+    while (*p && pi < 159) path[pi++] = *p++;
+    path[pi] = 0;
+
+    if (hi == 0){ scpy(page_buf, "EMPTY ADDRESS\n\n  Type a host like example.com", PAGE_MAX); page_ready=1; return; }
+
+    uint8_t ip[4];
+    /* Fast path: static hosts table. Fallback: real UDP DNS via the
+     * QEMU/user-net resolver at 10.0.2.3 (3s timeout). */
+    int resolved = (dns_resolve(host, ip) == 0);
+    if (!resolved){
+        uint8_t dns_ip[4] = { 10, 0, 2, 3 };
+        resolved = dns_real_resolve(host, dns_ip, 3000, ip) ? 1 : 0;
+    }
+    if (!resolved){
+        scpy(page_buf, "COULD NOT RESOLVE HOST\n\n  DNS lookup failed for: ", PAGE_MAX);
+        sapp(page_buf, host, PAGE_MAX);
+        sapp(page_buf, "\n\n  The network may be down, or the host does\n  not exist. Plain http:// sites work best;\n  https:// and JS-heavy sites (YouTube, etc.)\n  are not supported.", PAGE_MAX);
+        page_ready = 1; return;
+    }
+    static uint8_t resp[PAGE_MAX];
+    int n = http_get(ip, port, host, path, resp, sizeof(resp) - 1, 8000);
+    if (n <= 0){
+        scpy(page_buf, "REQUEST FAILED\n\n  Connected DNS but the HTTP GET to\n  ", PAGE_MAX);
+        sapp(page_buf, host, PAGE_MAX);
+        sapp(page_buf, " timed out or was refused.", PAGE_MAX);
+        page_ready = 1; return;
+    }
+    int status = 0; const uint8_t* body = 0; uint32_t blen = 0; int32_t cl = -1;
+    if (http_parse_response(resp, (uint32_t)n, &status, &body, &blen, &cl) && body && blen > 0)
+        html_to_text(body, blen, page_buf, PAGE_MAX);
+    else
+        html_to_text(resp, (uint32_t)n, page_buf, PAGE_MAX);
+    page_ready = 1;
+}
 
 static const char* HOME_CONTENT =
     "VYRO BROWSER 2.0\n\n"
@@ -76,23 +169,35 @@ static const char* NET_CONTENT =
     "  DHCP:       UDP port 67/68 client";
 
 static const char* get_page_content(const char* u) {
-    if (u[0]=='v'&&u[1]=='y'&&u[2]=='r'&&u[3]=='o'&&u[4]==':'&&u[5]=='/'&&u[6]=='/') {
+    if (is_vyro(u)) {
         const char* path = u + 7;
         if (path[0]=='h') return HOME_CONTENT;
         if (path[0]=='a') return ABOUT_CONTENT;
         if (path[0]=='n') return NET_CONTENT;
+        return HOME_CONTENT;
     }
+    /* real fetched page (or an error report) lives in page_buf */
+    if (page_ready) return page_buf;
     return HOME_CONTENT;
 }
 
 static void navigate(const char* u) {
     scpy(tabs[curtab].url, u, URL_MAX);
     scpy(url, u, URL_MAX); url_len = slen(url);
-    /* set title from url */
-    if (u[7]=='h') scpy(tabs[curtab].title, "Home", 32);
-    else if (u[7]=='a') scpy(tabs[curtab].title, "About VyroOS", 32);
-    else if (u[7]=='n') scpy(tabs[curtab].title, "Network", 32);
-    else { scpy(tabs[curtab].title, u, 28); }
+    if (is_vyro(u)) {
+        page_ready = 0;
+        if (u[7]=='h') scpy(tabs[curtab].title, "Home", 32);
+        else if (u[7]=='a') scpy(tabs[curtab].title, "About VyroOS", 32);
+        else if (u[7]=='n') scpy(tabs[curtab].title, "Network", 32);
+        else { scpy(tabs[curtab].title, u, 28); }
+        loading = 0;
+        return;
+    }
+    /* Real network fetch. NOTE: this blocks the UI until the request
+     * completes or times out (single-threaded cooperative kernel). */
+    scpy(tabs[curtab].title, u, 28);
+    loading = 1;
+    browser_fetch(u);
     loading = 0;
 }
 
@@ -217,4 +322,4 @@ static void render_browser(app_ctx_t* c) {
     (void)abs_my;
 }
 
-const app_def_t APP_BROWSER2 = { "Browser", 'W', 0x40C0E0, render_browser, 660, 520 };
+const app_def_t APP_BROWSER2 = { "Browser", 'W', 0x40C0E0, render_browser, 720, 600 };

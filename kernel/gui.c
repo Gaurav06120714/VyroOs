@@ -24,7 +24,7 @@
 #define TITLE_H     28
 #define MAX_WINS    8
 #define DOCK_ITEMS  10
-#define RESIZE_GRIP 14
+#define RESIZE_GRIP 22
 #define NUM_DESKTOPS 4
 
 #define PANEL_W     308
@@ -223,16 +223,6 @@ static void draw_window(window_t* w, int focused, int mx, int my, int clicked) {
         if (title_x < rx + 70) title_x = rx + 70;
         comp_text(title_x, w->y + (TITLE_H - 14) / 2, w->app->name, t->text, tcol);
 
-        if (!w->maximized) {
-            for (int i = 0; i < 10; i++) {
-                comp_pixel(w->x + w->w - 3 - i, w->y + w->h - 3, t->text_dim);
-                comp_pixel(w->x + w->w - 3,     w->y + w->h - 3 - i, t->text_dim);
-                if (i < 5) {
-                    comp_pixel(w->x + w->w - 3 - i, w->y + w->h - 3 - i, t->text_dim);
-                }
-            }
-        }
-
         int body_x = w->x,       body_y = w->y + TITLE_H;
         int body_w = w->w,        body_h = w->h - TITLE_H;
         int body_mx = mx - body_x, body_my = my - body_y;
@@ -247,6 +237,24 @@ static void draw_window(window_t* w, int focused, int mx, int my, int clicked) {
         };
         w->app->render(&ctx);
         w->last_key = 0;
+
+        /* Draw the resize grip LAST, on top of the app body, so it is
+         * always visible and easy to grab (drag to resize the window). */
+        if (!w->maximized) {
+            int gx = w->x + w->w, gy = w->y + w->h;
+            uint32_t ridge = focused ? t->accent : t->text_dim;
+            /* filled corner wedge for a clear target */
+            for (int yy = 1; yy <= RESIZE_GRIP - 4; yy++)
+                for (int xx = 1; xx <= (RESIZE_GRIP - 4) - yy; xx++)
+                    comp_pixel(gx - 2 - xx, gy - 2 - yy, t->win_border);
+            /* three bold diagonal ridges in the accent color */
+            for (int d = 5; d <= RESIZE_GRIP - 4; d += 5) {
+                for (int i = 0; i <= d; i++) {
+                    comp_pixel(gx - 3 - i, gy - 3 - (d - i), ridge);
+                    comp_pixel(gx - 3 - i, gy - 4 - (d - i), ridge);
+                }
+            }
+        }
     }
 }
 
