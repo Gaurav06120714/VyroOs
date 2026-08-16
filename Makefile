@@ -287,10 +287,15 @@ $(BUILD)/app_disk.o: kernel/apps/disk.c
 $(BUILD)/apps_reg.o: kernel/apps/apps.c
 	$(CC) $(CFLAGS) kernel/apps/apps.c -o $(BUILD)/apps_reg.o
 
-# vC.6.10.2: ensure $(BUILD) exists before any object compile
-$(OBJS): | $(BUILD)
-$(BUILD):
+# vC.6.10.2: ensure $(BUILD) exists before any object compile.
+# Use a stamp file (not the bare $(BUILD) dir) so this target's name does not
+# collide with the phony `build` target below — that collision made every
+# object order-only-depend on `build`, which depends back on the objects,
+# producing "Circular build/*.o <- build dependency dropped" warnings.
+$(OBJS): | $(BUILD)/.dirstamp
+$(BUILD)/.dirstamp:
 	@mkdir -p $(BUILD)
+	@touch $@
 
 # ───────────────────────────────────────────────
 # Default goal — make with no args builds the image
